@@ -2,8 +2,8 @@
 #-------------------------------------------------------------------------------
 
 #AnnotationArea
-#TODO: Themes: Vector/Dict of StyleInfo?
-
+#TODO: Themes: Define StyleInfo/style?
+#TODO: Themes: Vector/Dict of StyleInfo/Layout?
 
 #==Abstracts
 ===============================================================================#
@@ -124,14 +124,20 @@ type Annotation
 end
 Annotation() = Annotation("", "", "")
 
-type StyleInfo
-	#Identifies width of plot margins where labels are written
-	#TODO: find better names
-	borderwidth::Float64
+#Plot layout
+type Layout
+	htitle::Float64 #Title allocation
+	waxlabel::Float64 #Vertical axis label allocation (width)
+	haxlabel::Float64 #Horizontal axis label allocation (height)
+	wnolabels::Float64 #Width to use where no labels are displayed
 
+	wticklabel::Float64 #y-axis values allocation (width)
+	hticklabel::Float64 #x-axis values allocation (height)
+
+	tframe::Float64 #Frame thickness
 #Fontname, fontsize, ...
 end
-StyleInfo() = StyleInfo(20)
+Layout() = Layout(20, 20, 20, 30, 60, 20, 2)
 
 #2D plot.
 type Plot2D <: Plot
@@ -146,7 +152,7 @@ type Plot2D <: Plot
 	ext::PExtents2D
 	ext_max::PExtents2D
 
-	style::StyleInfo
+	layout::Layout
 
 	data::Vector{IWaveform}
 
@@ -156,7 +162,7 @@ end
 Plot2D(w::Real, h::Real; optimize_f1=true) = Plot2D(optimize_f1,
 	w, h, Annotation(),
 	PExtents2D(), PExtents2D(),
-	StyleInfo(), [], 1000
+	Layout(), [], 1000
 )
 
 
@@ -171,7 +177,7 @@ NOTE:
 function Transform2D(ext::PExtents2D, inputb::BoundingBox)
 	xs = (inputb.xmax-inputb.xmin) / (ext.xmax-ext.xmin)
 	ys = -(inputb.ymax-inputb.ymin) / (ext.ymax-ext.ymin)
-	x0 = - inputb.xmin/xs - ext.xmin
+	x0 = + inputb.xmin/xs - ext.xmin
 	y0 = + inputb.ymax/ys - ext.ymin
 
 	return Transform2D(xs, x0, ys, y0)
@@ -188,17 +194,17 @@ Point(ds::Vector{Point2D}, i::Int) = ds[i]
 #==Base functions
 ===============================================================================#
 #=
-function apply!(s::StyleInfo, l::LineAttributes)
-	#ignore style for now..
+function apply!(lyt::Layout, l::LineAttributes)
+	#ignore lyt for now..
 	#TODO: make global:
 	const COLOR_DEFAULT = RGB(0,0,0)
 
 	if nothing == l.width; l.width = 1; end
 	if nothing == l.color; l.color = COLOR_DEFAULT; end
 end
-function apply(s::StyleInfo, l::LineAttributes)
+function apply(lyt::Layout, l::LineAttributes)
 	result = deepcopy(l)
-	return apply!(s, l)
+	return apply!(lyt, l)
 end
 =#
 
@@ -208,10 +214,31 @@ function _add(plot::Plot2D, x::Vector, y::Vector)
 	return ds
 end
 
+#Apply transform that maps a data point to the canvas
+#-------------------------------------------------------------------------------
 function ptmap(xf::Transform2D, pt::Point2D)
 	x = (pt.x + xf.x0)*xf.xs
 	y = (pt.y + xf.y0)*xf.ys
 	return Point2D(x, y)
+end
+
+#Interpolate between two points.
+#-------------------------------------------------------------------------------
+function interpolate(p1::Point2D, p2::Point2D, x::DReal)
+	m = (p2.y-p1.y) / (p2.x-p1.x)
+	return m*(x-p1.x)+p1.y
+end
+
+#Extents
+#-------------------------------------------------------------------------------
+function Base.merge(base::PExtents2D, new::PExtents2D)
+	#Pick maximum extents 
+	baseifnan(bv, nv) = isnan(nv)? bv: nv
+	xmin = baseifnan(base.xmin, new.xmin)
+	xmax = baseifnan(base.xmax, new.xmax)
+	ymin = baseifnan(base.ymin, new.ymin)
+	ymax = baseifnan(base.ymax, new.ymax)
+	return PExtents2D(xmin, xmax, ymin, ymax)
 end
 
 #Auto-detect extents from plot data:
@@ -221,22 +248,33 @@ function setextents_detectmax(plot::Plot2D)
 end
 
 function setextents(plot::Plot2D, ext::PExtents2D)
-	plot.ext = ext
+	plot.ext = merge(plot.ext, ext)
 end
 
 function getextents(plot::Plot2D)
-	maxifnan(v, maxv) = isnan(v)? maxv: v
-	xmin = maxifnan(plot.ext.xmin, plot.ext_max.xmin)
-	xmax = maxifnan(plot.ext.xmax, plot.ext_max.xmax)
-	ymin = maxifnan(plot.ext.ymin, plot.ext_max.ymin)
-	ymax = maxifnan(plot.ext.ymax, plot.ext_max.ymax)
-	return PExtents2D(xmin, xmax, ymin, ymax)
+	return merge(plot.ext_max, plot.ext)
 end
 
-#Interpolate between two points.
-function interpolate(p1::Point2D, p2::Point2D, x::DReal)
-	m = (p2.y-p1.y) / (p2.x-p1.x)
-	return m*(x-p1.x)+p1.y
+#Get bounding box of plot data area:
+function databounds(plotb::BoundingBox, lyt::Layout)
+	xmin = plotb.xmin + lyt.waxlabel + lyt.wticklabel
+	xmax = plotb.xmax - lyt.wnolabels
+	ymin = plotb.ymin + lyt.htitle
+	ymax = plotb.ymax - lyt.haxlabel - lyt.hticklabel
+
+	#Avoid division by zero, inversions, ...
+	if xmin >= xmax
+		c = (xmin + xmax)/2
+		xmin = c - 0.5
+		xmax = c + 0.5
+	end
+	if ymin >= ymax
+		c = (ymin + ymax)/2
+		ymin = c - 0.5
+		ymax = c + 0.5
+	end
+
+	return BoundingBox(xmin, xmax, ymin, ymax)
 end
 
 #Obtain reduced waveform datasets by limiting to the extents & max resolution:
@@ -332,6 +370,5 @@ end
 
 _reduce(inputlist::Vector{IWaveform}, ext::PExtents2D, xres_max::Integer) =
 	map((input)->_reduce(input, ext, xres_max::Integer), inputlist)
-
 
 #Last line

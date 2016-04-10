@@ -40,9 +40,9 @@ Sample code to construct InspectDR objects can be found [here](test/).
 
 ## Known Limitations
 
- - The module is not yet interactive... you cannot even zoom at the moment.
+ - The module is not yet very interactive... you cannot even zoom properly at the moment.
  - InspectDR.jl currently only supports F1 datasets (x-values must be in sorted, increasing order).
- - Does not yet generate annotations (plot title, axes/ticks/ranges, axis labels, legends, ...)
+ - Only generates basic annotations. Needs legends, ...
  - Does not yet render plot data in separate thread (will improve interactive experience with large datasets).
  - Does not yet support glyphs (symbols).
  - Does not yet save images to files.
@@ -52,7 +52,7 @@ Sample code to construct InspectDR objects can be found [here](test/).
 
 Extensive compatibility testing of InspectDR.jl has not been performed.  The module has been tested using the following environment(s):
 
- - Linux / Julia-0.4.2
+ - Linux / Julia-0.4.2 / Gtk 0.9.3 / Cairo 0.2.31
 
 ## Disclaimer
 

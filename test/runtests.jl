@@ -29,8 +29,7 @@ end
 if :test2 == test
 import EDAData
 using FileIO2
-home = ENV["HOME"]
-datapath = "$home/data/cppsimdata"
+datapath = "./"
 reader = EDAData._open(File(:tr0, joinpath(datapath, "sigmadeltaexample.tr0")))
 sig = read(reader, "v")
 close(reader)
@@ -78,27 +77,19 @@ end
 ===============================================================================#
 plt = InspectDR.GtkPlot()
 
-
-#Control extents:
-#-------------------------------------------------------------------------------
-xmax = 2e-3/20
-#xmax = 2e-3
-#xmax = .22
-#plt.src.ext = InspectDR.PExtents2D(0, xmax, -0.5,2.5)
-#plt.src.ext = InspectDR.PExtents2D(NaN, NaN, -0.5,2.5)
-@show plt.src.ext
-
 style = :dashdot
 #style = :solid
-w = InspectDR._add(plt.src, x, y+1)
-w.line = InspectDR.line(color=blue, width=1, style=style)
-w = InspectDR._add(plt.src, x, y-1)
-w.line = InspectDR.line(color=red, width=5, style=style)
+w = add(plt.src, x, y+1)
+w.line = line(color=blue, width=1, style=style)
+w = add(plt.src, x, y-1)
+w.line = line(color=red, width=5, style=style)
 plt.src.xres=1000 #Force resolution
 
+a = plt.src.annotation
+a.title = "Sample Plot (λ)"
+a.xlabel = "Time (s)"
+a.ylabel = "Signal Voltage (V)"
+
 InspectDR._display(plt)
-@show plt.src.ext_max
-
-
 
 :DONE

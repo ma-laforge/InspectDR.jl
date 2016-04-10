@@ -15,6 +15,22 @@ include("datasetop.jl")
 include("cairo_base.jl")
 include("gtk_base.jl")
 
+#==Interface
+===============================================================================#
+add = _add #Danger: high risk of collision (common name)
+export add, line, glyph
+
+#==Unexported tools
+================================================================================
+	_display: Displays the pot
+=#
+
+
+#==Already exported
+================================================================================
+=#
+
+
 #==
 ===============================================================================#
 #=Plot types:
