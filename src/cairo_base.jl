@@ -7,15 +7,16 @@
 #==Main types
 ===============================================================================#
 
-#2D plot canvas:
-#TODO: is this too much? ext is not even needed...
+#2D plot canvas; basic info:
 type PCanvas2D <: PlotCanvas
 	ctx::CairoContext
-	ext::PExtents2D
-	xf::Transform2D
+	bb::BoundingBox #Entire canvas
+	graphbb::BoundingBox #Graph portion
+	ext::PExtents2D #Extents of graph portion
+	xf::Transform2D #Transform used to render data
 end
-PCanvas2D(ctx::CairoContext, ext::PExtents2D, graphbb::BoundingBox) =
-	PCanvas2D(ctx, ext, Transform2D(ext, graphbb))
+PCanvas2D(ctx, bb, graphbb, ext) =
+	PCanvas2D(ctx, bb, graphbb, ext, Transform2D(ext, graphbb))
 
 
 #==Helper functions
@@ -68,8 +69,18 @@ function _clip(ctx::CairoContext, bb::BoundingBox)
 	Cairo.clip(ctx)
 end
 
+#Draw a simple line on a CairoContext
+#-------------------------------------------------------------------------------
+function drawline(ctx::CairoContext, p1::Point2D, p2::Point2D)
+	Cairo.move_to(ctx, p1.x, p1.y)
+	Cairo.line_to(ctx, p2.x, p2.y)
+	Cairo.stroke(ctx)
+end
+
+#Render text on a CairoContext
+#-------------------------------------------------------------------------------
 function render(ctx::CairoContext, t::AbstractString, pt::Point2D,
-	fontsize::Real, bold::Bool, centerv::Bool, centerh::Bool, angle::Real,
+	fontsize::Real, bold::Bool, centerv::Bool, centerh::Bool, angle::Float64,
 	color::Colorant)
 	const fontname = "Serif" #Sans, Serif, Fantasy, Monospace
 	const weight = bold? Cairo.FONT_WEIGHT_BOLD: Cairo.FONT_WEIGHT_NORMAL
@@ -105,65 +116,93 @@ typedef struct {
 
 	Cairo.restore(ctx) #-----
 end
-render(ctx::CairoContext, t::AbstractString, pt::Point2D;
-	fontsize::Real=10, bold::Bool=false, centerv::Bool=false, centerh::Bool=false,
-	angle::Real=0, color::Colorant=COLOR_BLACK) =
-	render(ctx, t, pt, Float64(fontsize), bold, centerv, centerh, Float64(angle), color)
+render(ctx::CairoContext, t::AbstractString, pt::Point2D, font::Font;
+	centerv::Bool=false, centerh::Bool=false,	angle::Real=0, color::Colorant=COLOR_BLACK) =
+	render(ctx, t, pt, font._size, font.bold, centerv, centerh, Float64(angle), color)
 
-#bb: Main bounding box; graph: graph bounding box
-function render(ctx::CairoContext, a::Annotation, bb::BoundingBox, graph::BoundingBox, lyt::Layout)
-	const sztitle = Float64(16)
+#Render main plot annotation (titles, axis labels, ...)
+#-------------------------------------------------------------------------------
+function render(canvas::PCanvas2D, a::Annotation, lyt::Layout)
+	const ctx = canvas.ctx
+	const bb = canvas.bb
+	const graph = canvas.graphbb
 
-	xcenter = (bb.xmin+bb.xmax)/2
+	xcenter = (graph.xmin+graph.xmax)/2
+	ycenter = (graph.ymin+graph.ymax)/2
 
 	#Title
 	pt = Point2D(xcenter, bb.ymin+lyt.htitle/2)
-	render(ctx, a.title, pt, fontsize=sztitle, bold=true, centerv=true, centerh=true)
-
-	xcenter = (graph.xmin+graph.xmax)/2
-	ycenter = (graph.ymin+graph.ymax)/2
+	render(ctx, a.title, pt, lyt.fnttitle, centerv=true, centerh=true)
 
 	#X-axis
 	pt = Point2D(xcenter, bb.ymax-lyt.haxlabel/2)
-	render(ctx, a.xlabel, pt, fontsize=sztitle, centerv=true, centerh=true)
+	render(ctx, a.xlabel, pt, lyt.fntaxlabel, centerv=true, centerh=true)
 
 	#Y-axis
 	pt = Point2D(bb.xmin+lyt.waxlabel/2, ycenter)
-	render(ctx, a.ylabel, pt, fontsize=sztitle, centerv=true, centerh=true, angle=-90)
+	render(ctx, a.ylabel, pt, lyt.fntaxlabel, centerv=true, centerh=true, angle=-90)
 end
 
-function render_graphframe(ctx::CairoContext, graph::BoundingBox)
+#Render frame around graph
+#-------------------------------------------------------------------------------
+function render_graphframe(canvas::PCanvas2D)
+	const ctx = canvas.ctx
 	Cairo.set_source(ctx, COLOR_BLACK)
 	Cairo.set_line_width(ctx, 2);
-	Cairo.rectangle(ctx, graph)
+	Cairo.rectangle(ctx, canvas.graphbb)
 	Cairo.stroke(ctx)
 end
 
-function render_axes(ctx::CairoContext, graph::BoundingBox, ext::PExtents2D, lyt::Layout)
-	const sztick = 14
-	canvas = PCanvas2D(ctx, ext, graph)
-	render_graphframe(ctx, graph)
 
-	xcenter = (graph.xmin+graph.xmax)/2
-	ycenter = (graph.ymin+graph.ymax)/2
+#Render ticks
+#-------------------------------------------------------------------------------
+function render_ticks(canvas::PCanvas2D, lyt::Layout)
+	const TICK_MAJOR_LEN = 5
+	const TICK_MINOR_LEN = 3
+	const graph = canvas.graphbb
+	const ctx = canvas.ctx
 
-	xtick = graph.xmin - lyt.wticklabel / 2
-	for vtick in [ext.ymin, ext.ymax]
-		pt = ptmap(canvas.xf, Point2D(0, vtick))
-		pt = Point2D(xtick, pt.y)
-		tstr = @sprintf("%0.1e", vtick)
-		render(ctx, tstr, pt, fontsize=sztick, centerv=true, centerh=true)
+	#TODO: right align tick labels
+
+	xframe = graph.xmin
+	xlabel = graph.xmin - lyt.wticklabel / 2
+	yticks = ticks_linear(canvas.ext.ymin, canvas.ext.ymax, tgtmajor=8.0)
+	for ytick in yticks.major
+		y = ptmap(canvas.xf, Point2D(0, ytick)).y
+		tstr = @sprintf("%0.1e", ytick)
+		render(ctx, tstr, Point2D(xlabel, y), lyt.fntaxlabel, centerv=true, centerh=true)
+		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
+	end
+	for ytick in yticks.minor
+		y = ptmap(canvas.xf, Point2D(0, ytick)).y
+		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MINOR_LEN, y))
 	end
 
-	ytick = graph.ymax + lyt.hticklabel / 2
-	for vtick in [ext.xmin, (ext.xmin+ext.xmax)/2, ext.xmax]
-		pt = ptmap(canvas.xf, Point2D(vtick, 0))
-		pt = Point2D(pt.x, ytick)
-		tstr = @sprintf("%0.1e", vtick)
-		render(ctx, tstr, pt, fontsize=sztick, centerv=true, centerh=true)
+	yframe = graph.ymax
+	ylabel = graph.ymax + lyt.hticklabel / 2
+	xticks = ticks_linear(canvas.ext.xmin, canvas.ext.xmax, tgtmajor=3.5)
+	for xtick in xticks.major
+		x = ptmap(canvas.xf, Point2D(xtick, 0)).x
+		tstr = @sprintf("%0.1e", xtick)
+		render(ctx, tstr, Point2D(x, ylabel), lyt.fntaxlabel, centerv=true, centerh=true)
+		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
 	end
+	for xtick in xticks.minor
+		x = ptmap(canvas.xf, Point2D(xtick, 0)).x
+		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MINOR_LEN))
+	end
+
 end
 
+#Render axes labels, ticks, ...
+#-------------------------------------------------------------------------------
+function render_axes(canvas::PCanvas2D, lyt::Layout)
+	render_graphframe(canvas)
+	render_ticks(canvas, lyt)
+end
+
+#Render an actual waveform
+#-------------------------------------------------------------------------------
 function render(canvas::PCanvas2D, wfrm::DWaveformF1)
 	ctx = canvas.ctx
 	ds = wfrm.ds
@@ -196,5 +235,32 @@ end
 render(canvas::PCanvas2D, wfrmlist::Vector{DWaveformF1}) =
 	map((w)->render(canvas, w), wfrmlist)
 
+
+#Render entire plot
+#-------------------------------------------------------------------------------
+function render(canvas::PCanvas2D, plot::Plot2D)
+	#Render annotation/axes
+	render(canvas, plot.annotation, plot.layout)
+
+	#TODO: render axes first once drawing is multi-threaded.
+#	render_axes(canvas, plot.layout)
+
+	#Plot actual data
+	Cairo.save(canvas.ctx)
+	_clip(canvas.ctx, canvas.graphbb)
+	render(canvas, plot.display_data)
+	Cairo.restore(canvas.ctx)
+
+	#Re-render axis over data:
+	render_axes(canvas, plot.layout)
+end
+
+#Render entire plot within provided bounding box:
+function render(ctx::CairoContext, plot::Plot2D, bb::BoundingBox)
+	graphbb = graphbounds(bb, plot.layout)
+	update_ddata(plot) #Also computes new extents
+	canvas = PCanvas2D(ctx, bb, graphbb, getextents(plot))
+	render(canvas, plot)
+end
 
 #Last line

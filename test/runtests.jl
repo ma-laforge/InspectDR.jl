@@ -75,21 +75,26 @@ end
 
 #==Generate plot
 ===============================================================================#
-plt = InspectDR.GtkPlot()
+plot = InspectDR.Plot2D()
 
 style = :dashdot
 #style = :solid
-w = add(plt.src, x, y+1)
-w.line = line(color=blue, width=1, style=style)
-w = add(plt.src, x, y-1)
-w.line = line(color=red, width=5, style=style)
-plt.src.xres=1000 #Force resolution
+wfrm = add(plot, x, y+1)
+wfrm.line = line(color=blue, width=1, style=style)
+wfrm = add(plot, x, y-1)
+wfrm.line = line(color=red, width=5, style=style)
+plot.xres=1000 #Force resolution
 
-a = plt.src.annotation
+a = plot.annotation
 a.title = "Sample Plot (λ)"
 a.xlabel = "Time (s)"
 a.ylabel = "Signal Voltage (V)"
 
-InspectDR._display(plt)
+gplot = display(InspectDR.GtkDisplay(), plot)
+
+InspectDR.write_png("plotsave.png", plot)
+InspectDR.write_svg("plotsave.svg", plot)
+InspectDR.write_eps("plotsave.eps", plot)
+InspectDR.write_pdf("plotsave.pdf", plot)
 
 :DONE

@@ -124,6 +124,12 @@ type Annotation
 end
 Annotation() = Annotation("", "", "")
 
+type Font
+	_size::Float64
+	bold::Bool
+end
+Font(_size::Real; bold::Bool=false) = Font(_size, bold)
+
 #Plot layout
 type Layout
 	htitle::Float64 #Title allocation
@@ -135,34 +141,42 @@ type Layout
 	hticklabel::Float64 #x-axis values allocation (height)
 
 	tframe::Float64 #Frame thickness
-#Fontname, fontsize, ...
+
+	wdata::Float64 #Suggested width of data (graph) area
+	hdata::Float64 #Suggested height of data (graph) area
+
+	fnttitle::Font
+	fntaxlabel::Font
+	fntticklabel::Font
 end
-Layout() = Layout(20, 20, 20, 30, 60, 20, 2)
+Layout() = Layout(20, 20, 20, 30, 60, 20, 2,
+	DEFAULT_DATA_WIDTH, DEFAULT_DATA_HEIGHT,
+	Font(14, bold=true), Font(14), Font(12)
+)
 
 #2D plot.
 type Plot2D <: Plot
 	optimize_f1::Bool #Optimize for data: function of 1 argument
-
-	#w/h of entire surface (labels & all)
-	w::Float64
-	h::Float64
+	layout::Layout
 	annotation::Annotation
 
-	#Plot extents:
-	ext::PExtents2D
-	ext_max::PExtents2D
-
-	layout::Layout
+	#Plot extents (access using getextents):
+	ext_max::PExtents2D #Used to zoom out to "full"
+	ext::PExtents2D #Requested extents
 
 	data::Vector{IWaveform}
 
+	#Display data cache:
+	invalid_ddata::Bool #Is cache of display data invalid?
+	display_data::Vector{DWaveformF1} #Clipped to current extents
+
+	#Maximum # of x-pts in display:
+	#TODO: move to layout?
 	xres::Int
 end
 
-Plot2D(w::Real, h::Real; optimize_f1=true) = Plot2D(optimize_f1,
-	w, h, Annotation(),
-	PExtents2D(), PExtents2D(),
-	Layout(), [], 1000
+Plot2D(optimize_f1=true) = Plot2D(optimize_f1, Layout(), Annotation(),
+	PExtents2D(), PExtents2D(), [], true, [], 1000
 )
 
 
@@ -241,22 +255,31 @@ function Base.merge(base::PExtents2D, new::PExtents2D)
 	return PExtents2D(xmin, xmax, ymin, ymax)
 end
 
+function invalidate_extents(plot::Plot2D)
+	#If extents are no longer valid, neither is display cache:
+	plot.invalid_ddata = true
+end
+
+function invalidate_datalist(plot::Plot2D)
+	plot.invalid_ddata = true
+end
+
 #Auto-detect extents from plot data:
-#TODO: compute_maxextents? setextents_computemax
-function setextents_detectmax(plot::Plot2D)
+function maxextents_update(plot::Plot2D)
 	plot.ext_max = PExtents2D(plot.data)
 end
 
 function setextents(plot::Plot2D, ext::PExtents2D)
 	plot.ext = merge(plot.ext, ext)
+	invalidate_extents(plot)
 end
 
 function getextents(plot::Plot2D)
 	return merge(plot.ext_max, plot.ext)
 end
 
-#Get bounding box of plot data area:
-function databounds(plotb::BoundingBox, lyt::Layout)
+#Get bounding box of graph (plot data area):
+function graphbounds(plotb::BoundingBox, lyt::Layout)
 	xmin = plotb.xmin + lyt.waxlabel + lyt.wticklabel
 	xmax = plotb.xmax - lyt.wnolabels
 	ymin = plotb.ymin + lyt.htitle
@@ -276,6 +299,16 @@ function databounds(plotb::BoundingBox, lyt::Layout)
 
 	return BoundingBox(xmin, xmax, ymin, ymax)
 end
+
+#Get bounding box of entire plot:
+function plotbounds(lyt::Layout, graphw::Float64, graphh::Float64)
+	xmax = graphw + lyt.waxlabel + lyt.wticklabel + lyt.wnolabels
+	ymax = graphh + lyt.htitle + lyt.haxlabel + lyt.hticklabel
+	return BoundingBox(0, xmax, 0, ymax)
+end
+
+#Get suggested plot bounds:
+plotbounds(lyt::Layout) = plotbounds(lyt, lyt.wdata, lyt.hdata)
 
 #Obtain reduced waveform datasets by limiting to the extents & max resolution:
 #-------------------------------------------------------------------------------
@@ -370,5 +403,19 @@ end
 
 _reduce(inputlist::Vector{IWaveform}, ext::PExtents2D, xres_max::Integer) =
 	map((input)->_reduce(input, ext, xres_max::Integer), inputlist)
+
+function update_ddata(plot::Plot2D)
+	#TODO: Conditionnaly compute:
+	maxextents_update(plot)
+
+	if !plot.optimize_f1; return; end
+
+	invalidate_extents(plot) #Always compute below:
+	if plot.invalid_ddata
+		ext = getextents(plot)
+		plot.display_data = _reduce(plot.data, ext, plot.xres)
+		plot.invalid_ddata = false
+	end
+end
 
 #Last line
