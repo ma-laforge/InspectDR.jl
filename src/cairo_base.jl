@@ -4,9 +4,26 @@
 #Cairo.scale(destctx, 2, 1)
 
 
+#==Constants
+===============================================================================#
+immutable CAlignment #Cairo alignment
+	v::Int
+end
+Base.|(a::CAlignment, b::CAlignment) = CAlignment(a.v|b.v)
+
+const ALIGN_LEFT = CAlignment(0)
+const ALIGN_HCENTER = CAlignment(1)
+const ALIGN_RIGHT = CAlignment(2)
+const ALIGN_HMASK = 0x3
+
+const ALIGN_BOTTOM = CAlignment(0)
+const ALIGN_VCENTER = CAlignment(4)
+const ALIGN_TOP = CAlignment(8)
+const ALIGN_VMASK = (0x3<<2)
+
+
 #==Main types
 ===============================================================================#
-
 #2D plot canvas; basic info:
 type PCanvas2D <: PlotCanvas
 	ctx::CairoContext
@@ -17,6 +34,9 @@ type PCanvas2D <: PlotCanvas
 end
 PCanvas2D(ctx, bb, graphbb, ext) =
 	PCanvas2D(ctx, bb, graphbb, ext, Transform2D(ext, graphbb))
+
+immutable CGlyph{GTYPE}; end #Dispatchable glyph object
+CGlyph(gtype::Symbol) = CGlyph{gtype}()
 
 
 #==Helper functions
@@ -43,10 +63,75 @@ function _set_stylewidth(ctx::CairoContext, style::Symbol, linewidth::Float64)
 	Cairo.set_dash(ctx, dashes.*linewidth, offset)
 end
 
-function drawglyph_circle(ctx::CairoContext, pt::Point2D, radius::DReal)
+
+#==Rendering Glyphs
+===============================================================================#
+
+function drawglyph{T}(ctx::CairoContext, ::CGlyph{T}, pt::Point2D, size::DReal)
+	warn("Glyph not supported: $T")
+end
+
+#= Supported:
+	:square, :diamond,
+	:uarrow, :darrow, :larrow, :rarrow, #usually triangles
+	:cross, :+, :diagcross, :x,
+	:circle, :o, :star, :*,
+=#
+
+function drawglyph(ctx::CairoContext, ::CGlyph{:circle}, pt::Point2D, size::DReal)
+	radius = size
 	Cairo.arc(ctx, pt.x, pt.y, radius, 0, 2pi)
 	Cairo.stroke(ctx)
 end
+
+function drawglyph(ctx::CairoContext, ::CGlyph{:square}, pt::Point2D, size::DReal)
+	hlen = size #halflength
+	elen = 2*hlen #full edge length
+	Cairo.move_to(ctx, pt.x-hlen, pt.y-hlen)
+	Cairo.rel_line_to(ctx, elen, 0)
+	Cairo.rel_line_to(ctx, 0, elen)
+	Cairo.rel_line_to(ctx, -elen, 0)
+	Cairo.rel_line_to(ctx, 0, -elen)
+	Cairo.rel_line_to(ctx, elen, 0) #Extra line to close shape
+	Cairo.stroke(ctx)
+end
+
+#dir=1: up, -1: down
+function drawglyph_varrow(ctx::CairoContext, pt::Point2D, size::DReal, dir::Int)
+	hlen = size #halflength
+	elen = 2*hlen #full edge length
+	dlen = dir*elen #directional edge
+	Cairo.move_to(ctx, pt.x, pt.y-dir*hlen)
+	Cairo.rel_line_to(ctx, hlen, dlen)
+	Cairo.rel_line_to(ctx, -elen, 0)
+	Cairo.rel_line_to(ctx, hlen, -dlen)
+	Cairo.rel_line_to(ctx, hlen, dlen) #Extra line to close shape
+	Cairo.stroke(ctx)
+end
+
+drawglyph(ctx::CairoContext, ::CGlyph{:uarrow}, pt::Point2D, size::DReal) =
+	drawglyph_varrow(ctx, pt, size, 1)
+drawglyph(ctx::CairoContext, ::CGlyph{:darrow}, pt::Point2D, size::DReal) =
+	drawglyph_varrow(ctx, pt, size, -1)
+
+#dir=1: right, -1: left
+function drawglyph_harrow(ctx::CairoContext, pt::Point2D, size::DReal, dir::Int)
+	hlen = size #halflength
+	elen = 2*hlen #full edge length
+	dlen = dir*elen #directional edge
+	Cairo.move_to(ctx, pt.x+dir*hlen, pt.y)
+	Cairo.rel_line_to(ctx, -dlen, hlen)
+	Cairo.rel_line_to(ctx, 0, -elen)
+	Cairo.rel_line_to(ctx, dlen, hlen)
+	Cairo.rel_line_to(ctx, -dlen, hlen) #Extra line to close shape
+	Cairo.stroke(ctx)
+end
+
+drawglyph(ctx::CairoContext, ::CGlyph{:larrow}, pt::Point2D, size::DReal) =
+	drawglyph_harrow(ctx, pt, size, -1)
+drawglyph(ctx::CairoContext, ::CGlyph{:rarrow}, pt::Point2D, size::DReal) =
+	drawglyph_harrow(ctx, pt, size, 1)
+
 
 #==Rendering
 ===============================================================================#
@@ -77,18 +162,7 @@ function drawline(ctx::CairoContext, p1::Point2D, p2::Point2D)
 	Cairo.stroke(ctx)
 end
 
-#Render text on a CairoContext
-#-------------------------------------------------------------------------------
-function render(ctx::CairoContext, t::AbstractString, pt::Point2D,
-	fontsize::Real, bold::Bool, centerv::Bool, centerh::Bool, angle::Float64,
-	color::Colorant)
-	const fontname = "Serif" #Sans, Serif, Fantasy, Monospace
-	const weight = bold? Cairo.FONT_WEIGHT_BOLD: Cairo.FONT_WEIGHT_NORMAL
-	const noitalic = Cairo.FONT_SLANT_NORMAL
-	Cairo.select_font_face(ctx, fontname, noitalic,	weight)
-	Cairo.set_font_size(ctx, fontsize);
-	t_ext = Cairo.text_extents(ctx, t);
-
+function textoffset(t_ext::Array{Float64}, align::CAlignment)
 #=
 typedef struct {
 	double x_bearing, y_bearing;
@@ -96,12 +170,43 @@ typedef struct {
 	double x_advance, y_advance;
 } cairo_text_extents_t;
 =#
-	if centerh
-		xoff = -(t_ext[3]/2 + t_ext[1])
+
+	halign = align.v & ALIGN_HMASK
+	_size = t_ext[3]; bearing = t_ext[1]
+
+	if ALIGN_HCENTER.v == halign
+		xoff = -(_size/2 + bearing)
+	elseif ALIGN_RIGHT.v == halign
+		xoff = -(_size + bearing)
+	else #ALIGN_LEFT
+		xoff = -bearing
 	end
-	if centerv
-		yoff = -(t_ext[4]/2 + t_ext[2])
+
+	valign = align.v & ALIGN_VMASK
+	_size = t_ext[4]; bearing = t_ext[2]
+
+	if ALIGN_VCENTER.v == valign
+		yoff = -(_size/2 + bearing)
+	elseif ALIGN_TOP.v == valign
+		yoff = -(_size + bearing)
+	else #ALIGN_BOTTOM
+		yoff = -bearing
 	end
+
+	return tuple(xoff, yoff)
+end
+
+#Render text on a CairoContext
+#-------------------------------------------------------------------------------
+function render(ctx::CairoContext, t::DisplayString, pt::Point2D,
+	fontsize::Real, bold::Bool, align::CAlignment, angle::Float64, color::Colorant)
+	const fontname = "Serif" #Sans, Serif, Fantasy, Monospace
+	const weight = bold? Cairo.FONT_WEIGHT_BOLD: Cairo.FONT_WEIGHT_NORMAL
+	const noitalic = Cairo.FONT_SLANT_NORMAL
+	Cairo.select_font_face(ctx, fontname, noitalic,	weight)
+	Cairo.set_font_size(ctx, fontsize);
+	t_ext = Cairo.text_extents(ctx, t);
+	(xoff, yoff) = textoffset(t_ext, align)
 
 	Cairo.save(ctx) #-----
 
@@ -117,8 +222,8 @@ typedef struct {
 	Cairo.restore(ctx) #-----
 end
 render(ctx::CairoContext, t::AbstractString, pt::Point2D, font::Font;
-	centerv::Bool=false, centerh::Bool=false,	angle::Real=0, color::Colorant=COLOR_BLACK) =
-	render(ctx, t, pt, font._size, font.bold, centerv, centerh, Float64(angle), color)
+	align::CAlignment=ALIGN_BOTTOM|ALIGN_LEFT, angle::Real=0, color::Colorant=COLOR_BLACK) =
+	render(ctx, DisplayString(t), pt, font._size, font.bold, align, Float64(angle), color)
 
 #Render main plot annotation (titles, axis labels, ...)
 #-------------------------------------------------------------------------------
@@ -132,15 +237,15 @@ function render(canvas::PCanvas2D, a::Annotation, lyt::Layout)
 
 	#Title
 	pt = Point2D(xcenter, bb.ymin+lyt.htitle/2)
-	render(ctx, a.title, pt, lyt.fnttitle, centerv=true, centerh=true)
+	render(ctx, a.title, pt, lyt.fnttitle, align=ALIGN_HCENTER|ALIGN_VCENTER)
 
 	#X-axis
 	pt = Point2D(xcenter, bb.ymax-lyt.haxlabel/2)
-	render(ctx, a.xlabel, pt, lyt.fntaxlabel, centerv=true, centerh=true)
+	render(ctx, a.xlabel, pt, lyt.fntaxlabel, align=ALIGN_HCENTER|ALIGN_VCENTER)
 
 	#Y-axis
 	pt = Point2D(bb.xmin+lyt.waxlabel/2, ycenter)
-	render(ctx, a.ylabel, pt, lyt.fntaxlabel, centerv=true, centerh=true, angle=-90)
+	render(ctx, a.ylabel, pt, lyt.fntaxlabel, align=ALIGN_HCENTER|ALIGN_VCENTER, angle=-90)
 end
 
 #Render frame around graph
@@ -165,12 +270,12 @@ function render_ticks(canvas::PCanvas2D, lyt::Layout)
 	#TODO: right align tick labels
 
 	xframe = graph.xmin
-	xlabel = graph.xmin - lyt.wticklabel / 2
+	xlabel = graph.xmin - 2 #TODO: offset by with of grapfframe?
 	yticks = ticks_linear(canvas.ext.ymin, canvas.ext.ymax, tgtmajor=8.0)
 	for ytick in yticks.major
 		y = ptmap(canvas.xf, Point2D(0, ytick)).y
 		tstr = @sprintf("%0.1e", ytick)
-		render(ctx, tstr, Point2D(xlabel, y), lyt.fntaxlabel, centerv=true, centerh=true)
+		render(ctx, tstr, Point2D(xlabel, y), lyt.fntaxlabel, align=ALIGN_RIGHT|ALIGN_VCENTER)
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
 	end
 	for ytick in yticks.minor
@@ -184,7 +289,7 @@ function render_ticks(canvas::PCanvas2D, lyt::Layout)
 	for xtick in xticks.major
 		x = ptmap(canvas.xf, Point2D(xtick, 0)).x
 		tstr = @sprintf("%0.1e", xtick)
-		render(ctx, tstr, Point2D(x, ylabel), lyt.fntaxlabel, centerv=true, centerh=true)
+		render(ctx, tstr, Point2D(x, ylabel), lyt.fntaxlabel, align=ALIGN_HCENTER|ALIGN_VCENTER)
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
 	end
 	for xtick in xticks.minor
@@ -203,7 +308,7 @@ end
 
 #Render an actual waveform
 #-------------------------------------------------------------------------------
-function render(canvas::PCanvas2D, wfrm::DWaveformF1)
+function render(canvas::PCanvas2D, wfrm::DWaveform)
 	ctx = canvas.ctx
 	ds = wfrm.ds
 
@@ -222,17 +327,22 @@ function render(canvas::PCanvas2D, wfrm::DWaveformF1)
 #	set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_MITER)
 	Cairo.stroke(ctx)
 
+	if :none == wfrm.glyph.shape; return; end
+	_glyph = CGlyph(wfrm.glyph.shape)
+
+	#TODO: do not draw when outside graph extents.
+
 	#Draw symbols:
 	_set_stylewidth(ctx, :solid, Float64(wfrm.line.width))
-	radius = Float64(3.0*wfrm.line.width)
+	gsize = Float64(wfrm.glyph.size*wfrm.line.width)
 	for i in 1:length(ds)
 		pt = ptmap(canvas.xf, ds[i])
-#		drawglyph_circle(ctx, pt, radius)
+		drawglyph(ctx, _glyph, pt, gsize)
 	end
 
 	return
 end
-render(canvas::PCanvas2D, wfrmlist::Vector{DWaveformF1}) =
+render(canvas::PCanvas2D, wfrmlist::Vector{DWaveform}) =
 	map((w)->render(canvas, w), wfrmlist)
 
 

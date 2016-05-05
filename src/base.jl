@@ -73,7 +73,8 @@ be broken down to lower-level structures later on.
 =#
 
 #Input dataset data:
-type IDataset
+#TODO: make x an immutable (read-only) type so data cannot be changed once identified.
+type IDataset{DATAF1} #DATAF1::Bool: Data is function of 1 argument (optimization possible)
 	x::Vector
 	y::Vector
 end
@@ -98,28 +99,29 @@ Edge width & color taken from LineAttributes
 	size #of glyph.  edge width taken from LineAttributes
 	color #Fill color.  Do not set to leave unfilled.
 end
+glyph(;shape=:none, size=3, color=COLOR_TRANSPARENT) =
+	GlyphAttributes(shape, size, color)
 
 #"glyph" constructor:
-eval(genexpr_attriblistbuilder(:glyph, GlyphAttributes, reqfieldcnt=0))
+#TODO: Inadequate
+#eval(genexpr_attriblistbuilder(:glyph, GlyphAttributes, reqfieldcnt=0))
 
 type Waveform{T}
 	ds::T
 	line::LineAttributes
-	#Line/glyph attributes
-#Include line/glyph attributes...
+	glyph::GlyphAttributes
 end
 
 #Input waveform:
 typealias IWaveform Waveform{IDataset}
 
-#Display waveform for function of 1 argument:
-#Concrete (x, y) pair.
-typealias DWaveformF1 Waveform{Vector{Point2D}}
+#Display waveform (concrete (x, y) pair):
+typealias DWaveform Waveform{Vector{Point2D}}
 
 type Annotation
-	title::AbstractString
-	xlabel::AbstractString
-	ylabel::AbstractString
+	title::DisplayString
+	xlabel::DisplayString
+	ylabel::DisplayString
 	#legend
 end
 Annotation() = Annotation("", "", "")
@@ -156,7 +158,6 @@ Layout() = Layout(20, 20, 20, 30, 60, 20, 2,
 
 #2D plot.
 type Plot2D <: Plot
-	optimize_f1::Bool #Optimize for data: function of 1 argument
 	layout::Layout
 	annotation::Annotation
 
@@ -168,16 +169,22 @@ type Plot2D <: Plot
 
 	#Display data cache:
 	invalid_ddata::Bool #Is cache of display data invalid?
-	display_data::Vector{DWaveformF1} #Clipped to current extents
+	display_data::Vector{DWaveform} #Clipped to current extents
 
 	#Maximum # of x-pts in display:
 	#TODO: move to layout?
 	xres::Int
 end
 
-Plot2D(optimize_f1=true) = Plot2D(optimize_f1, Layout(), Annotation(),
+Plot2D() = Plot2D(Layout(), Annotation(),
 	PExtents2D(), PExtents2D(), [], true, [], 1000
 )
+
+type Multiplot
+	ncolumns::Int
+	subplots::Vector{Plot}
+end
+Multiplot(;ncolumns::Int = 1) = Multiplot(ncolumns, [])
 
 
 #==More constructors
@@ -222,8 +229,16 @@ function apply(lyt::Layout, l::LineAttributes)
 end
 =#
 
+function _add(mp::Multiplot, plot::Plot2D)
+	push!(mp.subplots, plot)
+	return plot
+end
+_add{T<:Plot}(mp::Multiplot, ::Type{T}) = _add(mp, T())
+
+
 function _add(plot::Plot2D, x::Vector, y::Vector)
-	ds = IWaveform(IDataset(x, y), line())
+	dataf1 = isincreasing(x) #Can we use optimizations?
+	ds = IWaveform(IDataset{dataf1}(x, y), line(), glyph())
 	push!(plot.data, ds)
 	return ds
 end
@@ -312,11 +327,25 @@ plotbounds(lyt::Layout) = plotbounds(lyt, lyt.wdata, lyt.hdata)
 
 #Obtain reduced waveform datasets by limiting to the extents & max resolution:
 #-------------------------------------------------------------------------------
-function _reduce(input::IWaveform, ext::PExtents2D, xres_max::Integer)
+#Generic algorithm... Just transfer all data for now
+#TODO: clip data beyond extents.
+#WARNING: not clipping might cause display issues when applying the transform
+function _reduce(input::IDataset, ext::PExtents2D, xres_max::Integer)
+	x = input.x; y = input.y
+	n_ds = length(x) #numer of points of input dataset
+	result = Array(Point2D, n_ds)
+	for i in 1:n_ds
+		result[i] = Point2D(x[i], y[i])
+	end
+	return result
+end
+
+#Optimized for functions of 1 argument
+function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
 	xres = (ext.xmax - ext.xmin)/ xres_max
 	const min_lookahead = 2
 	const thresh_xres = (min_lookahead+1)*xres
-	x = input.ds.x; y = input.ds.y
+	x = input.x; y = input.y
 	n_ds = length(x) #numer of points of input dataset
 	sz = min(n_ds, xres_max)+4 #Add 4 pts, just in case (TODO: fix)
 	result = Array(Point2D, sz)
@@ -398,17 +427,19 @@ function _reduce(input::IWaveform, ext::PExtents2D, xres_max::Integer)
 	end
 
 	resize!(result, n)
-	return Waveform(result, input.line)
+	return result
+end
+
+function _reduce(input::IWaveform, ext::PExtents2D, xres_max::Integer)
+	return Waveform(_reduce(input.ds, ext, xres_max), input.line, input.glyph)
 end
 
 _reduce(inputlist::Vector{IWaveform}, ext::PExtents2D, xres_max::Integer) =
 	map((input)->_reduce(input, ext, xres_max::Integer), inputlist)
 
 function update_ddata(plot::Plot2D)
-	#TODO: Conditionnaly compute:
+	#TODO: Conditionnaly compute (was new data added?):
 	maxextents_update(plot)
-
-	if !plot.optimize_f1; return; end
 
 	invalidate_extents(plot) #Always compute below:
 	if plot.invalid_ddata

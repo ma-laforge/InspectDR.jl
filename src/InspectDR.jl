@@ -1,5 +1,7 @@
 #InspectDR:
 #-------------------------------------------------------------------------------
+
+#__precompile__()
 module InspectDR
 
 const DEFAULT_DATA_ASPECT = 1.6 #Roughly golden ratio
@@ -13,7 +15,10 @@ const _Gtk = Gtk.ShortNames
 import Cairo
 import Cairo: CairoContext
 
+typealias DisplayString UTF8String
+
 include("codegen.jl")
+include("math.jl")
 include("base.jl")
 include("datasetop.jl")
 include("ticks.jl")
@@ -31,50 +36,45 @@ include("gtk_base.jl")
 =#
 
 
-#==Interface
+#==Exported interface
 ===============================================================================#
 add = _add #Danger: high risk of collision (common name)
 export add, line, glyph
 
 
-#==Unexported tools
+#==Unexported interface
 ================================================================================
-Displays the plot:
-	_display(::GtkPlot)
+Supported plot types:
+	InspectDR.Multiplot() #Figure supporting multiple plots
+	InspectDR.Plot2D <: Plot #2D plot object
 
 Convenience functions:
-	write_png(path, ::Plot2D)
-	write_svg(path, ::Plot2D)
-	write_eps(path, ::Plot2D)
-	write_pdf(path, ::Plot2D)
+	write_png(path, ::Plot)
+	write_svg(path, ::Plot)
+	write_eps(path, ::Plot)
+	write_pdf(path, ::Plot)
 =#
+
+#Create new plot window (Is this a good idea?):
+#	figure(args...; kwargs...) = GtkPlotWindow(args...; kwargs...)
+
+#Accessors:
+	Plot(gplot::GtkPlot) = gplot.src
+	Plot(wnd::GtkPlotWindow, i::Int) = wnd.subplots[i]
 
 
 #==Already exported
 ================================================================================
+#Displaying a plot object:
+	Base.display(d::InspectDR.GtkDisplay, p::Plot) #Gtk mutltiplot window
+
+#Writing plot to IO stream:
 	Base.writemime(::IO, ::MIME, ::Plot2D)
 for the following MIMEs:
 		MIME"image/png"
 		MIME"image/svg+xml"
 		MIME"image/eps"
 		MIME"application/pdf"
-=#
-
-
-#==
-===============================================================================#
-#=Plot types:
-Plot2D: Generic 2D plot tool
-Capable of plotting arbitrary traces: (x,y) = (u[i], v[i]), for i ∈ [1...N]
-Good for:
-	Nyquist plots
-	Lissajous plots
-	S-Parameter Plots
-
-PlotF1: Plot functions of 1 argument.
-Specialized for functions of 1 argument: y = f(x), with sorted x values.
-Optimized plotting speed with sorted datasets (x[i] < x[i+1]) when compared to
-Plot2D.
 =#
 
 end #module
