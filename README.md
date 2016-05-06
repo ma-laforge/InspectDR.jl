@@ -2,6 +2,7 @@
 
 \*Sigh\*... Yet *another* plotting tool.
 
+[Sample Plots](https://github.com/ma-laforge/FileRepo/tree/master/InspectDR/sampleplots/README.md) (might be out of date).<br>
 **WARNING:** MANY FEATURES ARE [NOT YET IMPLEMENTED](#KnownLimitations)
 
 ## Description
