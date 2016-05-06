@@ -1,7 +1,12 @@
 #InspectDR: Base functionnality and types for Cairo layer
 #-------------------------------------------------------------------------------
 
-#Cairo.scale(destctx, 2, 1)
+#=TODO
+-Fix glyph size for "constant area" (appearance).  Currently, algorithms use
+ "constant bounding box" to avoid repeating complex math (ex: h=sqrt(a^2+b^2)).
+ Solution: Create glyph object that takes Vector{Point2D} - or something
+ similar.  That way, complex math is done only once per curve.
+=#
 
 
 #==Constants
@@ -79,33 +84,89 @@ end
 =#
 
 function drawglyph(ctx::CairoContext, ::CGlyph{:circle}, pt::Point2D, size::DReal)
-	radius = size
+	radius = size/2
 	Cairo.arc(ctx, pt.x, pt.y, radius, 0, 2pi)
 	Cairo.stroke(ctx)
 end
 
 function drawglyph(ctx::CairoContext, ::CGlyph{:square}, pt::Point2D, size::DReal)
-	hlen = size #halflength
-	elen = 2*hlen #full edge length
-	Cairo.move_to(ctx, pt.x-hlen, pt.y-hlen)
-	Cairo.rel_line_to(ctx, elen, 0)
-	Cairo.rel_line_to(ctx, 0, elen)
-	Cairo.rel_line_to(ctx, -elen, 0)
-	Cairo.rel_line_to(ctx, 0, -elen)
-	Cairo.rel_line_to(ctx, elen, 0) #Extra line to close shape
+	elen = size #full edge length
+	hlen = elen/2 #halflength
+	Cairo.rectangle(ctx, pt.x-hlen, pt.y-hlen, elen, elen)
 	Cairo.stroke(ctx)
 end
 
+function drawglyph(ctx::CairoContext, ::CGlyph{:cross}, pt::Point2D, size::DReal)
+	elen = size*sqrt(2) #full edge length
+	hlen = elen/2 #halflength
+	Cairo.move_to(ctx, pt.x, pt.y-hlen)
+	Cairo.rel_line_to(ctx, 0, elen)
+	Cairo.stroke(ctx)
+	Cairo.move_to(ctx, pt.x-hlen, pt.y)
+	Cairo.rel_line_to(ctx, elen, 0)
+	Cairo.stroke(ctx)
+end
+drawglyph(ctx::CairoContext, ::CGlyph{:+}, pt::Point2D, size::DReal) =
+	drawglyph(ctx, CGlyph{:cross}(), pt, size)
+
+function drawglyph(ctx::CairoContext, ::CGlyph{:diagcross}, pt::Point2D, size::DReal)
+	elen = size #full edge length
+	hlen = elen/2 #halflength
+	Cairo.move_to(ctx, pt.x-hlen, pt.y-hlen)
+	Cairo.rel_line_to(ctx, elen, elen)
+	Cairo.stroke(ctx)
+	Cairo.move_to(ctx, pt.x-hlen, pt.y+hlen)
+	Cairo.rel_line_to(ctx, elen, -elen)
+	Cairo.stroke(ctx)
+end
+drawglyph(ctx::CairoContext, ::CGlyph{:x}, pt::Point2D, size::DReal) =
+	drawglyph(ctx, CGlyph{:diagcross}(), pt, size)
+
+function drawglyph(ctx::CairoContext, ::CGlyph{:star}, pt::Point2D, size::DReal)
+	elen = size*sqrt(2) #full edge length
+	hlen = elen/2 #halflength
+
+	Cairo.move_to(ctx, pt.x, pt.y-hlen)
+	Cairo.rel_line_to(ctx, 0, elen)
+	Cairo.stroke(ctx)
+	Cairo.move_to(ctx, pt.x-hlen, pt.y)
+	Cairo.rel_line_to(ctx, elen, 0)
+	Cairo.stroke(ctx)
+
+	elen = size #full edge length
+	hlen = elen/2 #halflength
+
+	Cairo.move_to(ctx, pt.x-hlen, pt.y-hlen)
+	Cairo.rel_line_to(ctx, elen, elen)
+	Cairo.stroke(ctx)
+	Cairo.move_to(ctx, pt.x-hlen, pt.y+hlen)
+	Cairo.rel_line_to(ctx, elen, -elen)
+	Cairo.stroke(ctx)
+end
+drawglyph(ctx::CairoContext, ::CGlyph{:*}, pt::Point2D, size::DReal) =
+	drawglyph(ctx, CGlyph{:star}(), pt, size)
+
+function drawglyph(ctx::CairoContext, ::CGlyph{:diamond}, pt::Point2D, size::DReal)
+	elen = size #full edge length
+	hlen = elen/2 #halflength
+	Cairo.move_to(ctx, pt.x, pt.y-hlen)
+	Cairo.rel_line_to(ctx, hlen, hlen)
+	Cairo.rel_line_to(ctx, -hlen, hlen)
+	Cairo.rel_line_to(ctx, -hlen, -hlen)
+	Cairo.close_path(ctx)
+	Cairo.stroke(ctx)
+end
+
+
 #dir=1: up, -1: down
 function drawglyph_varrow(ctx::CairoContext, pt::Point2D, size::DReal, dir::Int)
-	hlen = size #halflength
-	elen = 2*hlen #full edge length
+	elen = size #full edge length
+	hlen = elen/2 #halflength
 	dlen = dir*elen #directional edge
 	Cairo.move_to(ctx, pt.x, pt.y-dir*hlen)
 	Cairo.rel_line_to(ctx, hlen, dlen)
 	Cairo.rel_line_to(ctx, -elen, 0)
-	Cairo.rel_line_to(ctx, hlen, -dlen)
-	Cairo.rel_line_to(ctx, hlen, dlen) #Extra line to close shape
+	Cairo.close_path(ctx)
 	Cairo.stroke(ctx)
 end
 
@@ -116,14 +177,13 @@ drawglyph(ctx::CairoContext, ::CGlyph{:darrow}, pt::Point2D, size::DReal) =
 
 #dir=1: right, -1: left
 function drawglyph_harrow(ctx::CairoContext, pt::Point2D, size::DReal, dir::Int)
-	hlen = size #halflength
-	elen = 2*hlen #full edge length
+	elen = size #full edge length
+	hlen = elen/2 #halflength
 	dlen = dir*elen #directional edge
 	Cairo.move_to(ctx, pt.x+dir*hlen, pt.y)
 	Cairo.rel_line_to(ctx, -dlen, hlen)
 	Cairo.rel_line_to(ctx, 0, -elen)
-	Cairo.rel_line_to(ctx, dlen, hlen)
-	Cairo.rel_line_to(ctx, -dlen, hlen) #Extra line to close shape
+	Cairo.close_path(ctx)
 	Cairo.stroke(ctx)
 end
 
@@ -258,10 +318,58 @@ function render_graphframe(canvas::PCanvas2D)
 	Cairo.stroke(ctx)
 end
 
+#Render grid
+#-------------------------------------------------------------------------------
+function render_grid(canvas::PCanvas2D, lyt::Layout, xticks::Ticks, yticks::Ticks)
+	const GRID_MAJOR_WIDTH = Float64(2)
+	const GRID_MINOR_WIDTH = Float64(1)
+	const GRID_MAJOR_COLOR = RGB24(.7, .7, .7)
+	const GRID_MINOR_COLOR = RGB24(.7, .7, .7)
+	const ctx = canvas.ctx
+	const graphbb = canvas.graphbb
+	Cairo.save(ctx) #-----
+
+	#Vertical grid lines
+	if lyt.grid.vmajor
+		_set_stylewidth(ctx, :dash, GRID_MAJOR_WIDTH)
+		Cairo.set_source(ctx, GRID_MAJOR_COLOR)
+		for xtick in xticks.major
+			x = ptmap(canvas.xf, Point2D(xtick, 0)).x
+			drawline(ctx, Point2D(x, graphbb.ymin), Point2D(x, graphbb.ymax))
+		end
+	end
+	if lyt.grid.vminor
+		_set_stylewidth(ctx, :dash, GRID_MINOR_WIDTH)
+		Cairo.set_source(ctx, GRID_MINOR_COLOR)
+		for xtick in xticks.minor
+			x = ptmap(canvas.xf, Point2D(xtick, 0)).x
+			drawline(ctx, Point2D(x, graphbb.ymin), Point2D(x, graphbb.ymax))
+		end
+	end
+
+	#Horizontal grid lines
+	if lyt.grid.hmajor
+		_set_stylewidth(ctx, :dash, GRID_MAJOR_WIDTH)
+		Cairo.set_source(ctx, GRID_MAJOR_COLOR)
+		for ytick in yticks.major
+			y = ptmap(canvas.xf, Point2D(0, ytick)).y
+			drawline(ctx, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
+		end
+	end
+	if lyt.grid.hminor
+		_set_stylewidth(ctx, :dash, GRID_MINOR_WIDTH)
+		Cairo.set_source(ctx, GRID_MINOR_COLOR)
+		for ytick in yticks.minor
+			y = ptmap(canvas.xf, Point2D(0, ytick)).y
+			drawline(ctx, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
+		end
+	end
+	Cairo.restore(ctx) #-----
+end
 
 #Render ticks
 #-------------------------------------------------------------------------------
-function render_ticks(canvas::PCanvas2D, lyt::Layout)
+function render_ticks(canvas::PCanvas2D, lyt::Layout, xticks::Ticks, yticks::Ticks)
 	const TICK_MAJOR_LEN = 5
 	const TICK_MINOR_LEN = 3
 	const graph = canvas.graphbb
@@ -271,7 +379,6 @@ function render_ticks(canvas::PCanvas2D, lyt::Layout)
 
 	xframe = graph.xmin
 	xlabel = graph.xmin - 2 #TODO: offset by with of grapfframe?
-	yticks = ticks_linear(canvas.ext.ymin, canvas.ext.ymax, tgtmajor=8.0)
 	for ytick in yticks.major
 		y = ptmap(canvas.xf, Point2D(0, ytick)).y
 		tstr = @sprintf("%0.1e", ytick)
@@ -285,7 +392,6 @@ function render_ticks(canvas::PCanvas2D, lyt::Layout)
 
 	yframe = graph.ymax
 	ylabel = graph.ymax + lyt.hticklabel / 2
-	xticks = ticks_linear(canvas.ext.xmin, canvas.ext.xmax, tgtmajor=3.5)
 	for xtick in xticks.major
 		x = ptmap(canvas.xf, Point2D(xtick, 0)).x
 		tstr = @sprintf("%0.1e", xtick)
@@ -301,9 +407,9 @@ end
 
 #Render axes labels, ticks, ...
 #-------------------------------------------------------------------------------
-function render_axes(canvas::PCanvas2D, lyt::Layout)
+function render_axes(canvas::PCanvas2D, lyt::Layout, xticks::Ticks, yticks::Ticks)
 	render_graphframe(canvas)
-	render_ticks(canvas, lyt)
+	render_ticks(canvas, lyt, xticks, yticks)
 end
 
 #Render an actual waveform
@@ -352,6 +458,10 @@ function render(canvas::PCanvas2D, plot::Plot2D)
 	#Render annotation/axes
 	render(canvas, plot.annotation, plot.layout)
 
+	xticks = ticks_linear(canvas.ext.xmin, canvas.ext.xmax, tgtmajor=3.5)
+	yticks = ticks_linear(canvas.ext.ymin, canvas.ext.ymax, tgtmajor=8.0)
+
+	render_grid(canvas, plot.layout, xticks, yticks)
 	#TODO: render axes first once drawing is multi-threaded.
 #	render_axes(canvas, plot.layout)
 
@@ -362,7 +472,7 @@ function render(canvas::PCanvas2D, plot::Plot2D)
 	Cairo.restore(canvas.ctx)
 
 	#Re-render axis over data:
-	render_axes(canvas, plot.layout)
+	render_axes(canvas, plot.layout, xticks, yticks)
 end
 
 #Render entire plot within provided bounding box:

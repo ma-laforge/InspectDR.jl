@@ -35,15 +35,6 @@ Ticks() = Ticks(1,[],[])
 #==Main algorithm
 ===============================================================================#
 
-#TODO: Remove dummy algorithm
-function ticks_linear1(min::DReal, max::DReal; kwargs...)
-	ticks = Ticks()
-
-	idx = 0:10
-	ticks.major = min + (max-min) * (idx/10)
-	return ticks
-end
-
 #Compute pretty step sizer for a given tick
 #tgtminor: Targeted number of minor ticks
 function step_pretty(tgtstep::DReal, tgtminor::Int)
@@ -76,25 +67,47 @@ end
 #Compute tick configuration for a linear scale
 #tgtmajor: Targeted number of major ticks
 #tgtminor: Targeted number of minor ticks
-function ticks_linear2(min::DReal, max::DReal; tgtmajor::DReal=3.5, tgtminor::Int=4)
+function ticks_linear(min::DReal, max::DReal; tgtmajor::DReal=3.5, tgtminor::Int=4)
 	ticks = Ticks()
 	span = max - min
 
 	#Compute major ticks:
 	tgtstep = span / (tgtmajor+1)
 	(stepmajor, stepminor) = step_pretty(tgtstep, tgtminor)
-	tick1 = ceil(Int, min/stepmajor)*stepmajor
-	nsteps = trunc(Int, (max-tick1)/stepmajor)
-	ticks.major = tick1 + stepmajor * (0:nsteps)
+	major1 = ceil(Int, min/stepmajor)*stepmajor
+	ticks.major = collect(major1:stepmajor:max)
 
 	#Compute minor ticks:
-	tick1 = ceil(Int, min/stepminor)*stepminor
-	nsteps = trunc(Int, (max-tick1)/stepminor)
-	ticks.minor = tick1 + stepminor * (0:nsteps)
+	minor1 = ceil(Int, min/stepminor)*stepminor
+	minorall = minor1:stepminor:max
+
+
+	#Throw away major points...
+	#Yuk... is there not a more elegant solution?
+	major_i1 = round(Int, abs(major1-minor1) / stepminor)+1 #Index of first major tick
+	major_ipitch = round(Int, abs(stepmajor/stepminor)) #Index pitch for major ticks
+	npts = length(minorall)
+	if major_i1 <= npts
+		nredundant = div(npts-major_i1, major_ipitch)+1
+		npts = npts-nredundant
+	else #Just in case
+		npts = 0
+	end
+	ticks.minor = Array(DReal, npts)
+
+	nextmajor = major_i1
+	j = 1
+	for i in 1:length(minorall)
+		if nextmajor == i
+			nextmajor += major_ipitch
+		else
+			ticks.minor[j] = minorall[i]
+			j+=1
+		end
+	end
 
 	return ticks
 end
-ticks_linear(min::DReal, max::DReal; kwargs...) = ticks_linear2(min, max; kwargs...)
 
 #TODO: 
 #Compute tick configuration for a log10 scale

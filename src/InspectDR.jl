@@ -26,6 +26,8 @@ include("ticks.jl")
 include("cairo_base.jl")
 include("cairo_io.jl")
 include("gtk_base.jl")
+include("gtk_zoom.jl")
+include("gtk_top.jl")
 
 
 #==Comments
@@ -39,7 +41,7 @@ include("gtk_base.jl")
 #==Exported interface
 ===============================================================================#
 add = _add #Danger: high risk of collision (common name)
-export add, line, glyph
+export add, line, glyph, grid
 
 
 #==Unexported interface

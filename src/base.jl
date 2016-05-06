@@ -106,6 +106,16 @@ glyph(;shape=:none, size=3, color=COLOR_TRANSPARENT) =
 #TODO: Inadequate
 #eval(genexpr_attriblistbuilder(:glyph, GlyphAttributes, reqfieldcnt=0))
 
+type GridAttributes <: AttributeList
+	#Bool values
+	vmajor
+	vminor
+	hmajor
+	hminor
+end
+grid(;vmajor=false, vminor=false, hmajor=false, hminor=false) =
+	GridAttributes(vmajor, vminor, hmajor, hminor)
+
 type Waveform{T}
 	ds::T
 	line::LineAttributes
@@ -133,6 +143,7 @@ end
 Font(_size::Real; bold::Bool=false) = Font(_size, bold)
 
 #Plot layout
+#TODO: Split Layout into "StyleInfo" - which includes Layout??
 type Layout
 	htitle::Float64 #Title allocation
 	waxlabel::Float64 #Vertical axis label allocation (width)
@@ -150,10 +161,13 @@ type Layout
 	fnttitle::Font
 	fntaxlabel::Font
 	fntticklabel::Font
+
+	grid::GridAttributes
 end
 Layout() = Layout(20, 20, 20, 30, 60, 20, 2,
 	DEFAULT_DATA_WIDTH, DEFAULT_DATA_HEIGHT,
-	Font(14, bold=true), Font(14), Font(12)
+	Font(14, bold=true), Font(14), Font(12),
+	GridAttributes(true, false, true, false)
 )
 
 #2D plot.
@@ -248,6 +262,11 @@ end
 function ptmap(xf::Transform2D, pt::Point2D)
 	x = (pt.x + xf.x0)*xf.xs
 	y = (pt.y + xf.y0)*xf.ys
+	return Point2D(x, y)
+end
+function ptmap_rev(xf::Transform2D, pt::Point2D)
+	x = pt.x/xf.xs - xf.x0
+	y = pt.y/xf.ys - xf.y0
 	return Point2D(x, y)
 end
 

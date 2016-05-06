@@ -31,6 +31,7 @@ x_lres = collect(0:(ncycles/10):ncycles)
 #==Generate plot
 ===============================================================================#
 plot = InspectDR.Plot2D()
+plot.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
 style = :dashdot #solid/dashdot/...
 
 wfrm = add(plot, x, y+1)
@@ -39,8 +40,13 @@ wfrm = add(plot, x, y-1)
 	wfrm.line = line(color=red, width=5, style=style)
 wfrm = add(plot, x_lres, -2+4*(x_lres./ncycles))
 	wfrm.line = line(color=blue, width=3, style=:dash)
-	wfrm.glyph = glyph(shape=:circle)
-#shape=:circle, :square, :uarrow, darrow, :rarrow, :larrow
+	wfrm.glyph = glyph(shape=:*)
+#= Supported shapes:
+	:square, :diamond,
+	:uarrow, :darrow, :larrow, :rarrow, #usually triangles
+	:cross, :+, :diagcross, :x,
+	:circle, :o, :star, :*,
+=#
 
 a = plot.annotation
 a.title = "Sample Plot (λ)"

@@ -12,6 +12,10 @@ Despite their great quality, most current Julia plotting options are still eithe
 
 ### Features/Highlights
 
+#### Box Zoom
+
+Use right mouse button to select new extents for plot.
+
 #### "F1" Acceleration
 
 InspectDR.jl includes specialized algorithms to accellerate plotting of large "F1" datasets (functions of 1 argument) in order to maintain a good "real-time" (interactive) user experience.
