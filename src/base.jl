@@ -312,6 +312,10 @@ function getextents(plot::Plot2D)
 	return merge(plot.ext_max, plot.ext)
 end
 
+Base.isfinite(ext::PExtents2D) =
+	isfinite(ext.xmin) && isfinite(ext.xmax) &&
+	isfinite(ext.ymin) && isfinite(ext.ymax)
+
 #Get bounding box of graph (plot data area):
 function graphbounds(plotb::BoundingBox, lyt::Layout)
 	xmin = plotb.xmin + lyt.waxlabel + lyt.wticklabel

@@ -1,17 +1,27 @@
-#InspectDR: Compute tick locations
+#InspectDR: Compute grid/tick locations
 #-------------------------------------------------------------------------------
 
 #==Constants
 ===============================================================================#
-const MANT_STEPS = DReal[1, 2, 2.5, 5, 10]
-const MANT_THRESH = (MANT_STEPS[1:end-1] + MANT_STEPS[2:end]) / 2
+#TODO: make the following user-configurable:
+const GRID_MAJOR_WIDTH = Float64(2)
+const GRID_MINOR_WIDTH = Float64(1)
+const GRID_MAJOR_COLOR = RGB24(.7, .7, .7)
+const GRID_MINOR_COLOR = RGB24(.7, .7, .7)
+const TICK_MAJOR_LEN = Float64(5)
+const TICK_MINOR_LEN = Float64(3)
 
-#Maps desired # of minor ticks to optimal divisor for each possibility in MANT_STEPS
+
+#Allowed mantissa values for grid step size:
+const GRID_MANTSTEPS = DReal[1, 2, 2.5, 5, 10]
+const GRID_MANTTHRESH = (GRID_MANTSTEPS[1:end-1] + GRID_MANTSTEPS[2:end]) / 2
+
+#Maps desired # of minor grid lines to optimal divisor for each possibility in GRID_MANTSTEPS
 #TODO: Figure out algorithmically?
-#MINOR_TICKS_DIV[index(MANT_STEPS), DESIRED_NUM_TICKS]
-#NOTE: dividing major step size by 5 gives 4 ticks (off-by-one)
-const MINOR_TICKS_DIV = DReal[
-#	1  2  3  4  5  6  7  8  9  - desired # of ticks
+#GRID_MINORDIV[index(GRID_MANTSTEPS), DESIRED_NUMBER_OF_MINOR_GRIDLINES]
+#NOTE: dividing major step size by 5 gives 4 grid lines (off-by-one)
+const GRID_MINORDIV = DReal[
+#	1  2  3  4  5  6  7  8  9  - desired # of grid lines
 	2  2  4  5  5  5  10 10 10; #1
 	2  2  4  4  4  8  8  8  10; #2
 	1  1  5  5  5  5  10 10 10; #2.5
@@ -23,33 +33,55 @@ const MINOR_TICKS_DIV = DReal[
 #==Types
 ===============================================================================#
 
-#Identifies where to place ticks
-type Ticks
+abstract AbstractGridLines
+
+#Identifies where to place ticks/grid lines
+type GridLines <: AbstractGridLines
 	first_significant_digit::Int #Relative to most-significant
 	major::Vector{DReal}
 	minor::Vector{DReal}
 end
-Ticks() = Ticks(1,[],[])
+GridLines() = GridLines(1,[],[])
+
+type UndefinedGridLines <: AbstractGridLines
+	minline::DReal
+	maxline::DReal
+end
+
+abstract PlotGrid
+
+type GridSmith <: PlotGrid
+end
+
+#Curvilinear grid (ex: polar plots):
+type GridCurv <: PlotGrid
+end
+
+#Rectilinear grid (ex: normal cartesian +logarithmic, ...):
+type GridRect <: PlotGrid
+	xlines::AbstractGridLines
+	ylines::AbstractGridLines
+end
 
 
 #==Main algorithm
 ===============================================================================#
 
-#Compute pretty step sizer for a given tick
-#tgtminor: Targeted number of minor ticks
-function step_pretty(tgtstep::DReal, tgtminor::Int)
+#Generate grid step size resulting in pretty tick labels
+#tgtminor: Targeted number of minor grid lines/ticks
+function linearstep_pretty(tgtstep::DReal, tgtminor::Int)
 	lstep = log10(tgtstep)
 	ilstep = floor(Int, lstep)
 	stepexp = 10.0^(ilstep)
 	stepmant = tgtstep / stepexp
 
-	mstep = MANT_STEPS[end]
-	istep = length(MANT_STEPS)
-	for i in 1:length(MANT_THRESH)
-		thresh = MANT_THRESH[i]
+	mstep = GRID_MANTSTEPS[end]
+	istep = length(GRID_MANTSTEPS)
+	for i in 1:length(GRID_MANTTHRESH)
+		thresh = GRID_MANTTHRESH[i]
 		if stepmant < thresh
 			istep = i
-			mstep = MANT_STEPS[i]
+			mstep = GRID_MANTSTEPS[i]
 			break
 		end
 	end
@@ -58,34 +90,40 @@ function step_pretty(tgtstep::DReal, tgtminor::Int)
 	major = mstep*stepexp
 	minor = major
 	if tgtminor > 0
-		minor /= MINOR_TICKS_DIV[istep, tgtminor]
+		minor /= GRID_MINORDIV[istep, tgtminor]
 	end
 
 	return (major, minor)
 end
 
-#Compute tick configuration for a linear scale
-#tgtmajor: Targeted number of major ticks
-#tgtminor: Targeted number of minor ticks
-function ticks_linear(min::DReal, max::DReal; tgtmajor::DReal=3.5, tgtminor::Int=4)
-	ticks = Ticks()
+#Compute grid line configuration for a linear scale
+#tgtmajor: Targeted number of major grid lines
+#tgtminor: Targeted number of minor grid lines
+function gridlines_linear(min::DReal, max::DReal; tgtmajor::DReal=3.5, tgtminor::Int=4)
+	if !isfinite(min) || !isfinite(max)
+		return UndefinedGridLines(min, max)
+	elseif abs(max - min) == 0 #TODO: specify Δmin?
+		return UndefinedGridLines(min, max)
+	end
+
+	grd = GridLines()
 	span = max - min
 
-	#Compute major ticks:
+	#Compute major grid lines:
 	tgtstep = span / (tgtmajor+1)
-	(stepmajor, stepminor) = step_pretty(tgtstep, tgtminor)
+	(stepmajor, stepminor) = linearstep_pretty(tgtstep, tgtminor)
 	major1 = ceil(Int, min/stepmajor)*stepmajor
-	ticks.major = collect(major1:stepmajor:max)
+	grd.major = collect(major1:stepmajor:max)
 
-	#Compute minor ticks:
+	#Compute minor grid lines:
 	minor1 = ceil(Int, min/stepminor)*stepminor
 	minorall = minor1:stepminor:max
 
 
 	#Throw away major points...
 	#Yuk... is there not a more elegant solution?
-	major_i1 = round(Int, abs(major1-minor1) / stepminor)+1 #Index of first major tick
-	major_ipitch = round(Int, abs(stepmajor/stepminor)) #Index pitch for major ticks
+	major_i1 = round(Int, abs(major1-minor1) / stepminor)+1 #Index of first major grid line
+	major_ipitch = round(Int, abs(stepmajor/stepminor)) #Index pitch for major grid lines
 	npts = length(minorall)
 	if major_i1 <= npts
 		nredundant = div(npts-major_i1, major_ipitch)+1
@@ -93,7 +131,7 @@ function ticks_linear(min::DReal, max::DReal; tgtmajor::DReal=3.5, tgtminor::Int
 	else #Just in case
 		npts = 0
 	end
-	ticks.minor = Array(DReal, npts)
+	grd.minor = Array(DReal, npts)
 
 	nextmajor = major_i1
 	j = 1
@@ -101,21 +139,21 @@ function ticks_linear(min::DReal, max::DReal; tgtmajor::DReal=3.5, tgtminor::Int
 		if nextmajor == i
 			nextmajor += major_ipitch
 		else
-			ticks.minor[j] = minorall[i]
+			grd.minor[j] = minorall[i]
 			j+=1
 		end
 	end
 
-	return ticks
+	return grd
 end
 
 #TODO: 
-#Compute tick configuration for a log10 scale
-function ticks_log10(min::DReal, max::DReal)
+#Compute grid line configuration for a log10 scale
+function gridlines_log10(min::DReal, max::DReal)
 end
 
-#Compute tick configuration for a log2 scale
-function ticks_log2(min::DReal, max::DReal)
+#Compute grid line configuration for a log2 scale
+function gridlines_log2(min::DReal, max::DReal)
 end
 
 

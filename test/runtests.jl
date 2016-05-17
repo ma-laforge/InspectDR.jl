@@ -3,8 +3,8 @@
 
 using InspectDR
 
-#No real test code yet... just run demos:
+warn("No real test code yet... just ensuring that \"using\" works.")
 
-include("../sample/runsamples.jl")
+info("Run sample/runsamples.jl for sample usage.")
 
 :Test_Complete

@@ -5,9 +5,8 @@ import Gtk: getproperty, setproperty!, signal_connect, @guarded
 
 #Create module aliasese to access constants:
 #TODO: Figure out why constants are Int32 instead of Int???
-const GtkPositionType = Gtk.GtkPositionType
-const GdkEventType = Gtk.GdkEventType
-const GdkEventMask = Gtk.GdkEventMask
+import Gtk: GdkKeySyms
+import Gtk: GtkPositionType, GdkEventType, GdkEventMask
 
 
 #==Extensions
@@ -61,6 +60,8 @@ end
 #==Main types
 ===============================================================================#
 
+abstract InputState #Identifies current user input state.
+
 type GtkSelection
 	enabled::Bool
 	bb::BoundingBox
@@ -72,6 +73,7 @@ type GtkPlot
 	canvas::_Gtk.Canvas #Actual plot area
 	src::Plot
 	graphbb::BoundingBox
+	state::InputState
 
 	#Scrollbars to control x-scale & position:
 	w_xscale::_Gtk.Scale

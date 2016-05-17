@@ -21,13 +21,16 @@ include("codegen.jl")
 include("math.jl")
 include("base.jl")
 include("datasetop.jl")
-include("ticks.jl")
+include("grids.jl")
 #include("cairo_ext.jl")
 include("cairo_base.jl")
 include("cairo_io.jl")
 include("gtk_base.jl")
+include("gtk_input.jl")
 include("gtk_zoom.jl")
 include("gtk_top.jl")
+
+keybindings_setdefaults(keybindings)
 
 
 #==Comments

@@ -3,7 +3,7 @@
 \*Sigh\*... Yet *another* plotting tool.
 
 [Sample Plots](https://github.com/ma-laforge/FileRepo/tree/master/InspectDR/sampleplots/README.md) (might be out of date).<br>
-**WARNING:** MANY FEATURES ARE [NOT YET IMPLEMENTED](#KnownLimitations)
+**WARNING:** [NOT ALL FEATURES ARE YET IMPLEMENTED](#KnownLimitations)
 
 ## Description
 
@@ -46,6 +46,12 @@ InspectDR.jl supports keybindings to improve/accelerate user control.  The follo
 | Function | Key |
 | -------- | :---: |
 | Zoom out to full extents | `f` |
+| Zoom in / zoom out | `+` / `-` |
+| Zoom in / zoom out | `CTRL` + `mousewheel`|
+| Pan up / pan down | &uArr; / &dArr; |
+| Pan up / pan down | `mousewheel` |
+| Pan left / pan right | &lArr; / &rArr; |
+| Pan left / pan right | `SHIFT` + `mousewheel`|
 
 ## Sample Usage
 
@@ -54,7 +60,6 @@ Sample code to construct InspectDR objects can be found [here](sample/).
 <a name="KnownLimitations"></a>
 ## Known Limitations
 
- - The module is not yet very interactive... you cannot even zoom properly at the moment.
  - Tick labels need to be improved (# of decimal places, ...).
  - Only generates basic annotations. Needs legends, ...
  - Does not yet support different axis scales (log-log, dB, ...).

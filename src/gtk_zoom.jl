@@ -1,5 +1,11 @@
-#InspectDR: Support for zoom
+#InspectDR: Support for pan/zoom
 #-------------------------------------------------------------------------------
+
+
+#==Constants
+===============================================================================#
+const PAN_STEPRATIO = 0.25 #Percentage of current extents
+const ZOOM_STEPRATIO = 2.0 #How much to zoom in/out with mousewheel + keybindings
 
 
 #==Drawing functions
@@ -18,19 +24,34 @@ function selectionbox_draw(ctx::CairoContext, sel::GtkSelection)
 end
 
 
-#==Main functions
+#==Scale/position widget control
 ===============================================================================#
-
-#Enable/disable scale control widgets
 function scalectrl_enabled(gplot::GtkPlot)
 	return Gtk.GAccessor.sensitive(gplot.w_xscale)
 end
 function scalectrl_enabled(gplot::GtkPlot, v::Bool)
 	Gtk.GAccessor.sensitive(gplot.w_xscale, v)
 	Gtk.GAccessor.sensitive(gplot.w_xpos, v)
-	focus(gplot.widget)
+end
+#Apply current scale/position scrollbar values to plot extents:
+function scalectrl_apply(gplot::GtkPlot)
+	xscale = getproperty(gplot.xscale, :value, Int)
+	xpos = getproperty(gplot.xpos, :value, Float64)
+	emax = gplot.src.ext_max
+	span = emax.xmax - emax.xmin
+	center = (emax.xmax + emax.xmin) / 2
+	vspan = span/xscale #Visible span
+	xmin = center + span*xpos - vspan/2
+	xmax = xmin + vspan
+	setextents(gplot.src, PExtents2D(xmin, xmax, DNaN, DNaN))
+	render(gplot)
+	Gtk.draw(gplot.canvas)
 end
 
+
+#==Basic zoom control
+===============================================================================#
+#Zoom to bounding box (in device coordinates):
 function zoom(gplot::GtkPlot, bb::BoundingBox)
 	p1 = Point2D(bb.xmin, bb.ymin)
 	p2 = Point2D(bb.xmax, bb.ymax)
@@ -48,60 +69,115 @@ function zoom(gplot::GtkPlot, bb::BoundingBox)
 	Gtk.draw(gplot.canvas)
 end
 
+#Zoom in/out @ point (pt in plot coordinates)
+function zoom(gplot::GtkPlot, ext::PExtents2D, pt::Point2D, ratio::Float64)
+	xspan = ext.xmax - ext.xmin
+	yspan = ext.ymax - ext.ymin
+	Δx = pt.x - ext.xmin
+	Δy = pt.y - ext.ymin
+	xmin = pt.x-ratio*Δx
+	ymin = pt.y-ratio*Δy
+
+	setextents(gplot.src, PExtents2D(
+		xmin, xmin + ratio*xspan,
+		ymin, ymin + ratio*yspan
+	))
+	render(gplot)
+	Gtk.draw(gplot.canvas)
+end
+
+#Zoom in/out, centered on current extents
+function zoom(gplot::GtkPlot, ratio::Float64)
+	ext = getextents(gplot.src)
+	pt = Point2D((ext.xmin+ext.xmax)/2, (ext.ymin+ext.ymax)/2)
+	zoom(gplot, ext, pt, ratio)
+end
+zoom_out(gplot::GtkPlot, stepratio::Float64=ZOOM_STEPRATIO) =
+	zoom(gplot, stepratio)
+zoom_in(gplot::GtkPlot, stepratio::Float64=ZOOM_STEPRATIO) =
+	zoom(gplot, 1/stepratio)
+
+#Zoom in/out around specified device coordinates:
+function zoom(gplot::GtkPlot, x::Float64, y::Float64, ratio::Float64)
+	pt = Point2D(x, y)
+	ext = getextents(gplot.src)
+	xf = Transform2D(ext, gplot.graphbb)
+	pt = ptmap_rev(xf, pt)
+	zoom(gplot, ext, pt, ratio)
+end
+zoom_out(gplot::GtkPlot, x::Float64, y::Float64, stepratio::Float64=ZOOM_STEPRATIO) =
+	zoom(gplot, x, y, stepratio)
+zoom_in(gplot::GtkPlot, x::Float64, y::Float64, stepratio::Float64=ZOOM_STEPRATIO) =
+	zoom(gplot, x, y, 1/stepratio)
+
+function zoom_xfull(gplot::GtkPlot)
+	#TODO
+end
 function zoom_full(gplot::GtkPlot)
 	gplot.src.ext = PExtents2D() #Reset active extents
 	scalectrl_enabled(gplot, false) #Suppress updates from setproperty!
 	setproperty!(gplot.xscale, :value, Int(1))
 	setproperty!(gplot.xpos, :value, Float64(0))
 	scalectrl_enabled(gplot, true)
-	handleevent_scalechanged(gplot)
+	scalectrl_apply(gplot)
 end
 
 
-#==Event handlers
+#==Box-zoom control
 ===============================================================================#
+function boxzoom_setstart(gplot::GtkPlot, x::Float64, y::Float64)
+	gplot.sel.enabled = true
+	gplot.sel.bb = BoundingBox(x, x, y, y)
+end
+function boxzoom_cancel(gplot::GtkPlot)
+	gplot.sel.enabled = false
+	Gtk.draw(gplot.canvas)
+end
+function boxzoom_complete(gplot::GtkPlot, x::Float64, y::Float64)
+	gplot.sel.enabled = false
+	scalectrl_enabled(gplot, false) #Scroll bar control no longer valid
+	bb = gplot.sel.bb
+	gplot.sel.bb = BoundingBox(bb.xmin, x, bb.ymin, y)
+	zoom(gplot, gplot.sel.bb)
+end
+#Set end point of boxzoom area:
+function boxzoom_setend(gplot::GtkPlot, x::Float64, y::Float64)
+	bb = gplot.sel.bb
+	gplot.sel.bb = BoundingBox(bb.xmin, x, bb.ymin, y)	
+	Gtk.draw(gplot.canvas)
+end
 
-#Event handler for changes to the plot scale/position scrollbars:
-#-------------------------------------------------------------------------------
-function handleevent_scalechanged(gplot::GtkPlot)
-	xscale = getproperty(gplot.xscale, :value, Int)
-	xpos = getproperty(gplot.xpos, :value, Float64)
-	emax = gplot.src.ext_max
-	span = emax.xmax - emax.xmin
-	center = (emax.xmax + emax.xmin) / 2
-	vspan = span/xscale #Visible span
-	xmin = center + span*xpos - vspan/2
-	xmax = xmin + vspan
-	setextents(gplot.src, PExtents2D(xmin, xmax, DNaN, DNaN))
+
+#==Pan control
+===============================================================================#
+function pan_xratio(gplot::GtkPlot, panstepratio::Float64)
+	exty = gplot.src.ext #User-specified y-extents (keep NaN)
+	extx = getextents(gplot.src) #Current x extents
+	panstep = panstepratio*(extx.xmax-extx.xmin)
+	setextents(gplot.src, PExtents2D(
+		extx.xmin+panstep, extx.xmax+panstep,
+		exty.ymin, exty.ymax
+	))
+	scalectrl_enabled(gplot, false) #Scroll bar control no longer valid
+	render(gplot)
+	Gtk.draw(gplot.canvas)
+end
+function pan_yratio(gplot::GtkPlot, panstepratio::Float64)
+	extx = gplot.src.ext #User-specified x-extents (keep NaN)
+	exty = getextents(gplot.src) #Current y extents
+	panstep = panstepratio*(exty.ymax-exty.ymin)
+	setextents(gplot.src, PExtents2D(
+		extx.xmin, extx.xmax,
+		exty.ymin+panstep, exty.ymax+panstep
+	))
 	render(gplot)
 	Gtk.draw(gplot.canvas)
 end
 
-#-------------------------------------------------------------------------------
-function handleevent_mousepress(gplot::GtkPlot, event::Gtk.GdkEventButton)
-#	@show event.state, event.button, event.event_type
-	if 3==event.button
-		gplot.sel.enabled = true
-		x = event.x; y = event.y
-		gplot.sel.bb = BoundingBox(x, x, y, y)
-	end
-end
-function handleevent_mouserelease(gplot::GtkPlot, event::Gtk.GdkEventButton)
-	if 3==event.button
-		gplot.sel.enabled = false
-		scalectrl_enabled(gplot, false)
-		bb = gplot.sel.bb
-		gplot.sel.bb = BoundingBox(bb.xmin, event.x, bb.ymin, event.y)
-		zoom(gplot, gplot.sel.bb)
-	end
-end
-function handleevent_mousemove(gplot::GtkPlot, event::Gtk.GdkEventMotion)
-	if gplot.sel.enabled
-		bb = gplot.sel.bb
-		gplot.sel.bb = BoundingBox(bb.xmin, event.x, bb.ymin, event.y)	
-		Gtk.draw(gplot.canvas)
-	end
-end
+pan_left(gplot::GtkPlot) = pan_xratio(gplot, -PAN_STEPRATIO)
+pan_right(gplot::GtkPlot) = pan_xratio(gplot, PAN_STEPRATIO)
+pan_up(gplot::GtkPlot) = pan_yratio(gplot, PAN_STEPRATIO)
+pan_down(gplot::GtkPlot) = pan_yratio(gplot, -PAN_STEPRATIO)
 
 
 #Last line

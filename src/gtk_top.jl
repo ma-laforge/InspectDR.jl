@@ -2,21 +2,6 @@
 #-------------------------------------------------------------------------------
 
 
-#==Event handlers
-===============================================================================#
-
-#Event handler for plot widget keypress
-#-------------------------------------------------------------------------------
-function handleevent_keypress(gplot::GtkPlot, event::Gtk.GdkEventKey)
-#event_type: GDK_KEY_PRESS/GDK_KEY_RELEASE
-#state: GDK_SHIFT_MASK, GDK_LOCK_MASK, GDK_RELEASE_MASK, ...
-#@show event.event_type, event.state, event.keyval, event.length, event.string, event.hardware_keycode, event.group, event.flags
-	if event.keyval == 'f'
-		zoom_full(gplot)
-	end
-end
-
-
 #==Callback wrapper functions
 ===============================================================================#
 #=COMMENTS
@@ -24,24 +9,27 @@ end
  -Remove unecessary arguments/convert to proper types
 =#
 @guarded function cb_keypress(w::Ptr{Gtk.GObject}, event::Gtk.GdkEventKey, gplot::GtkPlot)
-	handleevent_keypress(gplot, event)
+	handleevent_keypress(gplot.state, gplot, event)
 	nothing #Void signature
 end
 @guarded function cb_scalechanged(w::Ptr{Gtk.GObject}, gplot::GtkPlot)
-	if !scalectrl_enabled(gplot); return; end
-	handleevent_scalechanged(gplot)
+	handleevent_scalechanged(gplot.state, gplot)
 	nothing #Void signature
 end
 @guarded function cb_mousepress(w::Ptr{Gtk.GObject}, event::Gtk.GdkEventButton, gplot::GtkPlot)
-	handleevent_mousepress(gplot, event)
+	handleevent_mousepress(gplot.state, gplot, event)
 	nothing #Void signature
 end
 @guarded function cb_mouserelease(w::Ptr{Gtk.GObject}, event::Gtk.GdkEventButton, gplot::GtkPlot)
-	handleevent_mouserelease(gplot, event)
+	handleevent_mouserelease(gplot.state, gplot, event)
 	nothing #Void signature
 end
 @guarded function cb_mousemove(w::Ptr{Gtk.GObject}, event::Gtk.GdkEventMotion, gplot::GtkPlot)
-	handleevent_mousemove(gplot, event)
+	handleevent_mousemove(gplot.state, gplot, event)
+	nothing #Void signature
+end
+@guarded function cb_mousescroll(w::Ptr{Gtk.GObject}, event::Gtk.GdkEventScroll, gplot::GtkPlot)
+	handleevent_mousescroll(gplot.state, gplot, event)
 	nothing #Void signature
 end
 
@@ -77,7 +65,11 @@ function GtkPlot(plot::Plot)
 	#TODO: or can we resize in some intelligent way??
 	#bufsurf = Cairo.CairoRGBSurface(1920,1200) #Appears slow for average monitor size???
 #	bufsurf = Gtk.cairo_surface_for(canvas) #create similar - does not work here
-	gplot = GtkPlot(vbox, canvas, plot, BoundingBox(0,1,0,1), w_xscale, xscale, w_xpos, xpos, bufsurf, GtkSelection())
+	gplot = GtkPlot(vbox, canvas, plot,
+		BoundingBox(0,1,0,1), ISNormal(),
+		w_xscale, xscale, w_xpos, xpos,
+		bufsurf, GtkSelection()
+	)
 
 	#Register callback functions:
 	signal_connect(cb_scalechanged, xscale, "value-changed", Void, (), false, gplot)
@@ -86,6 +78,7 @@ function GtkPlot(plot::Plot)
 	signal_connect(cb_mousepress, vbox, "button-press-event", Void, (Ref{Gtk.GdkEventButton},), false, gplot)
 	signal_connect(cb_mouserelease, vbox, "button-release-event", Void, (Ref{Gtk.GdkEventButton},), false, gplot)
 	signal_connect(cb_mousemove, vbox, "motion-notify-event", Void, (Ref{Gtk.GdkEventMotion},), false, gplot)
+	signal_connect(cb_mousescroll, vbox, "scroll-event", Void, (Ref{Gtk.GdkEventScroll},), false, gplot)
 
 	#Register event: draw function
 	Gtk.@guarded Gtk.draw(gplot.canvas) do canvas
