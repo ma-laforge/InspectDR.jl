@@ -54,31 +54,50 @@ end
 
 #==Generate plot
 ===============================================================================#
-plot = InspectDR.Plot2D()
+mplot = InspectDR.Multiplot()
 
 if false #"Smith plot"
+	plot = add(mplot, InspectDR.Plot2D)
+		a = plot.annotation
+		a.title = "Smith plot"
+
 	i = 1
 	for i in 1:length(Γload)
 		wfrm = add(plot, real(Γload[i]), imag(Γload[i]))
 		wfrm.line = line(color=_colors[i], width=1)
 	end
 
-	plot.ext = InspectDR.PExtents2D(-1,1,-1,1)
+	plot.ext_full = InspectDR.PExtents2D(xmin=-1,xmax=1,ymin=-1,ymax=1)
 else #Magnitude
+	mplot.ncolumns = 2
+	plot_linf = InspectDR.Plot2D()
+		plot_linf.axes = InspectDR.axes(:lin, :dB20)
+		plot_linf.ext_full = InspectDR.PExtents2D(ymax=5)
+	plot_logf = InspectDR.Plot2D()
+		plot_logf.axes = InspectDR.axes(:log10, :dB20)
+		plot_logf.ext_full = InspectDR.PExtents2D(xmin=10e6,ymax=5)
+		plot_logf.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
+
+	plotlist = [plot_linf, plot_logf]
+#	plotlist = [plot_logf]
+#	plotlist = [plot_linf]
+
 	for i in 1:length(Γload)
-		v = 10*log10(abs2(Γload[i]))
-		wfrm = add(plot, f, v)
-		wfrm.line = line(color=_colors[i], width=1)
+		for plot in plotlist
+			wfrm = add(plot, f, Γload[i])
+			wfrm.line = line(color=_colors[i], width=1)
+		end
 	end
 
-	plot.ext = InspectDR.PExtents2D(NaN,NaN,NaN,5)
+	for plot in plotlist
+		add(mplot, plot)
+		a = plot.annotation
+		a.title = "Reflection Coefficient (Γ)"
+		a.xlabel = "Frequency (Hz)"
+		a.ylabel = "Magnitude (dB)"
+	end
 end
 
-a = plot.annotation
-a.title = "Reflection Coefficient (Γ)"
-a.xlabel = "Frequency (Hz)"
-a.ylabel = "Magnitude (dB)"
-
-gplot = display(InspectDR.GtkDisplay(), plot)
+gplot = display(InspectDR.GtkDisplay(), mplot)
 
 :DONE

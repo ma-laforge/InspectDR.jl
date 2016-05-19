@@ -33,6 +33,7 @@ const COLOR_RED = RGB24(1, 0, 0)
 const COLOR_GREEN = RGB24(0, 1, 0)
 const COLOR_BLUE = RGB24(0, 0, 1)
 
+
 #==Low-level data structures.
 ===============================================================================#
 
@@ -50,7 +51,8 @@ immutable PExtents2D
 	ymin::DReal
 	ymax::DReal
 end
-PExtents2D() = PExtents2D(DNaN, DNaN, DNaN, DNaN)
+PExtents2D(;xmin::Real=DNaN, xmax::Real=DNaN, ymin::Real=DNaN, ymax::Real=DNaN) =
+	PExtents2D(xmin, xmax, ymin, ymax)
 
 #Transform used for Canvas2D/CanvasF1 (only scale/offset - no rotation).
 #xd = (xs + x0) * xu
@@ -116,10 +118,51 @@ end
 grid(;vmajor=false, vminor=false, hmajor=false, hminor=false) =
 	GridAttributes(vmajor, vminor, hmajor, hminor)
 
+#Dispatchable scale:
+immutable AxisScale{T}
+	call{T}(t::Type{AxisScale{T}}) = error("$t not supported")
+	call(::Type{AxisScale{:lin}}) = new{:lin}()
+	call(::Type{AxisScale{:log2}}) = new{:log2}()
+	call(::Type{AxisScale{:log10}}) = new{:log10}()
+	call(::Type{AxisScale{:dB10}}) = new{:dB10}()
+	call(::Type{AxisScale{:dB20}}) = new{:dB20}()
+
+	#Aliases:
+	call(::Type{AxisScale{:log}}) = new{:log10}()
+end
+AxisScale(t::Symbol) = AxisScale{t}()
+
+#Specifies configuration of axes:
+abstract Axes
+
+#Rectilinear axis (ex: normal cartesian +logarithmic, ...):
+immutable AxesRect <: Axes
+	xscale::AxisScale
+	yscale::AxisScale
+end
+AxesRect(xscale::Symbol, yscale::Symbol) = AxesRect(AxisScale{xscale}(), AxisScale{yscale}())
+AxesRect() = AxesRect(:lin, :lin)
+
+#Curvilinear axes (ex: polar plots):
+immutable AxesCurv <: Axes
+	rscale::AxisScale #Radial scale could be 
+end
+AxesCurv(rscale::Symbol=:lin) = AxesCurv(AxisScale{rscale}())
+
+immutable AxesSmith{T} <: Axes
+	ref::Float64 #Y/Zref
+	call{T}(t::Type{AxesSmith{T}}, ref::Real) = error("$t not supported")
+	call(::Type{AxesSmith{:Z}}, ref::Real) = new{:Z}(ref)
+	call(::Type{AxesSmith{:Y}}, ref::Real) = new{:Y}(ref)
+end
+AxesSmith(t::Symbol; ref::Real=50) = AxesSmith{t}(ref)
+AxesSmith(t::Symbol, ref::Void) = AxesSmith(t)
+
 type Waveform{T}
 	ds::T
 	line::LineAttributes
 	glyph::GlyphAttributes
+	ext::PExtents2D
 end
 
 #Input waveform:
@@ -173,11 +216,13 @@ Layout() = Layout(20, 20, 20, 30, 60, 20, 2,
 #2D plot.
 type Plot2D <: Plot
 	layout::Layout
+	axes::Axes
 	annotation::Annotation
 
 	#Plot extents (access using getextents):
-	ext_max::PExtents2D #Used to zoom out to "full"
-	ext::PExtents2D #Requested extents
+	ext_data::PExtents2D #Maximum extents of data
+	ext_full::PExtents2D #Defines "full" zoom when combined with ext_data
+	ext::PExtents2D #Current/active extents
 
 	data::Vector{IWaveform}
 
@@ -190,8 +235,8 @@ type Plot2D <: Plot
 	xres::Int
 end
 
-Plot2D() = Plot2D(Layout(), Annotation(),
-	PExtents2D(), PExtents2D(), [], true, [], 1000
+Plot2D() = Plot2D(Layout(), AxesRect(), Annotation(),
+	PExtents2D(), PExtents2D(), PExtents2D(), [], true, [], 1000
 )
 
 type Multiplot
@@ -218,6 +263,41 @@ function Transform2D(ext::PExtents2D, inputb::BoundingBox)
 	return Transform2D(xs, x0, ys, y0)
 end
 
+#axes function:
+#Interface is a bit irregular, but should be easy to use...
+#-------------------------------------------------------------------------------
+function axes(a1::Symbol)
+	if :smith == a1
+		return AxesSmith(:Z)
+	elseif :polar == a1
+		return AxesCurv()
+	else
+		throw(MethodError(axes, (a1,)))
+	end
+end
+
+function axes(a1::Symbol, a2::Symbol; zref = nothing)
+	if :smith == a1
+		return AxesSmith(a2, zref)
+	elseif zref != nothing
+		error("cannot set zref for axes(:$a1, :$a2)")
+	end
+
+	if :polar == a1
+		return AxesCurv(a2)
+	else
+		return AxesRect(a1, a2)
+	end
+end
+
+function axes(a1::Symbol, a2::Symbol, a3::Symbol)
+	if :polar == a1
+		return AxesCurv(a2, a3)
+	else
+		throw(MethodError(axes, (a1,a2,a3)))
+	end
+end
+
 
 #==Accessors
 ===============================================================================#
@@ -226,22 +306,8 @@ Point(ds::IDataset, i::Int) = Point2D(ds.x[i], ds.y[i])
 Point(ds::Vector{Point2D}, i::Int) = ds[i]
 
 
-#==Base functions
+#=="add" interface
 ===============================================================================#
-#=
-function apply!(lyt::Layout, l::LineAttributes)
-	#ignore lyt for now..
-	#TODO: make global:
-	const COLOR_DEFAULT = RGB(0,0,0)
-
-	if nothing == l.width; l.width = 1; end
-	if nothing == l.color; l.color = COLOR_DEFAULT; end
-end
-function apply(lyt::Layout, l::LineAttributes)
-	result = deepcopy(l)
-	return apply!(lyt, l)
-end
-=#
 
 function _add(mp::Multiplot, plot::Plot2D)
 	push!(mp.subplots, plot)
@@ -252,10 +318,37 @@ _add{T<:Plot}(mp::Multiplot, ::Type{T}) = _add(mp, T())
 
 function _add(plot::Plot2D, x::Vector, y::Vector)
 	dataf1 = isincreasing(x) #Can we use optimizations?
-	ds = IWaveform(IDataset{dataf1}(x, y), line(), glyph())
+	ext = PExtents2D() #Don't care at the moment
+	ds = IWaveform(IDataset{dataf1}(x, y), line(), glyph(), ext)
 	push!(plot.data, ds)
 	return ds
 end
+
+
+#==Mapping/interpolation functions
+===============================================================================#
+
+#Mapping functions, depending on axis type:
+#-------------------------------------------------------------------------------
+datamap{T<:Number}(::Type{T}, ::AxisScale) = (x::T)->DReal(x)
+datamap{T<:Number}(::Type{T}, ::AxisScale{:dB10}) = (x::T)->(5*log10(DReal(abs2(x))))
+datamap{T<:Number}(::Type{T}, ::AxisScale{:dB20}) = (x::T)->(10*log10(DReal(abs2(x))))
+datamap{T<:Number}(::Type{T}, ::AxisScale{:log2}) =
+	(x::T)->(x<0? DNaN: log2(DReal(x)))
+datamap{T<:Number}(::Type{T}, ::AxisScale{:log10}) =
+	(x::T)->(x<0? DNaN: log10(DReal(x)))
+#TODO: find a way to show negative values for log10?
+
+#Extents mapping functions, depending on axis type:
+#-------------------------------------------------------------------------------
+extentsmap(::AxisScale) = (x::DReal)->x #Most axis types don't need to re-map extents.
+extentsmap(t::AxisScale{:log2}) = datamap(DReal, t)
+extentsmap(t::AxisScale{:log10}) = datamap(DReal, t)
+
+extentsmap_rev(::AxisScale) = (x::DReal)->x #Most axis types don't need to re-map extents.
+extentsmap_rev(t::AxisScale{:log2}) = (x::DReal)->(2^x)
+extentsmap_rev(t::AxisScale{:log10}) = (x::DReal)->(10^x)
+
 
 #Apply transform that maps a data point to the canvas
 #-------------------------------------------------------------------------------
@@ -277,7 +370,11 @@ function interpolate(p1::Point2D, p2::Point2D, x::DReal)
 	return m*(x-p1.x)+p1.y
 end
 
-#Extents
+
+#==Plot extents
+===============================================================================#
+
+#Overwrite with new extents, if defined
 #-------------------------------------------------------------------------------
 function Base.merge(base::PExtents2D, new::PExtents2D)
 	#Pick maximum extents 
@@ -298,23 +395,54 @@ function invalidate_datalist(plot::Plot2D)
 	plot.invalid_ddata = true
 end
 
-#Auto-detect extents from plot data:
-function maxextents_update(plot::Plot2D)
-	plot.ext_max = PExtents2D(plot.data)
+rescale(ext::PExtents2D, axes::Axes) = ext #Default
+function rescale(ext::PExtents2D, axes::AxesRect)
+	xmap = extentsmap(axes.xscale)
+	ymap = extentsmap(axes.yscale)
+	return PExtents2D(
+		xmap(ext.xmin), xmap(ext.xmax),
+		ymap(ext.ymin), ymap(ext.ymax)
+	)
+end
+rescale_rev(ext::PExtents2D, axes::Axes) = ext #Default
+function rescale_rev(ext::PExtents2D, axes::AxesRect)
+	xmap = extentsmap_rev(axes.xscale)
+	ymap = extentsmap_rev(axes.yscale)
+	return PExtents2D(
+		xmap(ext.xmin), xmap(ext.xmax),
+		ymap(ext.ymin), ymap(ext.ymax)
+	)
 end
 
+#Accessor:
+getextents(plot::Plot2D) = plot.ext
+getextents_xfrm(plot::Plot2D) = rescale(plot.ext, plot.axes)
+
+#Full extents are always merged (ext_full expected to be incomplete):
+getextents_full(plot::Plot2D) = merge(plot.ext_data, plot.ext_full)
+
+#Set active plot extents using data coordinates:
 function setextents(plot::Plot2D, ext::PExtents2D)
-	plot.ext = merge(plot.ext, ext)
+	#Automatically fill-in any NaN fields, if possible:
+	plot.ext = merge(getextents_full(plot), ext)
 	invalidate_extents(plot)
 end
 
-function getextents(plot::Plot2D)
-	return merge(plot.ext_max, plot.ext)
+#Set active plot extents using xfrm display coordinates:
+setextents_xfrm(plot::Plot2D, ext::PExtents2D) =
+	setextents(plot, rescale_rev(ext, plot.axes))
+
+function setextents_full(plot::Plot2D, ext::PExtents2D)
+	plot.ext_full = ext
 end
 
 Base.isfinite(ext::PExtents2D) =
 	isfinite(ext.xmin) && isfinite(ext.xmax) &&
 	isfinite(ext.ymin) && isfinite(ext.ymax)
+
+
+#==Plot/graph bounding boxes
+===============================================================================#
 
 #Get bounding box of graph (plot data area):
 function graphbounds(plotb::BoundingBox, lyt::Layout)
@@ -348,9 +476,14 @@ end
 #Get suggested plot bounds:
 plotbounds(lyt::Layout) = plotbounds(lyt, lyt.wdata, lyt.hdata)
 
-#Obtain reduced waveform datasets by limiting to the extents & max resolution:
+
+#==Pre-processing display data
+===============================================================================#
+
+#_reduce: Obtain reduced dataset by limiting to the extents & max resolution:
 #-------------------------------------------------------------------------------
 #Generic algorithm... Just transfer all data for now
+#    xres_max: Max number of x-points in data window.
 #TODO: clip data beyond extents.
 #WARNING: not clipping might cause display issues when applying the transform
 function _reduce(input::IDataset, ext::PExtents2D, xres_max::Integer)
@@ -363,7 +496,8 @@ function _reduce(input::IDataset, ext::PExtents2D, xres_max::Integer)
 	return result
 end
 
-#Optimized for functions of 1 argument
+#Optimized for functions of 1 argument:
+#    xres_max: Max number of x-points in data window.
 function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
 	xres = (ext.xmax - ext.xmin)/ xres_max
 	const min_lookahead = 2
@@ -454,21 +588,72 @@ function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
 end
 
 function _reduce(input::IWaveform, ext::PExtents2D, xres_max::Integer)
-	return Waveform(_reduce(input.ds, ext, xres_max), input.line, input.glyph)
+	return DWaveform(_reduce(input.ds, ext, xres_max), input.line, input.glyph, input.ext)
 end
 
 _reduce(inputlist::Vector{IWaveform}, ext::PExtents2D, xres_max::Integer) =
 	map((input)->_reduce(input, ext, xres_max::Integer), inputlist)
 
-function update_ddata(plot::Plot2D)
-	#TODO: Conditionnaly compute (was new data added?):
-	maxextents_update(plot)
+#Rescale input dataset:
+#-------------------------------------------------------------------------------
+function _rescale{T<:Number}(d::Vector{T}, scale::AxisScale)
+	#Apparently, passing functions as arguments is not efficient in Julia.
+	#-->Specializing on AxisScale, hoping to improve efficiency on dmap:
+	dmap = datamap(T, scale)
 
+	result = Array(DReal, length(d))
+	for i in 1:length(d)
+		result[i] = dmap(d[i])
+	end
+	return result
+end
+_rescale{T<:Number}(d::Vector{T}, scale::AxisScale{:lin}) = d #Optimization: Linear scale does not need re-scaling
+_rescale{T<:IDataset}(input::T, xscale::AxisScale, yscale::AxisScale) =
+	T(_rescale(input.x, xscale), _rescale(input.y, yscale))
+
+function _rescale(input::IWaveform, xscale::AxisScale, yscale::AxisScale)
+	ds = _rescale(input.ds, xscale, yscale)
+	return IWaveform(ds, input.line, input.glyph, getextents(ds))
+end
+
+#Specialized on xscale/yscale for efficiency:
+_rescale(inputlist::Vector{IWaveform}, xscale::AxisScale, yscale::AxisScale) =
+	map((input)->_rescale(input, xscale, yscale), inputlist)
+
+_rescale(inputlist::Vector{IWaveform}, axes::AxesRect) = _rescale(inputlist, axes.xscale, axes.yscale)
+
+#Preprocess input dataset (rescale/reduce quantity of data/...):
+#-------------------------------------------------------------------------------
+#   (Updates display_data)
+function preprocess_data(plot::Plot2D)
+	#TODO: Find a way to preprocess x-vectors referencing same data only once?
+
+	#Rescale data
+	wfrmlist = _rescale(plot.data, plot.axes)
+
+	#Update extents:
+	plot.ext_data = rescale_rev(getextents(wfrmlist), plot.axes) #Update max extents
+	setextents(plot, plot.ext) #Update extents, resolving any NaN fields.
+	ext = getextents_xfrm(plot) #Read back extents, in transformed coordinates
+
+	#Reduce data:
+	plot.display_data = _reduce(wfrmlist, ext, plot.xres)
+	plot.invalid_ddata = false
+
+	#NOTE: Rescaling before data reduction is somewhat inefficient, but makes
+	#      it easier to interpolate data in _reduce step.
+	#TODO: Find a way to efficiently reduce before re-scaling???
+end
+
+
+#==High-level display functions
+===============================================================================#
+function update_ddata(plot::Plot2D)
 	invalidate_extents(plot) #Always compute below:
+	#TODO: Conditionnaly compute (only when data changed/added)?
+
 	if plot.invalid_ddata
-		ext = getextents(plot)
-		plot.display_data = _reduce(plot.data, ext, plot.xres)
-		plot.invalid_ddata = false
+		preprocess_data(plot)
 	end
 end
 

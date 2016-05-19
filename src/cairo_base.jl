@@ -222,6 +222,9 @@ function drawline(ctx::CairoContext, p1::Point2D, p2::Point2D)
 	Cairo.stroke(ctx)
 end
 
+
+#==Rendering text
+===============================================================================#
 function textoffset(t_ext::Array{Float64}, align::CAlignment)
 #=
 typedef struct {
@@ -233,39 +236,43 @@ typedef struct {
 
 	halign = align.v & ALIGN_HMASK
 	_size = t_ext[3]; bearing = t_ext[1]
+	xoff = -bearing #ALIGN_LEFT
 
 	if ALIGN_HCENTER.v == halign
-		xoff = -(_size/2 + bearing)
+		xoff -= _size/2
 	elseif ALIGN_RIGHT.v == halign
-		xoff = -(_size + bearing)
-	else #ALIGN_LEFT
-		xoff = -bearing
+		xoff -= _size
 	end
 
 	valign = align.v & ALIGN_VMASK
 	_size = t_ext[4]; bearing = t_ext[2]
+	yoff = -bearing #ALIGN_TOP
 
 	if ALIGN_VCENTER.v == valign
-		yoff = -(_size/2 + bearing)
-	elseif ALIGN_TOP.v == valign
-		yoff = -(_size + bearing)
-	else #ALIGN_BOTTOM
-		yoff = -bearing
+		yoff -= _size/2
+	elseif ALIGN_BOTTOM.v == valign
+		yoff -= _size
 	end
 
 	return tuple(xoff, yoff)
 end
+text_dims(t_ext::Array{Float64}) = tuple(t_ext[3], t_ext[4]) #w, h
+
 
 #Render text on a CairoContext
 #-------------------------------------------------------------------------------
-function render(ctx::CairoContext, t::DisplayString, pt::Point2D,
-	fontsize::Real, bold::Bool, align::CAlignment, angle::Float64, color::Colorant)
+function setfont(ctx::CairoContext, font::Font)
 	const fontname = "Serif" #Sans, Serif, Fantasy, Monospace
-	const weight = bold? Cairo.FONT_WEIGHT_BOLD: Cairo.FONT_WEIGHT_NORMAL
+	const weight = font.bold? Cairo.FONT_WEIGHT_BOLD: Cairo.FONT_WEIGHT_NORMAL
 	const noitalic = Cairo.FONT_SLANT_NORMAL
 	Cairo.select_font_face(ctx, fontname, noitalic,	weight)
-	Cairo.set_font_size(ctx, fontsize);
-	t_ext = Cairo.text_extents(ctx, t);
+	Cairo.set_font_size(ctx, font._size);
+end
+
+function render(ctx::CairoContext, t::DisplayString, pt::Point2D,
+	font::Font, align::CAlignment, angle::Float64, color::Colorant)
+	setfont(ctx, font)
+	t_ext = Cairo.text_extents(ctx, t)
 	(xoff, yoff) = textoffset(t_ext, align)
 
 	Cairo.save(ctx) #-----
@@ -283,7 +290,54 @@ function render(ctx::CairoContext, t::DisplayString, pt::Point2D,
 end
 render(ctx::CairoContext, t::AbstractString, pt::Point2D, font::Font;
 	align::CAlignment=ALIGN_BOTTOM|ALIGN_LEFT, angle::Real=0, color::Colorant=COLOR_BLACK) =
-	render(ctx, DisplayString(t), pt, font._size, font.bold, align, Float64(angle), color)
+	render(ctx, DisplayString(t), pt, font, align, Float64(angle), color)
+
+#Draws number as base, raised to a power (ex: 10^9):
+#-------------------------------------------------------------------------------
+function render_power(ctx::CairoContext, base::Int, val::DReal, pt::Point2D, font::Font, align::CAlignment)
+	const EXP_SCALE = 0.75
+	const EXP_SHIFT = 0.5
+	fontexp = deepcopy(font)
+	fontexp._size = font._size*EXP_SCALE
+
+	setfont(ctx, font)
+	tbase = @sprintf("%d", base)
+	(wbase, hbase) = text_dims(Cairo.text_extents(ctx, tbase))
+	setfont(ctx, fontexp)
+	texp = @sprintf("%0.0f", val)
+	(wexp, hexp) = text_dims(Cairo.text_extents(ctx, texp))
+
+	#Compute bounding box:
+	voffset_exp = EXP_SHIFT * hbase
+	w = wbase+wexp
+	h = max(hbase, voffset_exp+hexp)
+
+	halign = align.v & ALIGN_HMASK
+	xoff = 0 #ALIGN_LEFT
+	if ALIGN_HCENTER.v == halign
+		xoff -= w/2
+	elseif ALIGN_RIGHT.v == halign
+		xoff -= w
+	end
+
+	valign = align.v & ALIGN_VMASK
+	yoff = 0 #ALIGN_BOTTOM
+	if ALIGN_VCENTER.v == valign
+		yoff += h/2
+	elseif ALIGN_TOP.v == valign
+		yoff += h
+	end
+
+	pt = Point2D(pt.x + xoff, pt.y + yoff)
+	render(ctx, tbase, pt, font, align=ALIGN_LEFT|ALIGN_BOTTOM)
+
+	pt = Point2D(pt.x + wbase, pt.y - voffset_exp)
+	render(ctx, texp, pt, fontexp, align=ALIGN_LEFT|ALIGN_BOTTOM)
+end
+
+
+#==Rendering base plot elements
+===============================================================================#
 
 #Render main plot annotation (titles, axis labels, ...)
 #-------------------------------------------------------------------------------
@@ -367,8 +421,19 @@ function render_grid(canvas::PCanvas2D, lyt::Layout, grid::GridRect)
 	Cairo.restore(ctx) #-----
 end
 
+
 #==Render ticks
 ===============================================================================#
+
+#Default label:
+function render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, ::AxisScale)
+	tstr = @sprintf("%0.1e", val)
+	render(ctx, tstr, pt, font, align=align)
+end
+
+render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, scale::AxisScale{:log10}) =
+	render_power(ctx, 10, val, pt, font, align)
+
 #Render ticks: Well-defined GridLines
 #-------------------------------------------------------------------------------
 function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::GridLines)
@@ -376,8 +441,7 @@ function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	ylabel = graphbb.ymax + lyt.hticklabel / 2
 	for xtick in xlines.major
 		x = ptmap(xf, Point2D(xtick, 0)).x
-		tstr = @sprintf("%0.1e", xtick)
-		render(ctx, tstr, Point2D(x, ylabel), lyt.fntaxlabel, align=ALIGN_HCENTER|ALIGN_VCENTER)
+		render_ticklabel(ctx, xtick, Point2D(x, ylabel), lyt.fntaxlabel, ALIGN_HCENTER|ALIGN_VCENTER, xlines.scale)
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
 	end
 	for xtick in xlines.minor
@@ -390,8 +454,7 @@ function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	xlabel = graphbb.xmin - 2 #TODO: offset by with of graphframe?
 	for ytick in ylines.major
 		y = ptmap(xf, Point2D(0, ytick)).y
-		tstr = @sprintf("%0.1e", ytick)
-		render(ctx, tstr, Point2D(xlabel, y), lyt.fntaxlabel, align=ALIGN_RIGHT|ALIGN_VCENTER)
+		render_ticklabel(ctx, ytick, Point2D(xlabel, y), lyt.fntaxlabel, ALIGN_RIGHT|ALIGN_VCENTER, ylines.scale)
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
 	end
 	for ytick in ylines.minor
@@ -406,8 +469,7 @@ function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	yframe = graphbb.ymax
 	ylabel = graphbb.ymax + lyt.hticklabel / 2
 	for (x, xlabel) in [(graphbb.xmin, xlines.minline), (graphbb.xmax, xlines.maxline)]
-		tstr = @sprintf("%0.1e", xlabel)
-		render(ctx, tstr, Point2D(x, ylabel), lyt.fntaxlabel, align=ALIGN_HCENTER|ALIGN_VCENTER)
+		render_ticklabel(ctx, xlabel, Point2D(x, ylabel), lyt.fntaxlabel, ALIGN_HCENTER|ALIGN_VCENTER, AxisScale{:lin}())
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
 	end
 end
@@ -415,8 +477,7 @@ function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	xframe = graphbb.xmin
 	xlabel = graphbb.xmin - 2 #TODO: offset by with of graphframe?
 	for (y, ylabel) in [(graphbb.ymax, ylines.minline), (graphbb.ymin, ylines.maxline)]
-		tstr = @sprintf("%0.1e", ylabel)
-		render(ctx, tstr, Point2D(xlabel, y), lyt.fntaxlabel, align=ALIGN_RIGHT|ALIGN_VCENTER)
+		render_ticklabel(ctx, ylabel, Point2D(xlabel, y), lyt.fntaxlabel, ALIGN_RIGHT|ALIGN_VCENTER, AxisScale{:lin}())
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
 	end
 end
@@ -483,10 +544,7 @@ function render(canvas::PCanvas2D, plot::Plot2D)
 	#Render annotation/axes
 	render(canvas, plot.annotation, plot.layout)
 
-	xlines = gridlines_linear(canvas.ext.xmin, canvas.ext.xmax, tgtmajor=3.5)
-	ylines = gridlines_linear(canvas.ext.ymin, canvas.ext.ymax, tgtmajor=8.0)
-	grid = GridRect(xlines, ylines)
-
+	grid = gridlines(plot.axes, canvas.ext)
 	render_grid(canvas, plot.layout, grid)
 	#TODO: render axes first once drawing is multi-threaded.
 #	render_axes
@@ -505,7 +563,7 @@ end
 function render(ctx::CairoContext, plot::Plot2D, bb::BoundingBox)
 	graphbb = graphbounds(bb, plot.layout)
 	update_ddata(plot) #Also computes new extents
-	canvas = PCanvas2D(ctx, bb, graphbb, getextents(plot))
+	canvas = PCanvas2D(ctx, bb, graphbb, getextents_xfrm(plot))
 	render(canvas, plot)
 end
 

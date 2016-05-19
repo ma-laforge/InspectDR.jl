@@ -37,11 +37,12 @@ abstract AbstractGridLines
 
 #Identifies where to place ticks/grid lines
 type GridLines <: AbstractGridLines
+	scale::AxisScale #Changes how tick labels are displayed
 	first_significant_digit::Int #Relative to most-significant
 	major::Vector{DReal}
 	minor::Vector{DReal}
 end
-GridLines() = GridLines(1,[],[])
+GridLines(scale::AxisScale) = GridLines(scale, 1,[],[])
 
 type UndefinedGridLines <: AbstractGridLines
 	minline::DReal
@@ -96,17 +97,17 @@ function linearstep_pretty(tgtstep::DReal, tgtminor::Int)
 	return (major, minor)
 end
 
-#Compute grid line configuration for a linear scale
+#Compute grid line configuration for a linear scale (dB scale is basically linear as well)
 #tgtmajor: Targeted number of major grid lines
 #tgtminor: Targeted number of minor grid lines
-function gridlines_linear(min::DReal, max::DReal; tgtmajor::DReal=3.5, tgtminor::Int=4)
+function gridlines(scale::AxisScale, min::DReal, max::DReal; tgtmajor::DReal=3.5, tgtminor::Int=4)
 	if !isfinite(min) || !isfinite(max)
 		return UndefinedGridLines(min, max)
 	elseif abs(max - min) == 0 #TODO: specify Δmin?
 		return UndefinedGridLines(min, max)
 	end
 
-	grd = GridLines()
+	grd = GridLines(scale)
 	span = max - min
 
 	#Compute major grid lines:
@@ -147,13 +148,59 @@ function gridlines_linear(min::DReal, max::DReal; tgtmajor::DReal=3.5, tgtminor:
 	return grd
 end
 
-#TODO: 
 #Compute grid line configuration for a log10 scale
-function gridlines_log10(min::DReal, max::DReal)
+#Ignore keywords
+function gridlines(scale::AxisScale{:log10}, logmin::DReal, logmax::DReal; kwargs...)
+	if !isfinite(logmin) || !isfinite(logmax)
+		return UndefinedGridLines(logmin, logmax)
+	elseif abs(logmax - logmin) == 0 #TODO: specify Δmin?
+		return UndefinedGridLines(logmin, logmax)
+	end
+	grd = GridLines(scale)
+
+	major1 = ceil(Int, logmin)
+	majorend = floor(Int, logmax)
+	grd.major = collect(major1:1:majorend)
+
+	offsets = collect(log10(2:1:9))
+
+	if length(grd.major) > 0
+		minor = (grd.major[1]-1)+offsets
+
+		for curline in grd.major
+			append!(minor, curline+offsets)
+		end
+
+		#Strip out values beyond specified range:
+		istart = 1; iend = 0
+		for i in 1:length(minor)
+			if minor[i] < logmin
+				istart = i+1
+			end
+			if minor[i] < logmax
+				iend = i
+			end
+		end
+
+		grd.minor = minor[istart:iend]
+	end
+
+	return grd
 end
 
 #Compute grid line configuration for a log2 scale
-function gridlines_log2(min::DReal, max::DReal)
+function gridlines(scale::AxisScale{:log2}, min::DReal, max::DReal)
+	return GridLines(scale)
+end
+
+
+#==High-level interface
+===============================================================================#
+function gridlines(axes::AxesRect, ext::PExtents2D)
+	#TODO: make tgtmajor/tgtminor programmable
+	xlines = gridlines(axes.xscale, ext.xmin, ext.xmax, tgtmajor=3.5)
+	ylines = gridlines(axes.yscale, ext.ymin, ext.ymax, tgtmajor=8.0, tgtminor=2)
+	return GridRect(xlines, ylines)
 end
 
 

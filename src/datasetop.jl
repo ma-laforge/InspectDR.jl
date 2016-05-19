@@ -11,17 +11,17 @@ function union(e1::PExtents2D, e2::PExtents2D)
 end
 
 #TODO: Specialize for sorted datasets?
-function PExtents2D(d::IWaveform)
-	ds = d.ds
+function getextents(ds::IDataset)
 	(xmin, xmax) = extrema(ds.x)
 	(ymin, ymax) = extrema(ds.y)
 	return PExtents2D(xmin, xmax, ymin, ymax)
 end
+getextents(d::IWaveform) = getextents(d.ds)
 
-function PExtents2D(dlist::Vector{IWaveform})
+function getextents(dlist::Vector{IWaveform})
 	result = PExtents2D(DNaN, DNaN, DNaN, DNaN)
 	for d in dlist
-		result = union(result, PExtents2D(d))
+		result = union(result, d.ext)
 	end
 	return result
 end
