@@ -2,6 +2,8 @@
 
 \*Sigh\*... Yet *another* plotting tool.
 
+[![Build Status](https://travis-ci.org/ma-laforge/InspectDR.jl.svg?branch=master)](https://travis-ci.org/ma-laforge/InspectDR.jl)
+
 [Sample Plots](https://github.com/ma-laforge/FileRepo/tree/master/InspectDR/sampleplots/README.md) (might be out of date).<br>
 **WARNING:** [NOT ALL FEATURES ARE YET IMPLEMENTED](#KnownLimitations)
 
@@ -53,6 +55,7 @@ InspectDR.jl supports keybindings to improve/accelerate user control.  The follo
 | Pan left / pan right | &lArr; / &rArr; |
 | Pan left / pan right | `SHIFT` + `mousewheel`|
 
+<a name="SampleUsage"></a>
 ## Sample Usage
 
 Sample code to construct InspectDR objects can be found [here](sample/).
@@ -60,10 +63,13 @@ Sample code to construct InspectDR objects can be found [here](sample/).
 <a name="KnownLimitations"></a>
 ## Known Limitations
 
+ - Documentation is a bit limited at the moment.  See [Sample Usage](#SampleUsage) to learn from examples.
+ - API is still a bit rough.  User often has to manipulate data structures directly.
  - Tick labels need to be improved (# of decimal places, ...).
  - Only generates basic annotations. Needs legends, ...
- - Does not yet support different axis scales (log-log, dB, ...).
+ - Does not yet support many axis scales (only linear, log10 & dB20).
  - Does not yet render plot data in separate thread (will improve interactive experience with large datasets).
+ - Mouse events currently function even outside data area (a bit odd).
 
 ### Compatibility
 
@@ -74,5 +80,3 @@ Extensive compatibility testing of InspectDR.jl has not been performed.  The mod
 ## Disclaimer
 
 The InspectDR.jl module is not yet mature.  Expect significant changes.
-
-This software is provided "as is", with no guarantee of correctness.  Use at own risk.
