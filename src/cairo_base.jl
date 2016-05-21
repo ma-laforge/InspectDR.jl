@@ -73,7 +73,7 @@ end
 ===============================================================================#
 
 function drawglyph{T}(ctx::CairoContext, ::CGlyph{T}, pt::Point2D, size::DReal)
-	warn("Glyph not supported: $T")
+	warn("Glyph shape not supported: $T")
 end
 
 #= Supported:
@@ -88,6 +88,8 @@ function drawglyph(ctx::CairoContext, ::CGlyph{:circle}, pt::Point2D, size::DRea
 	Cairo.arc(ctx, pt.x, pt.y, radius, 0, 2pi)
 	Cairo.stroke(ctx)
 end
+drawglyph(ctx::CairoContext, ::CGlyph{:o}, pt::Point2D, size::DReal) =
+	drawglyph(ctx, CGlyph{:circle}(), pt, size)
 
 function drawglyph(ctx::CairoContext, ::CGlyph{:square}, pt::Point2D, size::DReal)
 	elen = size #full edge length
@@ -427,7 +429,11 @@ end
 
 #Default label:
 function render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, ::AxisScale)
-	tstr = @sprintf("%0.1e", val)
+	#TODO: Improve how numbers are displayed
+	tstr = "$val"
+	if length(tstr) > 7 #HACK!
+		tstr = @sprintf("%0.1e", val)
+	end
 	render(ctx, tstr, pt, font, align=align)
 end
 

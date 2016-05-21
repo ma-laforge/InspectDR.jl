@@ -71,6 +71,8 @@ end
 #Generate grid step size resulting in pretty tick labels
 #tgtminor: Targeted number of minor grid lines/ticks
 function linearstep_pretty(tgtstep::DReal, tgtminor::Int)
+	#TODO: Rounding errors in calculation of major cause display issues with tick labels
+
 	lstep = log10(tgtstep)
 	ilstep = floor(Int, lstep)
 	stepexp = 10.0^(ilstep)

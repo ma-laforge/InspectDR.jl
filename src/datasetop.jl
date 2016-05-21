@@ -10,10 +10,17 @@ function union(e1::PExtents2D, e2::PExtents2D)
 	)
 end
 
+function extrema_nan(v::Vector)
+	try
+		return extrema(v)
+	end
+	return (DNaN, DNaN)
+end
+
 #TODO: Specialize for sorted datasets?
 function getextents(ds::IDataset)
-	(xmin, xmax) = extrema(ds.x)
-	(ymin, ymax) = extrema(ds.y)
+	(xmin, xmax) = extrema_nan(ds.x)
+	(ymin, ymax) = extrema_nan(ds.y)
 	return PExtents2D(xmin, xmax, ymin, ymax)
 end
 getextents(d::IWaveform) = getextents(d.ds)

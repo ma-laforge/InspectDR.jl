@@ -511,6 +511,9 @@ function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
 
 	if length(x) != length(y)
 		error("x & y - vector length mismatch.")
+	elseif length(x) < 1
+		resize!(result, 0)
+		return result
 	end
 
 	#Discard data before visible extents:
