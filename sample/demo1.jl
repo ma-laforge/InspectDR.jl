@@ -32,13 +32,15 @@ x_lres = collect(0:(ncycles/10):ncycles)
 ===============================================================================#
 plot = InspectDR.Plot2D()
 plot.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
+plot.layout.legend.enabled = true
+plot.layout.legend.width = 120
 style = :dashdot #solid/dashdot/...
 
-wfrm = add(plot, x, y+1)
+wfrm = add(plot, x, y+1, id="sin(2πt)+1")
 	wfrm.line = line(color=blue, width=1, style=style)
-wfrm = add(plot, x, y-1)
+wfrm = add(plot, x, y-1, id="sin(2πt)-1")
 	wfrm.line = line(color=red, width=5, style=style)
-wfrm = add(plot, x_lres, -2+4*(x_lres./ncycles))
+wfrm = add(plot, x_lres, -2+4*(x_lres./ncycles), id="-2+4t/$ncycles")
 	wfrm.line = line(color=blue, width=3, style=:dash)
 	wfrm.glyph = glyph(shape=:*)
 #= Supported shapes:

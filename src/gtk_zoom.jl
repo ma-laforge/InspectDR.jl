@@ -15,7 +15,7 @@ function selectionbox_draw(ctx::CairoContext, sel::GtkSelection)
 
 	Cairo.save(ctx) #-----
 	Cairo.set_source(ctx, COLOR_BLACK)
-	_set_stylewidth(ctx, :dash, 1.0)
+	setlinestyle(ctx, :dash, 1.0)
 	Cairo.rectangle(ctx, sel.bb)
 	Cairo.stroke(ctx)
 	Cairo.restore(ctx) #-----

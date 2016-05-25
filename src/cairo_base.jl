@@ -11,20 +11,6 @@
 
 #==Constants
 ===============================================================================#
-immutable CAlignment #Cairo alignment
-	v::Int
-end
-Base.|(a::CAlignment, b::CAlignment) = CAlignment(a.v|b.v)
-
-const ALIGN_LEFT = CAlignment(0)
-const ALIGN_HCENTER = CAlignment(1)
-const ALIGN_RIGHT = CAlignment(2)
-const ALIGN_HMASK = 0x3
-
-const ALIGN_BOTTOM = CAlignment(0)
-const ALIGN_VCENTER = CAlignment(4)
-const ALIGN_TOP = CAlignment(8)
-const ALIGN_VMASK = (0x3<<2)
 
 
 #==Main types
@@ -44,28 +30,21 @@ immutable CGlyph{GTYPE}; end #Dispatchable glyph object
 CGlyph(gtype::Symbol) = CGlyph{gtype}()
 
 
-#==Helper functions
+#==Basic rendering
 ===============================================================================#
 
-function _set_stylewidth(ctx::CairoContext, style::Symbol, linewidth::Float64)
+#Reset context to known state:
+function _reset(ctx::CairoContext)
+	Cairo.set_source(ctx, COLOR_BLACK)
+	Cairo.set_line_width(ctx, 1);
+	Cairo.set_dash(ctx, Float64[], 0)
+end
 
-	dashes = Float64[] #default (:solid)
-	offset = 0
-
-	if :none == style
-		linewidth = 0 #In case
-	elseif :dash == style
-		dashes = Float64[4,2]
-	elseif :dot == style
-		dashes = Float64[1,2]
-	elseif :dashdot == style
-		dashes = Float64[4,2,1,2]
-	elseif :solid != style
-		warn("Unrecognized line style: $style")
-	end
-
-	Cairo.set_line_width(ctx, linewidth);
-	Cairo.set_dash(ctx, dashes.*linewidth, offset)
+#Clears a rectangle-shaped area with a solid color
+function clear(ctx::CairoContext, bb::BoundingBox, color::Colorant=COLOR_WHITE)
+	Cairo.set_source(ctx, color)
+	Cairo.rectangle(ctx, bb)
+	fill(ctx)
 end
 
 
@@ -194,147 +173,12 @@ drawglyph(ctx::CairoContext, ::CGlyph{:larrow}, pt::Point2D, size::DReal) =
 drawglyph(ctx::CairoContext, ::CGlyph{:rarrow}, pt::Point2D, size::DReal) =
 	drawglyph_harrow(ctx, pt, size, 1)
 
-
-#==Basic rendering
-===============================================================================#
-
-#Reset context to known state:
-function _reset(ctx::CairoContext)
-	Cairo.set_source(ctx, COLOR_BLACK)
-	Cairo.set_line_width(ctx, 1);
-	Cairo.set_dash(ctx, Float64[], 0)
-end
-
-function clear(ctx::CairoContext, bb::BoundingBox, color::Colorant=COLOR_WHITE)
-	Cairo.set_source(ctx, color)
-	Cairo.rectangle(ctx, bb)
-	fill(ctx)
-end
-
-function _clip(ctx::CairoContext, bb::BoundingBox)
-	Cairo.rectangle(ctx, bb)
-	Cairo.clip(ctx)
-end
-
-#Draw a simple line on a CairoContext
-#-------------------------------------------------------------------------------
-function drawline(ctx::CairoContext, p1::Point2D, p2::Point2D)
-	Cairo.move_to(ctx, p1.x, p1.y)
-	Cairo.line_to(ctx, p2.x, p2.y)
-	Cairo.stroke(ctx)
-end
-
-
-#==Rendering text
-===============================================================================#
-function textoffset(t_ext::Array{Float64}, align::CAlignment)
-#=
-typedef struct {
-	double x_bearing, y_bearing;
-	double width, height;
-	double x_advance, y_advance;
-} cairo_text_extents_t;
-=#
-
-	halign = align.v & ALIGN_HMASK
-	_size = t_ext[3]; bearing = t_ext[1]
-	xoff = -bearing #ALIGN_LEFT
-
-	if ALIGN_HCENTER.v == halign
-		xoff -= _size/2
-	elseif ALIGN_RIGHT.v == halign
-		xoff -= _size
+function drawglyph_safe(ctx::CairoContext, wfrm::DWaveform, pt::Point2D)
+	if wfrm.glyph.shape != :none
+		_glyph = CGlyph(wfrm.glyph.shape)
+		gsize = Float64(wfrm.line.width*wfrm.glyph.size)
+		drawglyph(ctx, _glyph, pt, gsize)
 	end
-
-	valign = align.v & ALIGN_VMASK
-	_size = t_ext[4]; bearing = t_ext[2]
-	yoff = -bearing #ALIGN_TOP
-
-	if ALIGN_VCENTER.v == valign
-		yoff -= _size/2
-	elseif ALIGN_BOTTOM.v == valign
-		yoff -= _size
-	end
-
-	return tuple(xoff, yoff)
-end
-text_dims(t_ext::Array{Float64}) = tuple(t_ext[3], t_ext[4]) #w, h
-
-
-#Render text on a CairoContext
-#-------------------------------------------------------------------------------
-function setfont(ctx::CairoContext, font::Font)
-	const fontname = "Serif" #Sans, Serif, Fantasy, Monospace
-	const weight = font.bold? Cairo.FONT_WEIGHT_BOLD: Cairo.FONT_WEIGHT_NORMAL
-	const noitalic = Cairo.FONT_SLANT_NORMAL
-	Cairo.select_font_face(ctx, fontname, noitalic,	weight)
-	Cairo.set_font_size(ctx, font._size);
-end
-
-function render(ctx::CairoContext, t::DisplayString, pt::Point2D,
-	font::Font, align::CAlignment, angle::Float64, color::Colorant)
-	setfont(ctx, font)
-	t_ext = Cairo.text_extents(ctx, t)
-	(xoff, yoff) = textoffset(t_ext, align)
-
-	Cairo.save(ctx) #-----
-
-	Cairo.translate(ctx, pt.x, pt.y);
-	if angle != 0 #In case is a bit faster...
-		Cairo.rotate(ctx, angle*(pi/180));
-	end
-
-	Cairo.move_to(ctx, xoff, yoff);
-	Cairo.set_source(ctx, color)
-	Cairo.show_text(ctx, t);
-
-	Cairo.restore(ctx) #-----
-end
-render(ctx::CairoContext, t::AbstractString, pt::Point2D, font::Font;
-	align::CAlignment=ALIGN_BOTTOM|ALIGN_LEFT, angle::Real=0, color::Colorant=COLOR_BLACK) =
-	render(ctx, DisplayString(t), pt, font, align, Float64(angle), color)
-
-#Draws number as base, raised to a power (ex: 10^9):
-#-------------------------------------------------------------------------------
-function render_power(ctx::CairoContext, base::Int, val::DReal, pt::Point2D, font::Font, align::CAlignment)
-	const EXP_SCALE = 0.75
-	const EXP_SHIFT = 0.5
-	fontexp = deepcopy(font)
-	fontexp._size = font._size*EXP_SCALE
-
-	setfont(ctx, font)
-	tbase = @sprintf("%d", base)
-	(wbase, hbase) = text_dims(Cairo.text_extents(ctx, tbase))
-	setfont(ctx, fontexp)
-	texp = @sprintf("%0.0f", val)
-	(wexp, hexp) = text_dims(Cairo.text_extents(ctx, texp))
-
-	#Compute bounding box:
-	voffset_exp = EXP_SHIFT * hbase
-	w = wbase+wexp
-	h = max(hbase, voffset_exp+hexp)
-
-	halign = align.v & ALIGN_HMASK
-	xoff = 0 #ALIGN_LEFT
-	if ALIGN_HCENTER.v == halign
-		xoff -= w/2
-	elseif ALIGN_RIGHT.v == halign
-		xoff -= w
-	end
-
-	valign = align.v & ALIGN_VMASK
-	yoff = 0 #ALIGN_BOTTOM
-	if ALIGN_VCENTER.v == valign
-		yoff += h/2
-	elseif ALIGN_TOP.v == valign
-		yoff += h
-	end
-
-	pt = Point2D(pt.x + xoff, pt.y + yoff)
-	render(ctx, tbase, pt, font, align=ALIGN_LEFT|ALIGN_BOTTOM)
-
-	pt = Point2D(pt.x + wbase, pt.y - voffset_exp)
-	render(ctx, texp, pt, fontexp, align=ALIGN_LEFT|ALIGN_BOTTOM)
 end
 
 
@@ -379,7 +223,7 @@ end
 render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::AbstractGridLines) = nothing
 function render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::GridLines)
 	if lyt.grid.vmajor
-		_set_stylewidth(ctx, :dash, GRID_MAJOR_WIDTH)
+		setlinestyle(ctx, :dash, GRID_MAJOR_WIDTH)
 		Cairo.set_source(ctx, GRID_MAJOR_COLOR)
 		for xline in xlines.major
 			x = ptmap(xf, Point2D(xline, 0)).x
@@ -387,7 +231,7 @@ function render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 		end
 	end
 	if lyt.grid.vminor
-		_set_stylewidth(ctx, :dash, GRID_MINOR_WIDTH)
+		setlinestyle(ctx, :dash, GRID_MINOR_WIDTH)
 		Cairo.set_source(ctx, GRID_MINOR_COLOR)
 		for xline in xlines.minor
 			x = ptmap(xf, Point2D(xline, 0)).x
@@ -398,7 +242,7 @@ end
 render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::AbstractGridLines) = nothing
 function render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::GridLines)
 	if lyt.grid.hmajor
-		_set_stylewidth(ctx, :dash, GRID_MAJOR_WIDTH)
+		setlinestyle(ctx, :dash, GRID_MAJOR_WIDTH)
 		Cairo.set_source(ctx, GRID_MAJOR_COLOR)
 		for yline in ylines.major
 			y = ptmap(xf, Point2D(0, yline)).y
@@ -406,7 +250,7 @@ function render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 		end
 	end
 	if lyt.grid.hminor
-		_set_stylewidth(ctx, :dash, GRID_MINOR_WIDTH)
+		setlinestyle(ctx, :dash, GRID_MINOR_WIDTH)
 		Cairo.set_source(ctx, GRID_MINOR_COLOR)
 		for yline in ylines.minor
 			y = ptmap(xf, Point2D(0, yline)).y
@@ -515,7 +359,7 @@ function render(canvas::PCanvas2D, wfrm::DWaveform)
 	end
 
 	Cairo.set_source(ctx, wfrm.line.color)
-	_set_stylewidth(ctx, wfrm.line.style, Float64(wfrm.line.width))
+	setlinestyle(ctx, wfrm.line.style, Float64(wfrm.line.width))
 	pt = ptmap(canvas.xf, ds[1])
 	Cairo.move_to(ctx, pt.x, pt.y)
 	for i in 2:length(ds)
@@ -531,7 +375,7 @@ function render(canvas::PCanvas2D, wfrm::DWaveform)
 	#TODO: do not draw when outside graph extents.
 
 	#Draw symbols:
-	_set_stylewidth(ctx, :solid, Float64(wfrm.line.width))
+	setlinestyle(ctx, :solid, Float64(wfrm.line.width))
 	gsize = Float64(wfrm.glyph.size*wfrm.line.width)
 	for i in 1:length(ds)
 		pt = ptmap(canvas.xf, ds[i])
@@ -542,35 +386,5 @@ function render(canvas::PCanvas2D, wfrm::DWaveform)
 end
 render(canvas::PCanvas2D, wfrmlist::Vector{DWaveform}) =
 	map((w)->render(canvas, w), wfrmlist)
-
-
-#Render entire plot
-#-------------------------------------------------------------------------------
-function render(canvas::PCanvas2D, plot::Plot2D)
-	#Render annotation/axes
-	render(canvas, plot.annotation, plot.layout)
-
-	grid = gridlines(plot.axes, canvas.ext)
-	render_grid(canvas, plot.layout, grid)
-	#TODO: render axes first once drawing is multi-threaded.
-#	render_axes
-
-	#Plot actual data
-	Cairo.save(canvas.ctx)
-	_clip(canvas.ctx, canvas.graphbb)
-	render(canvas, plot.display_data)
-	Cairo.restore(canvas.ctx)
-
-	#Re-render axis over data:
-	render_axes(canvas, plot.layout, grid)
-end
-
-#Render entire plot within provided bounding box:
-function render(ctx::CairoContext, plot::Plot2D, bb::BoundingBox)
-	graphbb = graphbounds(bb, plot.layout)
-	update_ddata(plot) #Also computes new extents
-	canvas = PCanvas2D(ctx, bb, graphbb, getextents_xfrm(plot))
-	render(canvas, plot)
-end
 
 #Last line

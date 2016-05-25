@@ -73,10 +73,12 @@ else #Magnitude
 	plot_linf = InspectDR.Plot2D()
 		plot_linf.axes = InspectDR.axes(:lin, :dB20)
 		plot_linf.ext_full = InspectDR.PExtents2D(ymax=5)
+#		plot_linf.layout.legend.enabled=true
 	plot_logf = InspectDR.Plot2D()
 		plot_logf.axes = InspectDR.axes(:log10, :dB20)
 		plot_logf.ext_full = InspectDR.PExtents2D(xmin=10e6,ymax=5)
 		plot_logf.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
+		plot_logf.layout.legend.enabled=true
 
 	plotlist = [plot_linf, plot_logf]
 #	plotlist = [plot_logf]
@@ -84,7 +86,7 @@ else #Magnitude
 
 	for i in 1:length(Γload)
 		for plot in plotlist
-			wfrm = add(plot, f, Γload[i])
+			wfrm = add(plot, f, Γload[i], id="ZL=$(ZL[i])")
 			wfrm.line = line(color=_colors[i], width=1)
 		end
 	end

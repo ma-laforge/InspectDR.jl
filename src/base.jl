@@ -159,6 +159,7 @@ AxesSmith(t::Symbol; ref::Real=50) = AxesSmith{t}(ref)
 AxesSmith(t::Symbol, ref::Void) = AxesSmith(t)
 
 type Waveform{T}
+	id::DisplayString
 	ds::T
 	line::LineAttributes
 	glyph::GlyphAttributes
@@ -185,6 +186,20 @@ type Font
 end
 Font(_size::Real; bold::Bool=false) = Font(_size, bold)
 
+#Legend layout/style
+type LegendLStyle
+	enabled::Bool
+	#autosize::Bool Auto-compute width from text.
+	font::Font
+	#position: left/right/...
+	width::Float64
+	#border::Bool
+	#wborder
+	vgap::Float64 #Vertical spacing between (% of text height).
+	linegap::Float64 #Spacing between line and label (% of M character).
+	linelength::Float64 #length of line segment to display.
+end
+
 #Plot layout
 #TODO: Split Layout into "StyleInfo" - which includes Layout??
 type Layout
@@ -206,11 +221,13 @@ type Layout
 	fntticklabel::Font
 
 	grid::GridAttributes
+	legend::LegendLStyle
 end
 Layout() = Layout(20, 20, 20, 30, 60, 20, 2,
 	DEFAULT_DATA_WIDTH, DEFAULT_DATA_HEIGHT,
 	Font(14, bold=true), Font(14), Font(12),
-	GridAttributes(true, false, true, false)
+	GridAttributes(true, false, true, false),
+	LegendLStyle(false, Font(12), 100.0, .25, 0.5, 20)
 )
 
 #2D plot.
@@ -305,6 +322,8 @@ end
 Point(ds::IDataset, i::Int) = Point2D(ds.x[i], ds.y[i])
 Point(ds::Vector{Point2D}, i::Int) = ds[i]
 
+_width(style::LegendLStyle) = style.width
+
 
 #=="add" interface
 ===============================================================================#
@@ -316,10 +335,10 @@ end
 _add{T<:Plot}(mp::Multiplot, ::Type{T}) = _add(mp, T())
 
 
-function _add(plot::Plot2D, x::Vector, y::Vector)
+function _add(plot::Plot2D, x::Vector, y::Vector; id::AbstractString = "")
 	dataf1 = isincreasing(x) #Can we use optimizations?
 	ext = PExtents2D() #Don't care at the moment
-	ds = IWaveform(IDataset{dataf1}(x, y), line(), glyph(), ext)
+	ds = IWaveform(id, IDataset{dataf1}(x, y), line(), glyph(), ext)
 	push!(plot.data, ds)
 	return ds
 end
@@ -450,6 +469,10 @@ function graphbounds(plotb::BoundingBox, lyt::Layout)
 	xmax = plotb.xmax - lyt.wnolabels
 	ymin = plotb.ymin + lyt.htitle
 	ymax = plotb.ymax - lyt.haxlabel - lyt.hticklabel
+
+	if lyt.legend.enabled
+		xmax = plotb.xmax - _width(lyt.legend)
+	end
 
 	#Avoid division by zero, inversions, ...
 	if xmin >= xmax
@@ -591,7 +614,7 @@ function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
 end
 
 function _reduce(input::IWaveform, ext::PExtents2D, xres_max::Integer)
-	return DWaveform(_reduce(input.ds, ext, xres_max), input.line, input.glyph, input.ext)
+	return DWaveform(input.id, _reduce(input.ds, ext, xres_max), input.line, input.glyph, input.ext)
 end
 
 _reduce(inputlist::Vector{IWaveform}, ext::PExtents2D, xres_max::Integer) =
@@ -616,7 +639,7 @@ _rescale{T<:IDataset}(input::T, xscale::AxisScale, yscale::AxisScale) =
 
 function _rescale(input::IWaveform, xscale::AxisScale, yscale::AxisScale)
 	ds = _rescale(input.ds, xscale, yscale)
-	return IWaveform(ds, input.line, input.glyph, getextents(ds))
+	return IWaveform(input.id, ds, input.line, input.glyph, getextents(ds))
 end
 
 #Specialized on xscale/yscale for efficiency:
