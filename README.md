@@ -15,9 +15,9 @@ Despite their great quality, most current Julia plotting options are still eithe
 
 ### Features/Highlights
 
-#### Box Zoom
+#### Responsive
 
-Use right mouse button to select new extents for plot.
+Quick to first plot, and easy to navigate data using supported [mouse/keybindings](#Bindings)
 
 #### "F1" Acceleration
 
@@ -41,19 +41,83 @@ Examples of of such plots (where x-values are not guaranteed to be sorted) inclu
  - Lissajous plots
  - S-Parameter Plots
 
-#### Keybindings
+<a name="Bindings"></a>
+#### Mouse/Keybindings
 
 InspectDR.jl supports keybindings to improve/accelerate user control.  The following table lists supported bindings:
 
 | Function | Key |
-| -------- | :---: |
+| -------: | :---: |
 | Zoom out to full extents | `f` |
+| Box zoom (in) | `right-click` + `mousemove`|
 | Zoom in / zoom out | `+` / `-` |
 | Zoom in / zoom out | `CTRL` + `mousewheel`|
 | Pan up / pan down | &uArr; / &dArr; |
 | Pan up / pan down | `mousewheel` |
 | Pan left / pan right | &lArr; / &rArr; |
 | Pan left / pan right | `SHIFT` + `mousewheel`|
+
+## Select Documentation
+
+Note that many types & functions are not exported from InspectDR in order to avoid namespace pollution.  That being said, the module name will often be omitted below in an attempt to improve readability.
+
+### Plot Objects
+
+Principal objects:
+
+ - **`InspectDR.Plot`**: An abstract plot object.
+ - **`InspectDR.Plot2D <: Plot`**:  A 2D plot object.  Construct empty 2D plot using `InspectDR.Plot2D()`.
+ - **`InspectDR.Multiplot`**:  A multi-plot object.  Construct empty multi-plot using: `InspectDR.Multiplot()`.
+
+#### Displaying plots
+
+InspectDR provides the `GtkDisplay` object derived from `Base.Multimedia.Display`.  `GtkDisplay` is used in combination with `Base.display()`, to spawn a new instance of a GTK-based GUI.
+
+To display a single `plot::Plot` object, one simply calls:
+```
+display(InspectDR.GtkDisplay(), plot)
+```
+
+Similarly, to display `mplot::Multiplot` object, one calls:
+```
+display(InspectDR.GtkDisplay(), mplot)
+```
+
+### Axis Scales
+
+The X/Y scales of a `Plot2D` object can independently be selected to be one of the following:
+
+ - `:lin`
+ - `:log10`, `:log` (= `:log10`)
+ - `:dB20`, `:dB10`
+
+In order to display `plot::Plot2D` using semilog-x scales, one would set:
+```
+plot.axes = InspectDR.axes(:log10, :lin).
+```
+
+### Layout/Plot Style
+
+Until a proper API is defined, one is encouraged to look at the `Layout` object to alter how plots are displayed:
+```
+?InspectDR.Layout
+```
+
+#### Legends
+
+At this point in time, legends have limited configurability.  When displayed, legends will consume fixed horizontal real-estate.  The idea is to display a large number of labels without hiding the data area.
+
+In order to display the legend of a `plot::Plot2D` object, one would set:
+```
+plot.layout.legend.enabled = true
+```
+
+
+Until a proper API is defined, one is encouraged to look at the `LegendLStyle` object to alter how legends are displayed:
+```
+?InspectDR.LegendLStyle
+```
+
 
 <a name="SampleUsage"></a>
 ## Sample Usage
@@ -66,8 +130,8 @@ Sample code to construct InspectDR objects can be found [here](sample/).
  - Documentation is a bit limited at the moment.  See [Sample Usage](#SampleUsage) to learn from examples.
  - API is still a bit rough.  User often has to manipulate data structures directly.
  - Tick labels need to be improved (# of decimal places, ...).
- - Only generates basic annotations. Needs legends, ...
- - Does not yet support many axis scales (only linear, log10 & dB20).
+ - Legends not very configurable (currently optimized to display many labels @ cost of horizontal real-estate).
+ - Does not yet support many axis scales.
  - Does not yet render plot data in separate thread (will improve interactive experience with large datasets).
  - Mouse events currently function even outside data area (a bit odd).
 
