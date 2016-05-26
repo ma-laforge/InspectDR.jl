@@ -6,10 +6,12 @@ The following lists various desired ways to display axis scales & labels.
 
 ### Config: Display compact (maxdigits = M)
  - Only use scientific notation when # digits exceeds M.
+
 ### Config: Display scientific/engineering/SI
  - Ticks scientific: (1x10^6, 1x10^7, 1x10^8, 1x10^9)
  - Ticks engineering: (1x10^6, 10x10^6, 100x10^6, 1x10^9)
  - Ticks SI: (1M, 10M, 100M, 1G)
+
 ### Config: Display common axis factor, F
  - Ticks F native (F=1): (1x10^6, 5x10^7, 1x10^8, 1.5x10^8)
  - Ticks F user defined (F=10^9): (.001, .05, .1, .15) x10^9
