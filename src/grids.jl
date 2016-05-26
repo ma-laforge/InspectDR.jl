@@ -52,6 +52,9 @@ end
 abstract PlotGrid
 
 type GridSmith <: PlotGrid
+	majorR::Vector{DReal} #Major constant resistance/admittance circles
+	minorR::Vector{DReal} #Minor constant resistance/admittance circles
+	minorX::Vector{DReal} #Minor constant reactance circles
 end
 
 #Curvilinear grid (ex: polar plots):
@@ -205,5 +208,13 @@ function gridlines(axes::AxesRect, ext::PExtents2D)
 	return GridRect(xlines, ylines)
 end
 
+function gridlines(axes::AxesSmith, ext::PExtents2D)
+	#TODO: make grid lines user-selectable
+	#TODO: change with ext??
+	majorR = DReal[0, 1]
+	minorR = DReal[0.2, 0.4, 0.6, 0.8, 1.5, 2, 3, 4, 6, 10, 20]
+	minorX = DReal[0.2, 0.4, 0.6, 0.8, 1, 1.5, 2, 3, 4, 6, 10, 20]
+	return GridSmith(majorR, minorR, minorX)
+end
 
 #Last line

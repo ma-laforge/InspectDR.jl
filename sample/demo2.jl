@@ -55,49 +55,44 @@ end
 #==Generate plot
 ===============================================================================#
 mplot = InspectDR.Multiplot()
+mplot.ncolumns = 2
 
-if false #"Smith plot"
-	plot = add(mplot, InspectDR.Plot2D)
-		a = plot.annotation
-		a.title = "Smith plot"
+plot_linf = InspectDR.Plot2D()
+	plot_linf.axes = InspectDR.axes(:lin, :dB20)
+	plot_linf.ext_full = InspectDR.PExtents2D(ymax=5)
+#	plot_linf.layout.legend.enabled=true
+plot_logf = InspectDR.Plot2D()
+	plot_logf.axes = InspectDR.axes(:log10, :dB20)
+	plot_logf.ext_full = InspectDR.PExtents2D(xmin=10e6,ymax=5)
+	plot_logf.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
+plot_smith = InspectDR.Plot2D()
+	plot_smith.axes = InspectDR.axes(:smith)
+	plot_smith.ext_full = InspectDR.PExtents2D(xmin=-1.1,xmax=1.1,ymin=-1.1,ymax=1.1)
+	plot_smith.layout.legend.enabled=true
 
-	i = 1
+for plot in [plot_linf, plot_logf]
+	a = plot.annotation
+	a.title = "Reflection Coefficient (Γ)"
+	a.xlabel = "Frequency (Hz)"
+	a.ylabel = "Magnitude (dB)"
+end
+
+a = plot_smith.annotation
+	a.title = "Smith Plot"
+	a.xlabel = "Real(Γ)"
+	a.ylabel = "Imaginary(Γ)"
+
+#Select which plots to actually display:
+plotlist = [plot_linf, plot_logf, plot_smith]
+#plotlist = [plot_smith]
+
+for plot in plotlist
 	for i in 1:length(Γload)
-		wfrm = add(plot, real(Γload[i]), imag(Γload[i]))
-		wfrm.line = line(color=_colors[i], width=1)
+		wfrm = add(plot, f, Γload[i], id="ZL=$(ZL[i])")
+		wfrm.line = line(color=_colors[i], width=2)
 	end
 
-	plot.ext_full = InspectDR.PExtents2D(xmin=-1,xmax=1,ymin=-1,ymax=1)
-else #Magnitude
-	mplot.ncolumns = 2
-	plot_linf = InspectDR.Plot2D()
-		plot_linf.axes = InspectDR.axes(:lin, :dB20)
-		plot_linf.ext_full = InspectDR.PExtents2D(ymax=5)
-#		plot_linf.layout.legend.enabled=true
-	plot_logf = InspectDR.Plot2D()
-		plot_logf.axes = InspectDR.axes(:log10, :dB20)
-		plot_logf.ext_full = InspectDR.PExtents2D(xmin=10e6,ymax=5)
-		plot_logf.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
-		plot_logf.layout.legend.enabled=true
-
-	plotlist = [plot_linf, plot_logf]
-#	plotlist = [plot_logf]
-#	plotlist = [plot_linf]
-
-	for i in 1:length(Γload)
-		for plot in plotlist
-			wfrm = add(plot, f, Γload[i], id="ZL=$(ZL[i])")
-			wfrm.line = line(color=_colors[i], width=1)
-		end
-	end
-
-	for plot in plotlist
-		add(mplot, plot)
-		a = plot.annotation
-		a.title = "Reflection Coefficient (Γ)"
-		a.xlabel = "Frequency (Hz)"
-		a.ylabel = "Magnitude (dB)"
-	end
+	add(mplot, plot)
 end
 
 gplot = display(InspectDR.GtkDisplay(), mplot)

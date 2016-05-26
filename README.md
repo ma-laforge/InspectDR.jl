@@ -39,7 +39,15 @@ Examples of of such plots (where x-values are not guaranteed to be sorted) inclu
 
  - Nyquist plots
  - Lissajous plots
- - S-Parameter Plots
+ - S-Parameter (Smith/polar) plots
+
+#### Smith plots
+
+InpsectDR can generate Smith plots by specifying axes as `:smith`:
+
+```
+plot.axes = InspectDR.axes(:smith)
+```
 
 <a name="Bindings"></a>
 #### Mouse/Keybindings
@@ -56,6 +64,7 @@ InspectDR.jl supports keybindings to improve/accelerate user control.  The follo
 | Pan up / pan down | `mousewheel` |
 | Pan left / pan right | &lArr; / &rArr; |
 | Pan left / pan right | `SHIFT` + `mousewheel`|
+| Pan anywhere | (`SHIFT` + `left-click`) + `mousemove` |
 
 ## Select Documentation
 
@@ -68,6 +77,23 @@ Principal objects:
  - **`InspectDR.Plot`**: An abstract plot object.
  - **`InspectDR.Plot2D <: Plot`**:  A 2D plot object.  Construct empty 2D plot using `InspectDR.Plot2D()`.
  - **`InspectDR.Multiplot`**:  A multi-plot object.  Construct empty multi-plot using: `InspectDR.Multiplot()`.
+
+Subplots (`T<:Plot`) are added to a multi-plot object using the `add()` method:
+```
+mplot = InspectDR.Multiplot()
+plot1 = InspectDR.Plot2D()
+plot2 = InspectDR.Plot2D()
+
+add(mplot, plot1)
+add(mplot, plot2)
+```
+
+Similarly, the `add()` method adds waveforms to plots/subplots:
+```
+wfrm = add(plot1, x, y, id="Waveform label")
+```
+
+**WARNING:** Only `Vector` data can be added (`AbstractVector`/`Range` not currently supported).
 
 #### Displaying plots
 
@@ -134,6 +160,9 @@ Sample code to construct InspectDR objects can be found [here](sample/).
  - Does not yet support many axis scales.
  - Does not yet render plot data in separate thread (will improve interactive experience with large datasets).
  - Mouse events currently function even outside data area (a bit odd).
+ - Mouse cursor does not change as user switches mousemodes (ex: drag icon, cross-hairs, ...).
+ - Smith plots are not yet constrained to square aspect ratios.
+
 
 ### Compatibility
 

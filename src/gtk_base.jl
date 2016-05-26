@@ -65,8 +65,10 @@ abstract InputState #Identifies current user input state.
 type GtkSelection
 	enabled::Bool
 	bb::BoundingBox
+	ext_start::PExtents2D #Exetents @ start of operation
+	#Store ext_start to avoid accumulation of numerical errors.
 end
-GtkSelection() = GtkSelection(false, BoundingBox(0,0,0,0))
+GtkSelection() = GtkSelection(false, BoundingBox(0,0,0,0), PExtents2D())
 
 type GtkPlot
 	widget::_Gtk.Box #Base widget

@@ -116,11 +116,12 @@ function setfont(ctx::CairoContext, font::Font)
 	const weight = font.bold? Cairo.FONT_WEIGHT_BOLD: Cairo.FONT_WEIGHT_NORMAL
 	const noitalic = Cairo.FONT_SLANT_NORMAL
 	Cairo.select_font_face(ctx, fontname, noitalic,	weight)
-	Cairo.set_font_size(ctx, font._size);
+	Cairo.set_font_size(ctx, font._size)
 end
 
 #Render text using "advanced" properties.
 #-------------------------------------------------------------------------------
+#angle: radians
 function render(ctx::CairoContext, t::DisplayString, pt::Point2D,
 	align::CAlignment, angle::Float64, color::Colorant)
 	t_ext = Cairo.text_extents(ctx, t)
@@ -128,14 +129,14 @@ function render(ctx::CairoContext, t::DisplayString, pt::Point2D,
 
 	Cairo.save(ctx) #-----
 
-	Cairo.translate(ctx, pt.x, pt.y);
+	Cairo.translate(ctx, pt.x, pt.y)
 	if angle != 0 #In case is a bit faster...
-		Cairo.rotate(ctx, angle*(pi/180));
+		Cairo.rotate(ctx, angle)
 	end
 
-	Cairo.move_to(ctx, xoff, yoff);
+	Cairo.move_to(ctx, xoff, yoff)
 	Cairo.set_source(ctx, color)
-	Cairo.show_text(ctx, t);
+	Cairo.show_text(ctx, t)
 
 	Cairo.restore(ctx) #-----
 end

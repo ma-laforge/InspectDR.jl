@@ -155,7 +155,7 @@ function boxzoom_setend(gplot::GtkPlot, x::Float64, y::Float64)
 end
 
 
-#==Pan control
+#==Basic pan control
 ===============================================================================#
 function pan_xratio(gplot::GtkPlot, panstepratio::Float64)
 	ext = getextents_xfrm(gplot.src)
@@ -184,5 +184,40 @@ pan_right(gplot::GtkPlot) = pan_xratio(gplot, PAN_STEPRATIO)
 pan_up(gplot::GtkPlot) = pan_yratio(gplot, PAN_STEPRATIO)
 pan_down(gplot::GtkPlot) = pan_yratio(gplot, -PAN_STEPRATIO)
 
+
+#==Mouse-pan control
+===============================================================================#
+#Δy/Δy: in device coordinates
+function mousepan_delta(gplot::GtkPlot, ext::PExtents2D, Δx::Float64, Δy::Float64)
+	#Convert to plot coordinates:
+	xf = Transform2D(ext, gplot.graphbb)
+	Δvec = vecmap_rev(xf, Point2D(-Δx, -Δy))
+
+	setextents_xfrm(gplot.src, PExtents2D(
+		ext.xmin+Δvec.x, ext.xmax+Δvec.x,
+		ext.ymin+Δvec.y, ext.ymax+Δvec.y
+	))
+	scalectrl_enabled(gplot, false) #Scroll bar control no longer valid
+	render(gplot)
+	Gtk.draw(gplot.canvas)
+end
+function mousepan_setstart(gplot::GtkPlot, x::Float64, y::Float64)
+	gplot.sel.bb = BoundingBox(x, x, y, y) #Tracks start/end pos
+	gplot.sel.ext_start = getextents_xfrm(gplot.src)
+end
+function mousepan_cancel(gplot::GtkPlot)
+	mousepan_delta(gplot, gplot.sel.ext_start, 0.0, 0.0)
+end
+function mousepan_complete(gplot::GtkPlot, x::Float64, y::Float64)
+	#Already panned.
+end
+#Set new point of mousepan operation:
+function mousepan_move(gplot::GtkPlot, x::Float64, y::Float64)
+	bb = gplot.sel.bb
+	bb = BoundingBox(bb.xmin, x, bb.ymin, y)
+	gplot.sel.bb = bb
+	Δx = bb.xmax-bb.xmin; Δy = bb.ymax-bb.ymin
+	mousepan_delta(gplot, gplot.sel.ext_start, Δx, Δy)
+end
 
 #Last line

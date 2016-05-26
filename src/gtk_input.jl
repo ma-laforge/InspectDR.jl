@@ -25,6 +25,7 @@ typealias KeyMap Dict{Int, Function}
 #User input states
 immutable ISNormal <: InputState; end
 immutable ISSelectingArea <: InputState; end
+immutable ISPanningData <: InputState; end #Typically with mouse
 
 type KeyBindings
 	nomod::KeyMap
@@ -117,6 +118,11 @@ function handleevent_mousepress(::ISNormal, gplot::GtkPlot, event::Gtk.GdkEventB
 	if 3==event.button
 		boxzoom_setstart(gplot, event.x, event.y)
 		gplot.state = ISSelectingArea()
+	elseif 1==event.button
+		if modifiers_pressed(event.state, MODIFIER_SHIFT)
+			mousepan_setstart(gplot, event.x, event.y)
+			gplot.state = ISPanningData()
+		end
 	end
 
 	focus(gplot.widget) #In case not in focus
@@ -139,6 +145,24 @@ function handleevent_mouserelease(::ISSelectingArea, gplot::GtkPlot, event::Gtk.
 end
 handleevent_mousemove(::ISSelectingArea, gplot::GtkPlot, event::Gtk.GdkEventMotion) =
 	boxzoom_setend(gplot, event.x, event.y)
+
+
+#==State: Mouse pan
+===============================================================================#
+function handleevent_keypress(::ISPanningData, gplot::GtkPlot, event::Gtk.GdkEventKey)
+	if GdkKeySyms.Escape == event.keyval
+		mousepan_cancel(gplot)
+		gplot.state = ISNormal()
+	end
+end
+function handleevent_mouserelease(::ISPanningData, gplot::GtkPlot, event::Gtk.GdkEventButton)
+	if 1==event.button
+		mousepan_complete(gplot, event.x, event.y)
+		gplot.state = ISNormal()
+	end
+end
+handleevent_mousemove(::ISPanningData, gplot::GtkPlot, event::Gtk.GdkEventMotion) =
+	mousepan_move(gplot, event.x, event.y)
 
 
 #==Key bindings

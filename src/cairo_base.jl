@@ -47,6 +47,14 @@ function clear(ctx::CairoContext, bb::BoundingBox, color::Colorant=COLOR_WHITE)
 	fill(ctx)
 end
 
+#Apply transform to Cairo (when easier to do so):
+function setxfrm(ctx::CairoContext, xf::Transform2D)
+	xorig = xf.x0*xf.xs
+	yorig = xf.y0*xf.ys
+	Cairo.translate(ctx, xorig, yorig)
+	Cairo.scale(ctx, xf.xs, xf.ys)
+end
+
 
 #==Rendering Glyphs
 ===============================================================================#
@@ -205,7 +213,7 @@ function render(canvas::PCanvas2D, a::Annotation, lyt::Layout)
 
 	#Y-axis
 	pt = Point2D(bb.xmin+lyt.waxlabel/2, ycenter)
-	render(ctx, a.ylabel, pt, lyt.fntaxlabel, align=ALIGN_HCENTER|ALIGN_VCENTER, angle=-90)
+	render(ctx, a.ylabel, pt, lyt.fntaxlabel, align=ALIGN_HCENTER|ALIGN_VCENTER, angle=-π/2)
 end
 
 #Render frame around graph
@@ -291,7 +299,7 @@ function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	ylabel = graphbb.ymax + lyt.hticklabel / 2
 	for xtick in xlines.major
 		x = ptmap(xf, Point2D(xtick, 0)).x
-		render_ticklabel(ctx, xtick, Point2D(x, ylabel), lyt.fntaxlabel, ALIGN_HCENTER|ALIGN_VCENTER, xlines.scale)
+		render_ticklabel(ctx, xtick, Point2D(x, ylabel), lyt.fntticklabel, ALIGN_HCENTER|ALIGN_VCENTER, xlines.scale)
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
 	end
 	for xtick in xlines.minor
@@ -304,7 +312,7 @@ function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	xlabel = graphbb.xmin - 2 #TODO: offset by with of graphframe?
 	for ytick in ylines.major
 		y = ptmap(xf, Point2D(0, ytick)).y
-		render_ticklabel(ctx, ytick, Point2D(xlabel, y), lyt.fntaxlabel, ALIGN_RIGHT|ALIGN_VCENTER, ylines.scale)
+		render_ticklabel(ctx, ytick, Point2D(xlabel, y), lyt.fntticklabel, ALIGN_RIGHT|ALIGN_VCENTER, ylines.scale)
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
 	end
 	for ytick in ylines.minor
@@ -319,7 +327,7 @@ function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	yframe = graphbb.ymax
 	ylabel = graphbb.ymax + lyt.hticklabel / 2
 	for (x, xlabel) in [(graphbb.xmin, xlines.minline), (graphbb.xmax, xlines.maxline)]
-		render_ticklabel(ctx, xlabel, Point2D(x, ylabel), lyt.fntaxlabel, ALIGN_HCENTER|ALIGN_VCENTER, AxisScale{:lin}())
+		render_ticklabel(ctx, xlabel, Point2D(x, ylabel), lyt.fntticklabel, ALIGN_HCENTER|ALIGN_VCENTER, AxisScale{:lin}())
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
 	end
 end
@@ -327,7 +335,7 @@ function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	xframe = graphbb.xmin
 	xlabel = graphbb.xmin - 2 #TODO: offset by with of graphframe?
 	for (y, ylabel) in [(graphbb.ymax, ylines.minline), (graphbb.ymin, ylines.maxline)]
-		render_ticklabel(ctx, ylabel, Point2D(xlabel, y), lyt.fntaxlabel, ALIGN_RIGHT|ALIGN_VCENTER, AxisScale{:lin}())
+		render_ticklabel(ctx, ylabel, Point2D(xlabel, y), lyt.fntticklabel, ALIGN_RIGHT|ALIGN_VCENTER, AxisScale{:lin}())
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
 	end
 end

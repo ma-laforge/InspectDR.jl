@@ -23,4 +23,14 @@ end
 
 isincreasing(r::Range) = (step(r) > 0)
 
+#==Basic operations
+===============================================================================#
+
+#Safe version of extrema (returns DNaN on error):
+function extrema_nan(v::Vector)
+	try
+		return extrema(v)
+	end
+	return (DNaN, DNaN)
+end
 #Last line

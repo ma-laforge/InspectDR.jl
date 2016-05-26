@@ -5,6 +5,7 @@
 #TODO: Themes: Define StyleInfo/style?
 #TODO: Themes: Vector/Dict of StyleInfo/Layout?
 
+
 #==Abstracts
 ===============================================================================#
 abstract Plot
@@ -14,9 +15,6 @@ abstract PlotCanvas
 #==Aliases
 ===============================================================================#
 typealias NullOr{T} Union{Void, T}
-
-#Real data type used for display functionnality (low-level):
-typealias DReal Float64
 
 
 #==Constants
@@ -34,52 +32,11 @@ const COLOR_GREEN = RGB24(0, 1, 0)
 const COLOR_BLUE = RGB24(0, 0, 1)
 
 
-#==Low-level data structures.
-===============================================================================#
-
-#TODO: Use library version?
-abstract Point #So we can use as a function
-immutable Point2D <: Point
-	x::DReal
-	y::DReal
-end
-
-#Could use BoundingBox, but cannot control type (and is technically not a BB).
-immutable PExtents2D
-	xmin::DReal
-	xmax::DReal
-	ymin::DReal
-	ymax::DReal
-end
-PExtents2D(;xmin::Real=DNaN, xmax::Real=DNaN, ymin::Real=DNaN, ymax::Real=DNaN) =
-	PExtents2D(xmin, xmax, ymin, ymax)
-
-#Transform used for Canvas2D/CanvasF1 (only scale/offset - no rotation).
-#xd = (xs + x0) * xu
-#yd = (ys + y0) * yu
-#where: xu/yu: user coordinates & xd/yd: device coordinates
-#NOTE: Format used instead of xs*xu + x0 for improved numeric stability?
-#TODO: Does immutable cause copy on function calls instead of using pointers??
-immutable Transform2D
-	xs::DReal
-	x0::DReal
-	ys::DReal
-	y0::DReal
-end
-
-
 #==Plot-level structures
 ===============================================================================#
 #=Input structures are high-level constructs describing the plot.  They will
 be broken down to lower-level structures later on.
 =#
-
-#Input dataset data:
-#TODO: make x an immutable (read-only) type so data cannot be changed once identified.
-type IDataset{DATAF1} #DATAF1::Bool: Data is function of 1 argument (optimization possible)
-	x::Vector
-	y::Vector
-end
 
 type LineAttributes <: AttributeList
 	style
@@ -172,6 +129,11 @@ typealias IWaveform Waveform{IDataset}
 #Display waveform (concrete (x, y) pair):
 typealias DWaveform Waveform{Vector{Point2D}}
 
+#=TODO:
+typealias DWaveformCplx Waveform{PointComplex}
+to track x-values of complex data??
+=#
+
 type Annotation
 	title::DisplayString
 	xlabel::DisplayString
@@ -263,22 +225,8 @@ end
 Multiplot(;ncolumns::Int = 1) = Multiplot(ncolumns, [])
 
 
-#==More constructors
+#==Constructor-like functions
 ===============================================================================#
-#=Inputs
- -ext: Visible plot extents
- -inputb: Bounding box of display area.
-NOTE:
- -Assumes device y-coordinate increases as we descend on the screen.
-=#
-function Transform2D(ext::PExtents2D, inputb::BoundingBox)
-	xs = (inputb.xmax-inputb.xmin) / (ext.xmax-ext.xmin)
-	ys = -(inputb.ymax-inputb.ymin) / (ext.ymax-ext.ymin)
-	x0 = + inputb.xmin/xs - ext.xmin
-	y0 = + inputb.ymax/ys - ext.ymin
-
-	return Transform2D(xs, x0, ys, y0)
-end
 
 #axes function:
 #Interface is a bit irregular, but should be easy to use...
@@ -318,11 +266,16 @@ end
 
 #==Accessors
 ===============================================================================#
-
-Point(ds::IDataset, i::Int) = Point2D(ds.x[i], ds.y[i])
-Point(ds::Vector{Point2D}, i::Int) = ds[i]
-
 _width(style::LegendLStyle) = style.width
+
+getextents(d::IWaveform) = getextents(d.ds)
+function getextents(dlist::Vector{IWaveform})
+	result = PExtents2D(DNaN, DNaN, DNaN, DNaN)
+	for d in dlist
+		result = union(result, d.ext)
+	end
+	return result
+end
 
 
 #=="add" interface
@@ -369,41 +322,8 @@ extentsmap_rev(t::AxisScale{:log2}) = (x::DReal)->(2^x)
 extentsmap_rev(t::AxisScale{:log10}) = (x::DReal)->(10^x)
 
 
-#Apply transform that maps a data point to the canvas
-#-------------------------------------------------------------------------------
-function ptmap(xf::Transform2D, pt::Point2D)
-	x = (pt.x + xf.x0)*xf.xs
-	y = (pt.y + xf.y0)*xf.ys
-	return Point2D(x, y)
-end
-function ptmap_rev(xf::Transform2D, pt::Point2D)
-	x = pt.x/xf.xs - xf.x0
-	y = pt.y/xf.ys - xf.y0
-	return Point2D(x, y)
-end
-
-#Interpolate between two points.
-#-------------------------------------------------------------------------------
-function interpolate(p1::Point2D, p2::Point2D, x::DReal)
-	m = (p2.y-p1.y) / (p2.x-p1.x)
-	return m*(x-p1.x)+p1.y
-end
-
-
 #==Plot extents
 ===============================================================================#
-
-#Overwrite with new extents, if defined
-#-------------------------------------------------------------------------------
-function Base.merge(base::PExtents2D, new::PExtents2D)
-	#Pick maximum extents 
-	baseifnan(bv, nv) = isnan(nv)? bv: nv
-	xmin = baseifnan(base.xmin, new.xmin)
-	xmax = baseifnan(base.xmax, new.xmax)
-	ymin = baseifnan(base.ymin, new.ymin)
-	ymax = baseifnan(base.ymax, new.ymax)
-	return PExtents2D(xmin, xmax, ymin, ymax)
-end
 
 function invalidate_extents(plot::Plot2D)
 	#If extents are no longer valid, neither is display cache:
@@ -455,10 +375,6 @@ function setextents_full(plot::Plot2D, ext::PExtents2D)
 	plot.ext_full = ext
 end
 
-Base.isfinite(ext::PExtents2D) =
-	isfinite(ext.xmin) && isfinite(ext.xmax) &&
-	isfinite(ext.ymin) && isfinite(ext.ymax)
-
 
 #==Plot/graph bounding boxes
 ===============================================================================#
@@ -502,116 +418,6 @@ plotbounds(lyt::Layout) = plotbounds(lyt, lyt.wdata, lyt.hdata)
 
 #==Pre-processing display data
 ===============================================================================#
-
-#_reduce: Obtain reduced dataset by limiting to the extents & max resolution:
-#-------------------------------------------------------------------------------
-#Generic algorithm... Just transfer all data for now
-#    xres_max: Max number of x-points in data window.
-#TODO: clip data beyond extents.
-#WARNING: not clipping might cause display issues when applying the transform
-function _reduce(input::IDataset, ext::PExtents2D, xres_max::Integer)
-	x = input.x; y = input.y
-	n_ds = length(x) #numer of points of input dataset
-	result = Array(Point2D, n_ds)
-	for i in 1:n_ds
-		result[i] = Point2D(x[i], y[i])
-	end
-	return result
-end
-
-#Optimized for functions of 1 argument:
-#    xres_max: Max number of x-points in data window.
-function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
-	xres = (ext.xmax - ext.xmin)/ xres_max
-	const min_lookahead = 2
-	const thresh_xres = (min_lookahead+1)*xres
-	x = input.x; y = input.y
-	n_ds = length(x) #numer of points of input dataset
-	sz = min(n_ds, xres_max)+4 #Add 4 pts, just in case (TODO: fix)
-	result = Array(Point2D, sz)
-	n = 0 #Number of points in reduced dataset
-	i = 1 #Index into input dataset
-
-	if length(x) != length(y)
-		error("x & y - vector length mismatch.")
-	elseif length(x) < 1
-		resize!(result, 0)
-		return result
-	end
-
-	#Discard data before visible extents:
-	while i < n_ds
-		if x[i] > ext.xmin; break; end
-		i+=1
-	end
-
-	i = max(i-1, 1)
-	lastx = x[i]
-	lasty = y[i]
-	n+=1
-	result[n] = Point2D(lastx, lasty)
-	i+=1
-
-	while i <= n_ds
-		if lastx >= ext.xmax; break; end
-		xthresh = min(lastx+thresh_xres, ext.xmax)
-		ilahead_start = i+min_lookahead
-		ilahead = min(ilahead_start, n_ds)
-		while ilahead < n_ds
-			if x[ilahead] >= xthresh; break; end
-			ilahead += 1
-		end
-
-		#@assert(ilahead<=nds)
-
-		if ilahead > ilahead_start #More data than xres allows
-			#TODO: make this a function??
-			#"Internal limits":
-			(ymin_i, ymax_i) = extrema(y[i:(ilahead-1)])
-			p1 = Point2D(x[ilahead-1], y[ilahead-1])
-			p2 = Point2D(x[ilahead], y[ilahead])
-			nexty = interpolate(p1, p2, xthresh)
-
-			#"External limits:
-			(ymin, ymax) = minmax(lasty, nexty)
-
-			#Add points representing "internal limits"
-			#(if they exceed external):
-			yint = [ymin_i, ymax_i]
-			ysel = Bool[false, false]
-			ysel[1] = ymin_i < ymin
-			ysel[2] = ymax_i > ymax
-#ysel = Bool[true, true] #Debug: add points no matter what
-			curx = lastx + 1.5*xres #TODO: resize to have steps of 1xres?
-#@show ilahead-i
-			offset = lasty < nexty ?0 :1 #Add min or max first??
-			for j in (offset+(1:2))
-				idx = 1+(j&0x1)
-				if !ysel[idx]; continue; end #Only add points if desired
-				n+=1;
-				result[n] = Point2D(curx,yint[idx])
-			end
-			#Done adding points
-
-			n+=1;
-			lastx = xthresh
-			lasty = nexty
-			result[n] = Point2D(lastx, lasty)
-			i = ilahead
-		else #Plot actual data points
-			while i <= ilahead
-				n += 1
-				lastx = x[i]
-				lasty = y[i]
-				result[n] = Point2D(lastx, lasty)
-				i += 1
-			end
-		end
-	end
-
-	resize!(result, n)
-	return result
-end
 
 function _reduce(input::IWaveform, ext::PExtents2D, xres_max::Integer)
 	return DWaveform(input.id, _reduce(input.ds, ext, xres_max), input.line, input.glyph, input.ext)
