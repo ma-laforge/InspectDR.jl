@@ -56,10 +56,11 @@ Edge width & color taken from LineAttributes
 ==#
 	shape #because "type" is reserved
 	size #of glyph.  edge width taken from LineAttributes
-	color #Fill color.  Do not set to leave unfilled.
+	color #glyph linecolor. = nothing to match line.color
+	fillcolor
 end
-glyph(;shape=:none, size=3, color=COLOR_TRANSPARENT) =
-	GlyphAttributes(shape, size, color)
+glyph(;shape=:none, size=3, color=nothing, fillcolor=nothing) =
+	GlyphAttributes(shape, size, color, fillcolor)
 
 #"glyph" constructor:
 #TODO: Inadequate
@@ -140,7 +141,7 @@ type Annotation
 	ylabel::DisplayString
 	#legend
 end
-Annotation() = Annotation("", "", "")
+Annotation(;title="") = Annotation(title, "", "")
 
 type Font
 	_size::Float64
@@ -172,6 +173,7 @@ type Layout
 
 	wticklabel::Float64 #y-axis values allocation (width)
 	hticklabel::Float64 #x-axis values allocation (height)
+	tickoffset::Float64 #V/H offset of tick labels
 
 	tframe::Float64 #Frame thickness
 
@@ -185,7 +187,9 @@ type Layout
 	grid::GridAttributes
 	legend::LegendLStyle
 end
-Layout() = Layout(20, 20, 20, 30, 60, 20, 2,
+Layout() = Layout(
+	20, 20, 20, 30, #Title/main labels
+	60, 20, 2, 2, #Ticks/frame
 	DEFAULT_DATA_WIDTH, DEFAULT_DATA_HEIGHT,
 	Font(14, bold=true), Font(14), Font(12),
 	GridAttributes(true, false, true, false),
@@ -214,15 +218,24 @@ type Plot2D <: Plot
 	xres::Int
 end
 
-Plot2D() = Plot2D(Layout(), AxesRect(), Annotation(),
+Plot2D(;title="") = Plot2D(Layout(), AxesRect(), Annotation(title=title),
 	PExtents2D(), PExtents2D(), PExtents2D(), [], true, [], 1000
 )
 
 type Multiplot
-	ncolumns::Int
+	title::DisplayString
 	subplots::Vector{Plot}
+	ncolumns::Int
+
+	#Default width/height of plots
+	wplot::Float64
+	hplot::Float64
+
+	htitle::Float64 #Title allocation
+	fnttitle::Font
 end
-Multiplot(;ncolumns::Int = 1) = Multiplot(ncolumns, [])
+Multiplot(;title="", ncolumns=1, wplot=DEFAULT_PLOT_WIDTH, hplot=DEFAULT_PLOT_HEIGHT) =
+	Multiplot(title, [], ncolumns, wplot, hplot, 30, Font(20, bold=false))
 
 
 #==Constructor-like functions
@@ -276,6 +289,15 @@ function getextents(dlist::Vector{IWaveform})
 	end
 	return result
 end
+
+
+#==Mutators
+===============================================================================#
+settitle(mplot::Plot2D, title::DisplayStringArg) =
+	(mplot.annotation.title = DisplayString(title))
+
+settitle(mplot::Multiplot, title::DisplayStringArg) =
+	(mplot.title = DisplayString(title))
 
 
 #=="add" interface
@@ -408,6 +430,9 @@ end
 #Get bounding box of entire plot:
 function plotbounds(lyt::Layout, graphw::Float64, graphh::Float64)
 	xmax = graphw + lyt.waxlabel + lyt.wticklabel + lyt.wnolabels
+	if lyt.legend.enabled
+		xmax += _width(lyt.legend)
+	end
 	ymax = graphh + lyt.htitle + lyt.haxlabel + lyt.hticklabel
 	return BoundingBox(0, xmax, 0, ymax)
 end

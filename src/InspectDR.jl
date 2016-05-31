@@ -4,10 +4,13 @@
 #__precompile__()
 module InspectDR
 
-#Default values for data area configuration:
-const DEFAULT_DATA_ASPECT = 1.6 #Roughly golden ratio
+#Default values for data area configuration (used to save single plot):
 const DEFAULT_DATA_WIDTH = 500.0
-const DEFAULT_DATA_HEIGHT = DEFAULT_DATA_WIDTH / DEFAULT_DATA_ASPECT
+const DEFAULT_DATA_HEIGHT = DEFAULT_DATA_WIDTH / φ #Use golden ratio
+
+#Default values for data area configuration (used to save multi-plot):
+const DEFAULT_PLOT_WIDTH = 600.0
+const DEFAULT_PLOT_HEIGHT = DEFAULT_PLOT_WIDTH / φ #Use golden ratio
 
 using Colors
 using Graphics
@@ -17,6 +20,7 @@ import Cairo
 import Cairo: CairoContext
 
 typealias DisplayString UTF8String
+typealias DisplayStringArg Union{DisplayString, ASCIIString} #Args accept ASCIIString as well.
 
 include("codegen.jl")
 include("math.jl")

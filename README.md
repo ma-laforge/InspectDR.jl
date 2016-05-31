@@ -1,10 +1,9 @@
-# InspectDR.jl
+# InspectDR.jl: Fast, Interactive Plots
 
-\*Sigh\*... Yet *another* plotting tool.
+[Sample Plots](https://github.com/ma-laforge/FileRepo/tree/master/InspectDR/sampleplots/README.md) (might be out of date).<br>
 
 [![Build Status](https://travis-ci.org/ma-laforge/InspectDR.jl.svg?branch=master)](https://travis-ci.org/ma-laforge/InspectDR.jl)
 
-[Sample Plots](https://github.com/ma-laforge/FileRepo/tree/master/InspectDR/sampleplots/README.md) (might be out of date).<br>
 **WARNING:** [NOT ALL FEATURES ARE YET IMPLEMENTED](#KnownLimitations)
 
 ## Description
@@ -39,11 +38,11 @@ Examples of of such plots (where x-values are not guaranteed to be sorted) inclu
 
  - Nyquist plots
  - Lissajous plots
- - S-Parameter (Smith/polar) plots
+ - Smith/polar (S-Parameter) charts
 
-#### Smith plots
+#### Smith Charts
 
-InpsectDR can generate Smith plots by specifying axes as `:smith`:
+InpsectDR can generate Smith charts by specifying axes as `:smith`:
 
 ```
 plot.axes = InspectDR.axes(:smith)
@@ -161,7 +160,7 @@ Sample code to construct InspectDR objects can be found [here](sample/).
  - Does not yet render plot data in separate thread (will improve interactive experience with large datasets).
  - Mouse events currently function even outside data area (a bit odd).
  - Mouse cursor does not change as user switches mousemodes (ex: drag icon, cross-hairs, ...).
- - Smith plots are not yet constrained to square aspect ratios.
+ - Smith charts are not yet constrained to square aspect ratios.
 
 
 ### Compatibility

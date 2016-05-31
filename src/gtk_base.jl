@@ -92,10 +92,28 @@ end
 
 #Supports multiplot:
 type GtkPlotWindow
+	title::DisplayString
 	wnd::_Gtk.Window
 	grd::_Gtk.Grid #Holds subplot widgets
 	subplots::Vector{GtkPlot}
 	ncolumns::Int
+end
+
+
+#==Mutators
+===============================================================================#
+function settitle(::Type{GtkPlotWindow}, wnd::_Gtk.Window, title::DisplayStringArg)
+	if length(title)> 0
+		title = "InspectDR - $(title)"
+	else
+		title = "InspectDR"
+	end
+	Gtk.setproperty!(wnd, :title, title)
+end
+
+function settitle(gplot::GtkPlotWindow, title::DisplayStringArg)
+	gplot.title = DisplayString(title)
+	settitle(GtkPlotWindow, gplot.wnd, gplot.title)
 end
 
 

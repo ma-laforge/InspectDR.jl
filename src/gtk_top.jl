@@ -120,22 +120,23 @@ function GtkPlotWindow(mp::Multiplot)
 	setproperty!(grd, :column_homogeneous, true)
 	#setproperty!(grd, :column_spacing, 15) #Gap between
 
-	wnd = Gtk.@Window(grd, "InspectDR", 640, 480, true)
+	wnd = Gtk.@Window(grd, "", 640, 480, true)
 	if _focus != nothing
 		focus(wnd, _focus)
 	end
 
+	settitle(GtkPlotWindow, wnd, mp.title)
 	showall(wnd)
-	return GtkPlotWindow(wnd, grd, subplots, ncols)
+	return GtkPlotWindow(mp.title, wnd, grd, subplots, ncols)
 end
 
 #-------------------------------------------------------------------------------
-function GtkPlotWindow(plot::Plot)
-	mp = Multiplot()
+function GtkPlotWindow(plot::Plot, args...; kwargs...)
+	mp = Multiplot(args...; kwargs...)
 	add(mp, plot)
 	return GtkPlotWindow(mp)
 end
-GtkPlotWindow() = GtkPlotWindow(Plot2D())
+GtkPlotWindow(args...; kwargs...) = GtkPlotWindow(Plot2D(), args...; kwargs...)
 
 
 #==High-level interface

@@ -1,7 +1,7 @@
 #InspectDR: Drawing Smith/polar grids with Cairo layer
 #-------------------------------------------------------------------------------
 
-#TODO: Try to collect Smith plot code in this module, if it makes sense.
+#TODO: Try to collect Smith chart code in this module, if it makes sense.
 
 
 #==Constants
@@ -70,9 +70,10 @@ function render_xcirclelabel(ctx::CairoContext, xf::Transform2D, c::DReal)
 	y = 2*radius/(1+radius*radius)
 	x = 1-y*radius
 
-	pt = Point2D(x, y)
-	tstr = DisplayString("$c")
-	render_xcirclelabel(ctx, xf, pt, tstr)
+	tstr = DisplayString("$(c)j")
+	render_xcirclelabel(ctx, xf, Point2D(x, y), tstr)
+	tstr = DisplayString("-$(c)j")
+	render_xcirclelabel(ctx, xf, Point2D(x, -y), tstr)
 end
 render_xcirclelabels(ctx::CairoContext, xf::Transform2D, clist::Vector{DReal}) =
 	(for c in clist; render_xcirclelabel(ctx, xf, c); end)
@@ -86,8 +87,8 @@ function getrealimag{T<:Number}(d::Vector{T})
 	x = Array(DReal, length(d))
 	y = Array(DReal, length(d))
 	for i in 1:length(d)
-		x[i] = convert(DReal, imag(d[i]))
-		y[i] = convert(DReal, real(d[i]))
+		x[i] = convert(DReal, real(d[i]))
+		y[i] = convert(DReal, imag(d[i]))
 	end
 	return (x, y)
 end
