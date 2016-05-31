@@ -24,7 +24,7 @@ k = 0.2 #Exponential coefficient
 
 #==Generate plot
 ===============================================================================#
-mplot = InspectDR.Multiplot()
+mplot = InspectDR.Multiplot(title="Log-Y Tests")
 mplot.ncolumns = 1
 
 plot_liny = InspectDR.Plot2D()

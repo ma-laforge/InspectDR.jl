@@ -2,6 +2,8 @@
 #-------------------------------------------------------------------------------
 using InspectDR
 using Colors
+import Graphics: width, height
+
 
 #==Input
 ===============================================================================#
@@ -54,7 +56,7 @@ end
 
 #==Generate plot
 ===============================================================================#
-mplot = InspectDR.Multiplot()
+mplot = InspectDR.Multiplot(title="Transmission Line Example")
 mplot.ncolumns = 2
 
 plot_linf = InspectDR.Plot2D()
@@ -78,7 +80,7 @@ for plot in [plot_linf, plot_logf]
 end
 
 a = plot_smith.annotation
-	a.title = "Smith Plot"
+	a.title = "Smith Chart"
 	a.xlabel = "Real(Γ)"
 	a.ylabel = "Imaginary(Γ)"
 
@@ -96,5 +98,22 @@ for plot in plotlist
 end
 
 gplot = display(InspectDR.GtkDisplay(), mplot)
+
+
+#==Save multi-plot to file
+===============================================================================#
+
+#Target plot size to get square Smith plots:
+lyt = plot_smith.layout
+	lyt.wdata = 500
+	lyt.hdata = 500
+bb = InspectDR.plotbounds(lyt) #Required
+	mplot.wplot = width(bb)
+	mplot.hplot = height(bb)
+
+InspectDR.write_png("export_multiplot.png", mplot)
+InspectDR.write_svg("export_multiplot.svg", mplot)
+InspectDR.write_eps("export_multiplot.eps", mplot)
+InspectDR.write_pdf("export_multiplot.pdf", mplot)
 
 :DONE

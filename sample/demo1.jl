@@ -30,7 +30,7 @@ x_lres = collect(0:(ncycles/10):ncycles)
 
 #==Generate plot
 ===============================================================================#
-plot = InspectDR.Plot2D()
+plot = InspectDR.Plot2D(title="Sample Plot (λ)")
 plot.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
 plot.layout.legend.enabled = true
 plot.layout.legend.width = 120
@@ -42,7 +42,7 @@ wfrm = add(plot, x, y-1, id="sin(2πt)-1")
 	wfrm.line = line(color=red, width=5, style=style)
 wfrm = add(plot, x_lres, -2+4*(x_lres./ncycles), id="-2+4t/$ncycles")
 	wfrm.line = line(color=blue, width=3, style=:dash)
-	wfrm.glyph = glyph(shape=:*)
+	wfrm.glyph = glyph(shape=:*, size=10)
 #= Supported shapes:
 	:square, :diamond,
 	:uarrow, :darrow, :larrow, :rarrow, #usually triangles
@@ -51,15 +51,14 @@ wfrm = add(plot, x_lres, -2+4*(x_lres./ncycles), id="-2+4t/$ncycles")
 =#
 
 a = plot.annotation
-a.title = "Sample Plot (λ)"
 a.xlabel = "Time (s)"
 a.ylabel = "Signal Voltage (V)"
 
 gplot = display(InspectDR.GtkDisplay(), plot)
 
-InspectDR.write_png("plotsave.png", plot)
-InspectDR.write_svg("plotsave.svg", plot)
-InspectDR.write_eps("plotsave.eps", plot)
-InspectDR.write_pdf("plotsave.pdf", plot)
+InspectDR.write_png("export_plot.png", plot)
+InspectDR.write_svg("export_plot.svg", plot)
+InspectDR.write_eps("export_plot.eps", plot)
+InspectDR.write_pdf("export_plot.pdf", plot)
 
 :DONE

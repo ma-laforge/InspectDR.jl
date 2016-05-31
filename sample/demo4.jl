@@ -20,7 +20,7 @@ blue = RGB24(0, 0, 1)
 
 #==Generate plot
 ===============================================================================#
-mplot = InspectDR.Multiplot()
+mplot = InspectDR.Multiplot(title="Empty/Undefined Plots")
 mplot.ncolumns = 2
 xlabel = "Time (s)"
 ylabel = "Signal Voltage (V)"
