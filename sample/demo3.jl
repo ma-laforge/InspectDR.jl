@@ -1,4 +1,4 @@
-#Demo 1: Simple sine wave plot
+#Demo 3: Monochrome 2x2 array of subplots
 #-------------------------------------------------------------------------------
 using InspectDR
 using Colors
@@ -9,56 +9,47 @@ using Colors
 #Constants
 #-------------------------------------------------------------------------------
 black = RGB24(0, 0, 0)
-white = RGB24(1, 1, 1)
-red = RGB24(1, 0, 0)
-green = RGB24(0, 1, 0)
-blue = RGB24(0, 0, 1)
+gray50 = RGB24(.5, .5, .5)
 
 #Input data
 #-------------------------------------------------------------------------------
-npts = 200
-ncycles = 4
-Δ = ncycles/(npts-1)
-t = collect(0:Δ:ncycles)
-y = sin(2pi*t)
+x=collect(-10:0.1:10)
+titles = ["Linear", "Quadratic", "Cubic", "Quartic"]
+
+linetypes = []
+for lstyle in [:solid, :dash, :dot, :dashdot]
+	push!(linetypes, line(color=black, width=3, style=lstyle))
+	push!(linetypes, line(color=gray50, width=3, style=lstyle))
+end
 
 
 #==Generate plot
 ===============================================================================#
-mplot = InspectDR.Multiplot()
+mplot = InspectDR.Multiplot(title="Powers of X")
 mplot.ncolumns = 2
-xlabel = "Time (s)"
-ylabel = "Signal Voltage (V)"
+xlabel = "X-Axis (X-Unit)"
+ylabel = "Y-Axis (Y-Unit)"
 
-#First plot
-#-------------------------------------------------------------------------------
-plot = add(mplot, InspectDR.Plot2D)
-a = plot.annotation
-	a.title = "sin(2πt)"
-	a.xlabel = xlabel
-	a.ylabel = ylabel
-wfrm = add(plot, t, sin(2pi*t))
-	wfrm.line = line(color=blue, width=1)
+plotlist = InspectDR.Plot
+for i in 1:4
+	plot = add(mplot, InspectDR.Plot2D) #Generate empty plot
+	plot.layout.legend.enabled = true
+	plot.layout.legend.width = 80
+	a = plot.annotation
+		a.xlabel = xlabel
+		a.ylabel = ylabel
+		a.title = titles[i]
 
-#Second plot
-#-------------------------------------------------------------------------------
-plot = add(mplot, InspectDR.Plot2D)
-a = plot.annotation
-	a.title = "y(t) = (t-2)³"
-	a.xlabel = xlabel
-	a.ylabel = ylabel
-wfrm = add(plot, t, (t-2).^3)
-	wfrm.line = line(color=green, width=2)
+	for scalei in 1:8
+#		id = "$scalei(x/10)^$i"
+		id = "ref×$scalei"
+		wfrm = add(plot, x, scalei*((x/10).^i), id=id)
+		wfrm.line = linetypes[scalei]
+	end
+end
 
-#Third plot
-#-------------------------------------------------------------------------------
-plot = add(mplot, InspectDR.Plot2D)
-a = plot.annotation
-	a.title = "-sin(2πt)"
-	a.xlabel = xlabel
-	a.ylabel = ylabel
-wfrm = add(plot, t, -sin(2pi*t))
-	wfrm.line = line(color=red, width=5)
+#Enable legend on last subplot:
+mplot.subplots[4].layout.legend.enabled = true
 
 #Display
 #-------------------------------------------------------------------------------
