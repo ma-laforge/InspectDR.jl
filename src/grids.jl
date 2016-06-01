@@ -14,6 +14,7 @@ const TICK_MINOR_LEN = Float64(3)
 
 #Allowed mantissa values for grid step size:
 const GRID_MANTSTEPS = DReal[1, 2, 2.5, 5, 10]
+const GRID_MANTSTEP_EXPOFFSET = [0, 0, -1, 0, 0] #Ensure all significant digits show up.
 const GRID_MANTTHRESH = (GRID_MANTSTEPS[1:end-1] + GRID_MANTSTEPS[2:end]) / 2
 
 #Maps desired # of minor grid lines to optimal divisor for each possibility in GRID_MANTSTEPS
@@ -38,11 +39,11 @@ abstract AbstractGridLines
 #Identifies where to place ticks/grid lines
 type GridLines <: AbstractGridLines
 	scale::AxisScale #Changes how tick labels are displayed
-	first_significant_digit::Int #Relative to most-significant
 	major::Vector{DReal}
 	minor::Vector{DReal}
+	rnginfo::RangeDisplayInfo
 end
-GridLines(scale::AxisScale) = GridLines(scale, 1,[],[])
+GridLines(scale::AxisScale) = GridLines(scale, [], [], NoRangeDisplayInfo())
 
 type UndefinedGridLines <: AbstractGridLines
 	minline::DReal
@@ -81,17 +82,17 @@ function linearstep_pretty(tgtstep::DReal, tgtminor::Int)
 	stepexp = 10.0^(ilstep)
 	stepmant = tgtstep / stepexp
 
-	mstep = GRID_MANTSTEPS[end]
 	istep = length(GRID_MANTSTEPS)
 	for i in 1:length(GRID_MANTTHRESH)
 		thresh = GRID_MANTTHRESH[i]
 		if stepmant < thresh
 			istep = i
-			mstep = GRID_MANTSTEPS[i]
 			break
 		end
 	end
 
+	mstep = GRID_MANTSTEPS[istep]
+	expoffset = GRID_MANTSTEP_EXPOFFSET[istep]
 	tgtminor = clamp(tgtminor, 0, 9)
 	major = mstep*stepexp
 	minor = major
@@ -99,7 +100,7 @@ function linearstep_pretty(tgtstep::DReal, tgtminor::Int)
 		minor /= GRID_MINORDIV[istep, tgtminor]
 	end
 
-	return (major, minor)
+	return (major, minor, expoffset)
 end
 
 #Compute grid line configuration for a linear scale (dB scale is basically linear as well)
@@ -117,14 +118,17 @@ function gridlines(scale::AxisScale, min::DReal, max::DReal; tgtmajor::DReal=3.5
 
 	#Compute major grid lines:
 	tgtstep = span / (tgtmajor+1)
-	(stepmajor, stepminor) = linearstep_pretty(tgtstep, tgtminor)
+	(stepmajor, stepminor, expoffset) = linearstep_pretty(tgtstep, tgtminor)
 	major1 = ceil(Int, min/stepmajor)*stepmajor
 	grd.major = collect(major1:stepmajor:max)
+	grd.rnginfo = LinearRangeDisplayInfo(
+		base10exp(major1), base10exp(grd.major[end]),
+		base10exp(stepmajor) + expoffset
+	)
 
 	#Compute minor grid lines:
 	minor1 = ceil(Int, min/stepminor)*stepminor
 	minorall = minor1:stepminor:max
-
 
 	#Throw away major points...
 	#Yuk... is there not a more elegant solution?

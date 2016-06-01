@@ -19,12 +19,17 @@ const _Gtk = Gtk.ShortNames
 import Cairo
 import Cairo: CairoContext
 
+
+#==Aliases
+===============================================================================#
+typealias NullOr{T} Union{Void, T}
 typealias DisplayString UTF8String
 typealias DisplayStringArg Union{DisplayString, ASCIIString} #Args accept ASCIIString as well.
 
 include("codegen.jl")
 include("math.jl")
 include("math_graphics.jl")
+include("numericfmt.jl")
 include("datasets.jl")
 include("base.jl")
 include("grids.jl")

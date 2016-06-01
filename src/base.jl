@@ -12,11 +12,6 @@ abstract Plot
 abstract PlotCanvas
 
 
-#==Aliases
-===============================================================================#
-typealias NullOr{T} Union{Void, T}
-
-
 #==Constants
 ===============================================================================#
 const DInf = convert(DReal, Inf)
@@ -173,7 +168,8 @@ type Layout
 
 	wticklabel::Float64 #y-axis values allocation (width)
 	hticklabel::Float64 #x-axis values allocation (height)
-	tickoffset::Float64 #V/H offset of tick labels
+	hlabeloffset::Float64
+	vlabeloffset::Float64
 
 	tframe::Float64 #Frame thickness
 
@@ -186,14 +182,17 @@ type Layout
 
 	grid::GridAttributes
 	legend::LegendLStyle
+	xlabelformat::TickLabelStyle
+	ylabelformat::TickLabelStyle
 end
 Layout() = Layout(
-	20, 20, 20, 30, #Title/main labels
-	60, 20, 2, 2, #Ticks/frame
+	20, 20, 20, 45, #Title/main labels
+	60, 15, 3, 7, 2, #Ticks/frame
 	DEFAULT_DATA_WIDTH, DEFAULT_DATA_HEIGHT,
 	Font(14, bold=true), Font(14), Font(12),
 	GridAttributes(true, false, true, false),
-	LegendLStyle(false, Font(12), 100.0, .25, 0.5, 20)
+	LegendLStyle(false, Font(12), 100.0, .25, 0.5, 20),
+	TickLabelStyle(), TickLabelStyle()
 )
 
 #2D plot.

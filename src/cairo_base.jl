@@ -316,62 +316,84 @@ end
 ===============================================================================#
 
 #Default label:
-function render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, ::AxisScale)
-	#TODO: Improve how numbers are displayed
-	tstr = "$val"
-	if length(tstr) > 7 #HACK!
-		tstr = @sprintf("%0.1e", val)
+function render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, ::AxisScale)
+	tstr = ""
+	if false #Old display system.
+		#TODO: deprecate
+		tstr = "$val"
+		if length(tstr) > 7 #HACK!
+			tstr = @sprintf("%0.1e", val)
+		end
+	else
+		tstr = string(fmt.fmt, val, showexp=!fmt.splitexp)
 	end
 	render(ctx, tstr, pt, font, align=align)
 end
 
-render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, scale::AxisScale{:log10}) =
+render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, scale::AxisScale{:log10}) =
 	render_power(ctx, 10, val, pt, font, align)
+
+function render_axisscalelabel(ctx::CairoContext, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, ::AxisScale)
+	tstr = string_exp(fmt.fmt)
+	render(ctx, tstr, pt, font, align=align)
+end
 
 #Render ticks: Well-defined GridLines
 #-------------------------------------------------------------------------------
 function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::GridLines)
+	fmt = TickLabelFormatting(lyt.xlabelformat, xlines.rnginfo)
 	yframe = graphbb.ymax
-	ylabel = graphbb.ymax + lyt.tickoffset
+	ylabel = graphbb.ymax + lyt.vlabeloffset
 	for xtick in xlines.major
 		x = ptmap(xf, Point2D(xtick, 0)).x
-		render_ticklabel(ctx, xtick, Point2D(x, ylabel), lyt.fntticklabel, ALIGN_TOP|ALIGN_HCENTER, xlines.scale)
+		render_ticklabel(ctx, xtick, Point2D(x, ylabel), lyt.fntticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, xlines.scale)
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
 	end
 	for xtick in xlines.minor
 		x = ptmap(xf, Point2D(xtick, 0)).x
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MINOR_LEN))
 	end
+	if fmt.splitexp
+		xlabel = graphbb.xmax + lyt.tframe
+		render_axisscalelabel(ctx, Point2D(xlabel, yframe), lyt.fntticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, xlines.scale)
+	end
 end
 function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::GridLines)
+	fmt = TickLabelFormatting(lyt.ylabelformat, ylines.rnginfo)
 	xframe = graphbb.xmin
-	xlabel = graphbb.xmin - lyt.tickoffset
+	xlabel = graphbb.xmin - lyt.hlabeloffset
 	for ytick in ylines.major
 		y = ptmap(xf, Point2D(0, ytick)).y
-		render_ticklabel(ctx, ytick, Point2D(xlabel, y), lyt.fntticklabel, ALIGN_RIGHT|ALIGN_VCENTER, ylines.scale)
+		render_ticklabel(ctx, ytick, Point2D(xlabel, y), lyt.fntticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, ylines.scale)
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
 	end
 	for ytick in ylines.minor
 		y = ptmap(xf, Point2D(0, ytick)).y
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MINOR_LEN, y))
 	end
+	if fmt.splitexp
+		ylabel = graphbb.ymin - lyt.tframe
+		render_axisscalelabel(ctx, Point2D(xframe, ylabel), lyt.fntticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, ylines.scale)
+	end
 end
 
 #Render ticks: UndefinedGridLines
 #-------------------------------------------------------------------------------
 function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::UndefinedGridLines)
+	fmt = TickLabelFormatting(NoRangeDisplayInfo())
 	yframe = graphbb.ymax
-	ylabel = graphbb.ymax + lyt.tickoffset
+	ylabel = graphbb.ymax + lyt.vlabeloffset
 	for (x, xlabel) in [(graphbb.xmin, xlines.minline), (graphbb.xmax, xlines.maxline)]
-		render_ticklabel(ctx, xlabel, Point2D(x, ylabel), lyt.fntticklabel, ALIGN_TOP|ALIGN_HCENTER, AxisScale{:lin}())
+		render_ticklabel(ctx, xlabel, Point2D(x, ylabel), lyt.fntticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, AxisScale{:lin}())
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
 	end
 end
 function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::UndefinedGridLines)
+	fmt = TickLabelFormatting(NoRangeDisplayInfo())
 	xframe = graphbb.xmin
-	xlabel = graphbb.xmin - lyt.tickoffset
+	xlabel = graphbb.xmin - lyt.hlabeloffset
 	for (y, ylabel) in [(graphbb.ymax, ylines.minline), (graphbb.ymin, ylines.maxline)]
-		render_ticklabel(ctx, ylabel, Point2D(xlabel, y), lyt.fntticklabel, ALIGN_RIGHT|ALIGN_VCENTER, AxisScale{:lin}())
+		render_ticklabel(ctx, ylabel, Point2D(xlabel, y), lyt.fntticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, AxisScale{:lin}())
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
 	end
 end
