@@ -69,7 +69,7 @@ plot_logf = InspectDR.Plot2D()
 	plot_logf.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
 plot_smith = InspectDR.Plot2D()
 	plot_smith.axes = InspectDR.axes(:smith)
-	plot_smith.ext_full = InspectDR.PExtents2D(xmin=-1.1,xmax=1.1,ymin=-1.1,ymax=1.1)
+	plot_smith.ext_full = InspectDR.PExtents2D(xmin=-1.2,xmax=1.2,ymin=-1.2,ymax=1.2)
 	plot_smith.layout.legend.enabled=true
 
 for plot in [plot_linf, plot_logf]
