@@ -161,6 +161,7 @@ Sample code to construct InspectDR objects can be found [here](sample/).
  - Mouse events currently function even outside data area (a bit odd).
  - Mouse cursor does not change as user switches mousemodes (ex: drag icon, cross-hairs, ...).
  - Smith charts are not yet constrained to square aspect ratios.
+ - Not discarding data outside displayed extents causes massive slowdowns (ex: when zoomed in).
 
 
 ### Compatibility
