@@ -1,8 +1,10 @@
 # InspectDR.jl: Fast, Interactive Plots
 
-[Sample Plots](https://github.com/ma-laforge/FileRepo/tree/master/InspectDR/sampleplots/README.md) (might be out of date).<br>
-
 [![Build Status](https://travis-ci.org/ma-laforge/InspectDR.jl.svg?branch=master)](https://travis-ci.org/ma-laforge/InspectDR.jl)
+
+[Sample plots](https://github.com/ma-laforge/FileRepo/tree/master/InspectDR/sampleplots/README.md) (might be out of date).<br>
+
+[More plots (Signal processing)](https://github.com/ma-laforge/FileRepo/tree/master/SignalProcessing/sampleplots/README.md): CData.jl/EasyPlotInspect.jl/SignalProcessing.jl
 
 **WARNING:** [NOT ALL FEATURES ARE YET IMPLEMENTED](#KnownLimitations)
 
@@ -74,8 +76,8 @@ Note that many types & functions are not exported from InspectDR in order to avo
 Principal objects:
 
  - **`InspectDR.Plot`**: An abstract plot object.
- - **`InspectDR.Plot2D <: Plot`**:  A 2D plot object.  Construct empty 2D plot using `InspectDR.Plot2D()`.
- - **`InspectDR.Multiplot`**:  A multi-plot object.  Construct empty multi-plot using: `InspectDR.Multiplot()`.
+ - **`InspectDR.Plot2D <: Plot`**:  A 2D plot object.  Construct empty 2D plot using `InspectDR.Plot2D(title="Plot Title")`.
+ - **`InspectDR.Multiplot`**:  A multi-plot object.  Construct empty multi-plot using: `InspectDR.Multiplot(title="Multiplot Title")`.
 
 Subplots (`T<:Plot`) are added to a multi-plot object using the `add()` method:
 ```
@@ -154,14 +156,15 @@ Sample code to construct InspectDR objects can be found [here](sample/).
 
  - Documentation is a bit limited at the moment.  See [Sample Usage](#SampleUsage) to learn from examples.
  - API is still a bit rough.  User often has to manipulate data structures directly.
- - Tick labels need to be improved (# of decimal places, ...).
  - Legends not very configurable (currently optimized to display many labels @ cost of horizontal real-estate).
- - Does not yet support many axis scales.
  - Does not yet render plot data in separate thread (will improve interactive experience with large datasets).
  - Mouse events currently function even outside data area (a bit odd).
  - Mouse cursor does not change as user switches mousemodes (ex: drag icon, cross-hairs, ...).
  - Smith charts are not yet constrained to square aspect ratios.
- - Not discarding data outside displayed extents causes massive slowdowns (ex: when zoomed in).
+ - Significant slowdowns observed when zooming **deep** into non-F1 data... Can likely be solved by discarding data outside plot extents.
+  - Workaround: make sure x-values are sorted (F1-acceleration discards data & is less prone to slowdowns).
+ - F1 accelleration adds points not present in data.  Extra points are evident when symbols are displayed.  Potentially solved by declaring data as "discrete" (vs continuous) & not adding intermediate points.
+  - Workaround: use `add(plot, x, y, id="", dataf1=false)` to bypass F1 acceleration.
 
 
 ### Compatibility
