@@ -309,8 +309,11 @@ end
 _add{T<:Plot}(mp::Multiplot, ::Type{T}) = _add(mp, T())
 
 
-function _add(plot::Plot2D, x::Vector, y::Vector; id::AbstractString = "")
-	dataf1 = isincreasing(x) #Can we use optimizations?
+#Set dataf1=false to overwrite optimizations for functions of 1 argument.
+function _add(plot::Plot2D, x::Vector, y::Vector; id::AbstractString="", dataf1=true)
+	if dataf1
+		dataf1 = isincreasing(x) #Can we use optimizations?
+	end
 	ext = PExtents2D() #Don't care at the moment
 	ds = IWaveform(id, IDataset{dataf1}(x, y), line(), glyph(), ext)
 	push!(plot.data, ds)
@@ -403,13 +406,10 @@ end
 #Get bounding box of graph (plot data area):
 function graphbounds(plotb::BoundingBox, lyt::Layout)
 	xmin = plotb.xmin + lyt.waxlabel + lyt.wticklabel
-	xmax = plotb.xmax - lyt.wnolabels
+	xmax = plotb.xmax
+	xmax -= lyt.legend.enabled? _width(lyt.legend): lyt.wnolabels
 	ymin = plotb.ymin + lyt.htitle
 	ymax = plotb.ymax - lyt.haxlabel - lyt.hticklabel
-
-	if lyt.legend.enabled
-		xmax = plotb.xmax - _width(lyt.legend)
-	end
 
 	#Avoid division by zero, inversions, ...
 	if xmin >= xmax
@@ -428,10 +428,8 @@ end
 
 #Get bounding box of entire plot:
 function plotbounds(lyt::Layout, graphw::Float64, graphh::Float64)
-	xmax = graphw + lyt.waxlabel + lyt.wticklabel + lyt.wnolabels
-	if lyt.legend.enabled
-		xmax += _width(lyt.legend)
-	end
+	xmax = graphw + lyt.waxlabel + lyt.wticklabel
+	xmax += lyt.legend.enabled? _width(lyt.legend): lyt.wnolabels
 	ymax = graphh + lyt.htitle + lyt.haxlabel + lyt.hticklabel
 	return BoundingBox(0, xmax, 0, ymax)
 end
