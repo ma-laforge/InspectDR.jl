@@ -112,10 +112,9 @@ text_dims(t_ext::Array{Float64}) = tuple(t_ext[3], t_ext[4]) #w, h
 #Set active font on a CairoContext
 #-------------------------------------------------------------------------------
 function setfont(ctx::CairoContext, font::Font)
-	const fontname = "Serif" #Sans, Serif, Fantasy, Monospace
 	const weight = font.bold? Cairo.FONT_WEIGHT_BOLD: Cairo.FONT_WEIGHT_NORMAL
 	const noitalic = Cairo.FONT_SLANT_NORMAL
-	Cairo.select_font_face(ctx, fontname, noitalic,	weight)
+	Cairo.select_font_face(ctx, font.name, noitalic, weight)
 	Cairo.set_font_size(ctx, font._size)
 end
 

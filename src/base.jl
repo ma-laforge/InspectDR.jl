@@ -139,10 +139,11 @@ end
 Annotation(;title="") = Annotation(title, "", "")
 
 type Font
+	name::AbstractString
 	_size::Float64
 	bold::Bool
 end
-Font(_size::Real; bold::Bool=false) = Font(_size, bold)
+Font(name::AbstractString, _size::Real; bold::Bool=false) = Font(name, _size, bold)
 
 #Legend layout/style
 type LegendLStyle
@@ -185,13 +186,15 @@ type Layout
 	xlabelformat::TickLabelStyle
 	ylabelformat::TickLabelStyle
 end
-Layout() = Layout(
-	20, 20, 20, 45, #Title/main labels
-	60, 15, 3, 7, 2, #Ticks/frame
+Layout(;fontname::AbstractString=DEFAULT_FONTNAME, fontscale=1) =
+	Layout(
+	20*fontscale, 20*fontscale, 20*fontscale, 45, #Title/main labels
+	60*fontscale, 15*fontscale, 3, 7, 2, #Ticks/frame
 	DEFAULT_DATA_WIDTH, DEFAULT_DATA_HEIGHT,
-	Font(14, bold=true), Font(14), Font(12),
+	Font(fontname, fontscale*14, bold=true), #Title
+	Font(fontname, fontscale*14), Font(fontname, fontscale*12), #Axis/Tick labels
 	GridAttributes(true, false, true, false),
-	LegendLStyle(false, Font(12), 100.0, .25, 0.5, 20),
+	LegendLStyle(false, Font(fontname, fontscale*12), 100.0, .25, 0.5, 20),
 	TickLabelStyle(), TickLabelStyle()
 )
 
@@ -233,8 +236,9 @@ type Multiplot
 	htitle::Float64 #Title allocation
 	fnttitle::Font
 end
-Multiplot(;title="", ncolumns=1, wplot=DEFAULT_PLOT_WIDTH, hplot=DEFAULT_PLOT_HEIGHT) =
-	Multiplot(title, [], ncolumns, wplot, hplot, 30, Font(20, bold=false))
+Multiplot(;title="", ncolumns=1, titlefont=Font(DEFAULT_FONTNAME, 20),
+		wplot=DEFAULT_PLOT_WIDTH, hplot=DEFAULT_PLOT_HEIGHT) =
+	Multiplot(title, [], ncolumns, wplot, hplot, 30, titlefont)
 
 
 #==Constructor-like functions

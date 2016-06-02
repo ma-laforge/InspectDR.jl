@@ -12,6 +12,10 @@ const DEFAULT_DATA_HEIGHT = DEFAULT_DATA_WIDTH / φ #Use golden ratio
 const DEFAULT_PLOT_WIDTH = 600.0
 const DEFAULT_PLOT_HEIGHT = DEFAULT_PLOT_WIDTH / φ #Use golden ratio
 
+#Default font:
+const DEFAULT_FONTNAME = @windows? "Cambria": "Serif"
+#Cairo "built-in": Serif, Sans, Serif, Fantasy, Monospace
+
 using Colors
 using Graphics
 import Gtk
