@@ -31,11 +31,12 @@ x_lres = collect(0:(ncycles/10):ncycles)
 #==Generate plot
 ===============================================================================#
 plot = InspectDR.Plot2D(title="Sample Plot (λ)")
+plot.layout = InspectDR.Layout(fontname="monospace", fontscale=1.5)
 plot.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
 plot.layout.legend.enabled = true
-plot.layout.legend.width = 120
-style = :dashdot #solid/dashdot/...
+plot.layout.legend.width = 150
 
+style = :dashdot #solid/dashdot/...
 wfrm = add(plot, x, y+1, id="sin(2πt)+1")
 	wfrm.line = line(color=blue, width=1, style=style)
 wfrm = add(plot, x, y-1, id="sin(2πt)-1")
