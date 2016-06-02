@@ -156,6 +156,8 @@ Sample code to construct InspectDR objects can be found [here](sample/).
 
  - Documentation is a bit limited at the moment.  See [Sample Usage](#SampleUsage) to learn from examples.
  - API is still a bit rough.  User often has to manipulate data structures directly.
+ - Font control is not ideal.  The default font might not be available on all platforms - and the fallback font might not have Unicode characters to display exponent values (ex: `10⁻¹⁵`).  Some Greek characters might also be missing.
+  - Workaround: Overwrite selected font, as shown in `sample/demo1.jl`: `plot.layout = InspectDR.Layout(fontname="Times")`
  - Legends not very configurable (currently optimized to display many labels @ cost of horizontal real-estate).
  - Does not yet render plot data in separate thread (will improve interactive experience with large datasets).
  - Mouse events currently function even outside data area (a bit odd).
