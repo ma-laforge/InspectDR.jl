@@ -2,7 +2,7 @@
 language: julia
 os:
   - linux
-#  - osx
+  - osx
 julia:
   - release
   - nightly
@@ -14,4 +14,6 @@ notifications:
 # uncomment the following lines to override the default test script
 script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - xvfb-run julia -e 'Pkg.clone(pwd()); Pkg.build("InspectDR"); Pkg.test("InspectDR"; coverage=true)'
+  - TESTCMD="xvfb-run julia"
+  - if [[ "$(uname)" != "Linux" ]]; then TESTCMD="julia"; fi
+  - $TESTCMD -e 'Pkg.clone(pwd()); Pkg.build("InspectDR"); Pkg.test("InspectDR"; coverage=true)'
