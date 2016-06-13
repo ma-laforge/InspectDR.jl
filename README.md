@@ -145,6 +145,35 @@ Until a proper API is defined, one is encouraged to look at the `LegendLStyle` o
 ?InspectDR.LegendLStyle
 ```
 
+<a name="Config_Defaults"></a>
+### Configuration/Defaults
+
+Default InspectDR.jl settings can be overwritten once the module is loaded by editing the `InspectDR.defaults` structure:
+
+```
+#Dissalow SVG MIME output for performance reasons:
+InspectDR.defaults.rendersvg = false
+
+InspectDR.defaults.showtimestamp = true
+InspectDR.defaults.fontname = "Sans"
+InspectDR.defaults.fontscale = 1.2 #Bigger fonts
+
+#Default values for data-area dimensions (saving single plot):
+InspectDR.defaults.wdata = 500
+InspectDR.defaults.hdata = 350
+
+#Default values for plot dimensions (saving multi-plot):
+InspectDR.defaults.wdata = 500
+InspectDR.defaults.hdata = 350
+```
+
+Defaults can also be specified *before* importing InspectDR.jl with the help of `Main.DEFAULTS_INSPECTDR::Dict`.  Simply create the variable in your `~/.juliarc.jl` file, using the following pattern:
+```
+DEFAULTS_INSPECTDR = Dict(
+	:fontname => "Sans",
+	:showtimestamp => true,
+)
+```
 
 <a name="SampleUsage"></a>
 ## Sample Usage
@@ -157,7 +186,7 @@ Sample code to construct InspectDR objects can be found [here](sample/).
  - Documentation is a bit limited at the moment.  See [Sample Usage](#SampleUsage) to learn from examples.
  - API is still a bit rough.  User often has to manipulate data structures directly.
  - Font control is not ideal.  The default font might not be available on all platforms - and the fallback font might not have Unicode characters to display exponent values (ex: `10⁻¹⁵`).  Some Greek characters might also be missing.
-  - Workaround: Overwrite selected font, as shown in `sample/demo1.jl`: `plot.layout = InspectDR.Layout(fontname="Times")`
+  - Workaround: Overwrite default font, as described in [Defaults](#Config_Defaults).
  - Legends not very configurable (currently optimized to display many labels @ cost of horizontal real-estate).
  - Does not yet render plot data in separate thread (will improve interactive experience with large datasets).
  - Mouse events currently function even outside data area (a bit odd).
