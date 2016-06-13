@@ -35,6 +35,7 @@ plot.layout = InspectDR.Layout(fontname="monospace", fontscale=1.5)
 plot.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
 plot.layout.legend.enabled = true
 plot.layout.legend.width = 150
+plot.layout.showtimestamp = true
 
 style = :dashdot #solid/dashdot/...
 wfrm = add(plot, x, y+1, id="sin(2πt)+1")
