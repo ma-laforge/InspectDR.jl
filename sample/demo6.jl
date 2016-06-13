@@ -41,7 +41,7 @@ ZL = j*ω*L+RL
 mplot = InspectDR.Multiplot(title="Smith Chart (Publication Layout)")
 
 plot = add(mplot, InspectDR.Plot2D)
-	plot.axes = InspectDR.axes(:smith)
+	plot.axes = InspectDR.axes(:smith, :Z, ref=50)
 	plot.ext_full = InspectDR.PExtents2D(xmin=-1.1,xmax=1.1,ymin=-1.1,ymax=1.1)
 	#plot.layout.legend.enabled=true
 	plot.layout.legend.width=110
