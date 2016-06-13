@@ -108,7 +108,7 @@ immutable AxesSmith{T} <: Axes
 	call(::Type{AxesSmith{:Z}}, ref::Real) = new{:Z}(ref)
 	call(::Type{AxesSmith{:Y}}, ref::Real) = new{:Y}(ref)
 end
-AxesSmith(t::Symbol; ref::Real=50) = AxesSmith{t}(ref)
+AxesSmith(t::Symbol, ref::Real=1) = AxesSmith{t}(ref)
 AxesSmith(t::Symbol, ref::Void) = AxesSmith(t)
 
 type Waveform{T}
@@ -134,9 +134,9 @@ type Annotation
 	title::DisplayString
 	xlabel::DisplayString
 	ylabel::DisplayString
-	#legend
+	timestamp::DisplayString
 end
-Annotation(;title="") = Annotation(title, "", "")
+Annotation(;title="") = Annotation(title, "", "", Libc.strftime(time()))
 
 type Font
 	name::AbstractString
@@ -180,22 +180,25 @@ type Layout
 	fnttitle::Font
 	fntaxlabel::Font
 	fntticklabel::Font
+	fnttime::Font
 
 	grid::GridAttributes
 	legend::LegendLStyle
 	xlabelformat::TickLabelStyle
 	ylabelformat::TickLabelStyle
+	showtimestamp::Bool
 end
-Layout(;fontname::AbstractString=DEFAULT_FONTNAME, fontscale=1) =
+Layout(;fontname::AbstractString=defaults.fontname, fontscale=defaults.fontscale) =
 	Layout(
 	20*fontscale, 20*fontscale, 20*fontscale, 45, #Title/main labels
 	60*fontscale, 15*fontscale, 3, 7, 2, #Ticks/frame
-	DEFAULT_DATA_WIDTH, DEFAULT_DATA_HEIGHT,
+	defaults.wdata, defaults.hdata,
 	Font(fontname, fontscale*14, bold=true), #Title
 	Font(fontname, fontscale*14), Font(fontname, fontscale*12), #Axis/Tick labels
+	Font(fontname, fontscale*8), #Time stamp
 	GridAttributes(true, false, true, false),
 	LegendLStyle(false, Font(fontname, fontscale*12), 100.0, .25, 0.5, 20),
-	TickLabelStyle(), TickLabelStyle()
+	TickLabelStyle(), TickLabelStyle(), defaults.showtimestamp
 )
 
 #2D plot.
@@ -226,6 +229,7 @@ Plot2D(;title="") = Plot2D(Layout(), AxesRect(), Annotation(title=title),
 
 type Multiplot
 	title::DisplayString
+
 	subplots::Vector{Plot}
 	ncolumns::Int
 
@@ -233,11 +237,11 @@ type Multiplot
 	wplot::Float64
 	hplot::Float64
 
-	htitle::Float64 #Title allocation
+	htitle::Float64 #Title height allocation
 	fnttitle::Font
 end
-Multiplot(;title="", ncolumns=1, titlefont=Font(DEFAULT_FONTNAME, 20),
-		wplot=DEFAULT_PLOT_WIDTH, hplot=DEFAULT_PLOT_HEIGHT) =
+Multiplot(;title="", ncolumns=1, titlefont=Font(defaults.fontname, 20),
+		wplot=defaults.wplot, hplot=defaults.hplot) =
 	Multiplot(title, [], ncolumns, wplot, hplot, 30, titlefont)
 
 
@@ -257,11 +261,11 @@ function axes(a1::Symbol)
 	end
 end
 
-function axes(a1::Symbol, a2::Symbol; zref = nothing)
+function axes(a1::Symbol, a2::Symbol; ref = nothing)
 	if :smith == a1
-		return AxesSmith(a2, zref)
-	elseif zref != nothing
-		error("cannot set zref for axes(:$a1, :$a2)")
+		return AxesSmith(a2, ref)
+	elseif ref != nothing
+		error("cannot set ref for axes(:$a1, :$a2)")
 	end
 
 	if :polar == a1
@@ -339,15 +343,25 @@ datamap{T<:Number}(::Type{T}, ::AxisScale{:log10}) =
 	(x::T)->(x<0? DNaN: log10(DReal(x)))
 #TODO: find a way to show negative values for log10?
 
+datamap_rev{T<:Number}(::Type{T}, ::AxisScale) = (x::T)->DReal(x)
+#NOTE: Values dBs remain in dBs for readability
+datamap_rev{T<:Number}(::Type{T}, ::AxisScale{:log2}) = (x::T)->(2.0^x)
+datamap_rev{T<:Number}(::Type{T}, ::AxisScale{:log10}) = (x::T)->(10.0^x)
+
+datamap_rev{T<:Number}(v::T, s::AxisScale) = datamap_rev(T,s)(v) #One-off conversion
+
+
 #Extents mapping functions, depending on axis type:
 #-------------------------------------------------------------------------------
 extentsmap(::AxisScale) = (x::DReal)->x #Most axis types don't need to re-map extents.
+#NOTE: Extents in dBs remain extents in dBs
 extentsmap(t::AxisScale{:log2}) = datamap(DReal, t)
 extentsmap(t::AxisScale{:log10}) = datamap(DReal, t)
 
 extentsmap_rev(::AxisScale) = (x::DReal)->x #Most axis types don't need to re-map extents.
-extentsmap_rev(t::AxisScale{:log2}) = (x::DReal)->(2^x)
-extentsmap_rev(t::AxisScale{:log10}) = (x::DReal)->(10^x)
+#NOTE: Extents in dBs remain extents in dBs
+extentsmap_rev(t::AxisScale{:log2}) = datamap_rev(DReal, t)
+extentsmap_rev(t::AxisScale{:log10}) = datamap_rev(DReal, t)
 
 
 #==Plot extents

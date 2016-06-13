@@ -26,20 +26,20 @@ end
 
 #==Scale/position widget control
 ===============================================================================#
-function scalectrl_enabled(gplot::GtkPlot)
-	return Gtk.GAccessor.sensitive(gplot.w_xscale)
+function scalectrl_enabled(pwidget::PlotWidget)
+	return Gtk.GAccessor.sensitive(pwidget.w_xscale)
 end
-function scalectrl_enabled(gplot::GtkPlot, v::Bool)
-	Gtk.GAccessor.sensitive(gplot.w_xscale, v)
-	Gtk.GAccessor.sensitive(gplot.w_xpos, v)
+function scalectrl_enabled(pwidget::PlotWidget, v::Bool)
+	Gtk.GAccessor.sensitive(pwidget.w_xscale, v)
+	Gtk.GAccessor.sensitive(pwidget.w_xpos, v)
 end
 #Apply current scale/position scrollbar values to plot extents:
-function scalectrl_apply(gplot::GtkPlot)
-	xscale = getproperty(gplot.xscale, :value, Int)
-	xpos = getproperty(gplot.xpos, :value, Float64)
+function scalectrl_apply(pwidget::PlotWidget)
+	xscale = getproperty(pwidget.xscale, :value, Int)
+	xpos = getproperty(pwidget.xpos, :value, Float64)
 
 	#Use transformed coordinate system:
-	ext_full = rescale(getextents_full(gplot.src), gplot.src.axes)
+	ext_full = rescale(getextents_full(pwidget.src), pwidget.src.axes)
 	span = ext_full.xmax - ext_full.xmin
 	center = (ext_full.xmax + ext_full.xmin) / 2
 	vspan = span/xscale #Visible span
@@ -48,36 +48,36 @@ function scalectrl_apply(gplot::GtkPlot)
 
 	#Update extents & redraw
 	ext_new = PExtents2D(xmin, xmax, DNaN, DNaN)
-	ext = merge(getextents_xfrm(gplot.src), ext_new)
-	setextents_xfrm(gplot.src, ext)
-	render(gplot)
-	Gtk.draw(gplot.canvas)
+	ext = merge(getextents_xfrm(pwidget.src), ext_new)
+	setextents_xfrm(pwidget.src, ext)
+	render(pwidget)
+	Gtk.draw(pwidget.canvas)
 end
 
 
 #==Basic zoom control
 ===============================================================================#
 #Zoom to bounding box (in device coordinates):
-function zoom(gplot::GtkPlot, bb::BoundingBox)
+function zoom(pwidget::PlotWidget, bb::BoundingBox)
 	p1 = Point2D(bb.xmin, bb.ymin)
 	p2 = Point2D(bb.xmax, bb.ymax)
 
-	ext = getextents_xfrm(gplot.src)
-	xf = Transform2D(ext, gplot.graphbb)
+	ext = getextents_xfrm(pwidget.src)
+	xf = Transform2D(ext, pwidget.graphbb)
 	p1 = ptmap_rev(xf, p1)
 	p2 = ptmap_rev(xf, p2)
 
-	setextents_xfrm(gplot.src, PExtents2D(
+	setextents_xfrm(pwidget.src, PExtents2D(
 		min(p1.x, p2.x), max(p1.x, p2.x),
 		min(p1.y, p2.y), max(p1.y, p2.y)
 	))
-	scalectrl_enabled(gplot, false) #Scroll bar control no longer valid
-	render(gplot)
-	Gtk.draw(gplot.canvas)
+	scalectrl_enabled(pwidget, false) #Scroll bar control no longer valid
+	render(pwidget)
+	Gtk.draw(pwidget.canvas)
 end
 
 #Zoom in/out @ point (pt in plot coordinates)
-function zoom(gplot::GtkPlot, ext::PExtents2D, pt::Point2D, ratio::Float64)
+function zoom(pwidget::PlotWidget, ext::PExtents2D, pt::Point2D, ratio::Float64)
 	xspan = ext.xmax - ext.xmin
 	yspan = ext.ymax - ext.ymin
 	Δx = pt.x - ext.xmin
@@ -85,139 +85,139 @@ function zoom(gplot::GtkPlot, ext::PExtents2D, pt::Point2D, ratio::Float64)
 	xmin = pt.x-ratio*Δx
 	ymin = pt.y-ratio*Δy
 
-	setextents_xfrm(gplot.src, PExtents2D(
+	setextents_xfrm(pwidget.src, PExtents2D(
 		xmin, xmin + ratio*xspan,
 		ymin, ymin + ratio*yspan
 	))
-	scalectrl_enabled(gplot, false) #Scroll bar control no longer valid
-	render(gplot)
-	Gtk.draw(gplot.canvas)
+	scalectrl_enabled(pwidget, false) #Scroll bar control no longer valid
+	render(pwidget)
+	Gtk.draw(pwidget.canvas)
 end
 
 #Zoom in/out, centered on current extents
-function zoom(gplot::GtkPlot, ratio::Float64)
-	ext = getextents_xfrm(gplot.src)
+function zoom(pwidget::PlotWidget, ratio::Float64)
+	ext = getextents_xfrm(pwidget.src)
 	pt = Point2D((ext.xmin+ext.xmax)/2, (ext.ymin+ext.ymax)/2)
-	zoom(gplot, ext, pt, ratio)
+	zoom(pwidget, ext, pt, ratio)
 end
-zoom_out(gplot::GtkPlot, stepratio::Float64=ZOOM_STEPRATIO) =
-	zoom(gplot, stepratio)
-zoom_in(gplot::GtkPlot, stepratio::Float64=ZOOM_STEPRATIO) =
-	zoom(gplot, 1/stepratio)
+zoom_out(pwidget::PlotWidget, stepratio::Float64=ZOOM_STEPRATIO) =
+	zoom(pwidget, stepratio)
+zoom_in(pwidget::PlotWidget, stepratio::Float64=ZOOM_STEPRATIO) =
+	zoom(pwidget, 1/stepratio)
 
 #Zoom in/out around specified device coordinates:
-function zoom(gplot::GtkPlot, x::Float64, y::Float64, ratio::Float64)
+function zoom(pwidget::PlotWidget, x::Float64, y::Float64, ratio::Float64)
 	pt = Point2D(x, y)
-	ext = getextents_xfrm(gplot.src)
-	xf = Transform2D(ext, gplot.graphbb)
+	ext = getextents_xfrm(pwidget.src)
+	xf = Transform2D(ext, pwidget.graphbb)
 	pt = ptmap_rev(xf, pt)
-	zoom(gplot, ext, pt, ratio)
+	zoom(pwidget, ext, pt, ratio)
 end
-zoom_out(gplot::GtkPlot, x::Float64, y::Float64, stepratio::Float64=ZOOM_STEPRATIO) =
-	zoom(gplot, x, y, stepratio)
-zoom_in(gplot::GtkPlot, x::Float64, y::Float64, stepratio::Float64=ZOOM_STEPRATIO) =
-	zoom(gplot, x, y, 1/stepratio)
+zoom_out(pwidget::PlotWidget, x::Float64, y::Float64, stepratio::Float64=ZOOM_STEPRATIO) =
+	zoom(pwidget, x, y, stepratio)
+zoom_in(pwidget::PlotWidget, x::Float64, y::Float64, stepratio::Float64=ZOOM_STEPRATIO) =
+	zoom(pwidget, x, y, 1/stepratio)
 
-function zoom_xfull(gplot::GtkPlot)
+function zoom_xfull(pwidget::PlotWidget)
 	#TODO
 end
-function zoom_full(gplot::GtkPlot)
-	setextents(gplot.src, PExtents2D()) #Reset active extents
-	scalectrl_enabled(gplot, false) #Suppress updates from setproperty!
-	setproperty!(gplot.xscale, :value, Int(1))
-	setproperty!(gplot.xpos, :value, Float64(0))
-	scalectrl_enabled(gplot, true)
-	scalectrl_apply(gplot)
+function zoom_full(pwidget::PlotWidget)
+	setextents(pwidget.src, PExtents2D()) #Reset active extents
+	scalectrl_enabled(pwidget, false) #Suppress updates from setproperty!
+	setproperty!(pwidget.xscale, :value, Int(1))
+	setproperty!(pwidget.xpos, :value, Float64(0))
+	scalectrl_enabled(pwidget, true)
+	scalectrl_apply(pwidget)
 end
 
 
 #==Box-zoom control
 ===============================================================================#
-function boxzoom_setstart(gplot::GtkPlot, x::Float64, y::Float64)
-	gplot.sel.enabled = true
-	gplot.sel.bb = BoundingBox(x, x, y, y)
+function boxzoom_setstart(pwidget::PlotWidget, x::Float64, y::Float64)
+	pwidget.sel.enabled = true
+	pwidget.sel.bb = BoundingBox(x, x, y, y)
 end
-function boxzoom_cancel(gplot::GtkPlot)
-	gplot.sel.enabled = false
-	Gtk.draw(gplot.canvas)
+function boxzoom_cancel(pwidget::PlotWidget)
+	pwidget.sel.enabled = false
+	Gtk.draw(pwidget.canvas)
 end
-function boxzoom_complete(gplot::GtkPlot, x::Float64, y::Float64)
-	gplot.sel.enabled = false
-	bb = gplot.sel.bb
-	gplot.sel.bb = BoundingBox(bb.xmin, x, bb.ymin, y)
-	zoom(gplot, gplot.sel.bb)
+function boxzoom_complete(pwidget::PlotWidget, x::Float64, y::Float64)
+	pwidget.sel.enabled = false
+	bb = pwidget.sel.bb
+	pwidget.sel.bb = BoundingBox(bb.xmin, x, bb.ymin, y)
+	zoom(pwidget, pwidget.sel.bb)
 end
 #Set end point of boxzoom area:
-function boxzoom_setend(gplot::GtkPlot, x::Float64, y::Float64)
-	bb = gplot.sel.bb
-	gplot.sel.bb = BoundingBox(bb.xmin, x, bb.ymin, y)	
-	Gtk.draw(gplot.canvas)
+function boxzoom_setend(pwidget::PlotWidget, x::Float64, y::Float64)
+	bb = pwidget.sel.bb
+	pwidget.sel.bb = BoundingBox(bb.xmin, x, bb.ymin, y)	
+	Gtk.draw(pwidget.canvas)
 end
 
 
 #==Basic pan control
 ===============================================================================#
-function pan_xratio(gplot::GtkPlot, panstepratio::Float64)
-	ext = getextents_xfrm(gplot.src)
+function pan_xratio(pwidget::PlotWidget, panstepratio::Float64)
+	ext = getextents_xfrm(pwidget.src)
 	panstep = panstepratio*(ext.xmax-ext.xmin)
-	setextents_xfrm(gplot.src, PExtents2D(
+	setextents_xfrm(pwidget.src, PExtents2D(
 		ext.xmin+panstep, ext.xmax+panstep,
 		ext.ymin, ext.ymax
 	))
-	scalectrl_enabled(gplot, false) #Scroll bar control no longer valid
-	render(gplot)
-	Gtk.draw(gplot.canvas)
+	scalectrl_enabled(pwidget, false) #Scroll bar control no longer valid
+	render(pwidget)
+	Gtk.draw(pwidget.canvas)
 end
-function pan_yratio(gplot::GtkPlot, panstepratio::Float64)
-	ext = getextents_xfrm(gplot.src)
+function pan_yratio(pwidget::PlotWidget, panstepratio::Float64)
+	ext = getextents_xfrm(pwidget.src)
 	panstep = panstepratio*(ext.ymax-ext.ymin)
-	setextents_xfrm(gplot.src, PExtents2D(
+	setextents_xfrm(pwidget.src, PExtents2D(
 		ext.xmin, ext.xmax,
 		ext.ymin+panstep, ext.ymax+panstep
 	))
-	render(gplot)
-	Gtk.draw(gplot.canvas)
+	render(pwidget)
+	Gtk.draw(pwidget.canvas)
 end
 
-pan_left(gplot::GtkPlot) = pan_xratio(gplot, -PAN_STEPRATIO)
-pan_right(gplot::GtkPlot) = pan_xratio(gplot, PAN_STEPRATIO)
-pan_up(gplot::GtkPlot) = pan_yratio(gplot, PAN_STEPRATIO)
-pan_down(gplot::GtkPlot) = pan_yratio(gplot, -PAN_STEPRATIO)
+pan_left(pwidget::PlotWidget) = pan_xratio(pwidget, -PAN_STEPRATIO)
+pan_right(pwidget::PlotWidget) = pan_xratio(pwidget, PAN_STEPRATIO)
+pan_up(pwidget::PlotWidget) = pan_yratio(pwidget, PAN_STEPRATIO)
+pan_down(pwidget::PlotWidget) = pan_yratio(pwidget, -PAN_STEPRATIO)
 
 
 #==Mouse-pan control
 ===============================================================================#
 #Δy/Δy: in device coordinates
-function mousepan_delta(gplot::GtkPlot, ext::PExtents2D, Δx::Float64, Δy::Float64)
+function mousepan_delta(pwidget::PlotWidget, ext::PExtents2D, Δx::Float64, Δy::Float64)
 	#Convert to plot coordinates:
-	xf = Transform2D(ext, gplot.graphbb)
+	xf = Transform2D(ext, pwidget.graphbb)
 	Δvec = vecmap_rev(xf, Point2D(-Δx, -Δy))
 
-	setextents_xfrm(gplot.src, PExtents2D(
+	setextents_xfrm(pwidget.src, PExtents2D(
 		ext.xmin+Δvec.x, ext.xmax+Δvec.x,
 		ext.ymin+Δvec.y, ext.ymax+Δvec.y
 	))
-	scalectrl_enabled(gplot, false) #Scroll bar control no longer valid
-	render(gplot)
-	Gtk.draw(gplot.canvas)
+	scalectrl_enabled(pwidget, false) #Scroll bar control no longer valid
+	render(pwidget)
+	Gtk.draw(pwidget.canvas)
 end
-function mousepan_setstart(gplot::GtkPlot, x::Float64, y::Float64)
-	gplot.sel.bb = BoundingBox(x, x, y, y) #Tracks start/end pos
-	gplot.sel.ext_start = getextents_xfrm(gplot.src)
+function mousepan_setstart(pwidget::PlotWidget, x::Float64, y::Float64)
+	pwidget.sel.bb = BoundingBox(x, x, y, y) #Tracks start/end pos
+	pwidget.sel.ext_start = getextents_xfrm(pwidget.src)
 end
-function mousepan_cancel(gplot::GtkPlot)
-	mousepan_delta(gplot, gplot.sel.ext_start, 0.0, 0.0)
+function mousepan_cancel(pwidget::PlotWidget)
+	mousepan_delta(pwidget, pwidget.sel.ext_start, 0.0, 0.0)
 end
-function mousepan_complete(gplot::GtkPlot, x::Float64, y::Float64)
+function mousepan_complete(pwidget::PlotWidget, x::Float64, y::Float64)
 	#Already panned.
 end
 #Set new point of mousepan operation:
-function mousepan_move(gplot::GtkPlot, x::Float64, y::Float64)
-	bb = gplot.sel.bb
+function mousepan_move(pwidget::PlotWidget, x::Float64, y::Float64)
+	bb = pwidget.sel.bb
 	bb = BoundingBox(bb.xmin, x, bb.ymin, y)
-	gplot.sel.bb = bb
+	pwidget.sel.bb = bb
 	Δx = bb.xmax-bb.xmin; Δy = bb.ymax-bb.ymin
-	mousepan_delta(gplot, gplot.sel.ext_start, Δx, Δy)
+	mousepan_delta(pwidget, pwidget.sel.ext_start, Δx, Δy)
 end
 
 #Last line

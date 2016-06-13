@@ -25,6 +25,10 @@ const ALIGN_VCENTER = CAlignment(4)
 const ALIGN_TOP = CAlignment(8)
 const ALIGN_VMASK = (0x3<<2)
 
+#Symbols not currently supported by Cairo package:
+#-------------------------------------------------------------------------------
+const PANGO_ELLIPSIZE_END = 3
+
 
 #==Main types
 ===============================================================================#

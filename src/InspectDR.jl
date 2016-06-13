@@ -4,18 +4,6 @@
 #__precompile__()
 module InspectDR
 
-#Default values for data area configuration (used to save single plot):
-const DEFAULT_DATA_WIDTH = 500.0
-const DEFAULT_DATA_HEIGHT = DEFAULT_DATA_WIDTH / φ #Use golden ratio
-
-#Default values for data area configuration (used to save multi-plot):
-const DEFAULT_PLOT_WIDTH = 600.0
-const DEFAULT_PLOT_HEIGHT = DEFAULT_PLOT_WIDTH / φ #Use golden ratio
-
-#Default font:
-const DEFAULT_FONTNAME = @windows? "Cambria": "Serif"
-#Cairo "built-in": Serif, Sans, Serif, Fantasy, Monospace
-
 using Colors
 using Graphics
 import Gtk
@@ -30,10 +18,12 @@ typealias NullOr{T} Union{Void, T}
 typealias DisplayString UTF8String
 typealias DisplayStringArg Union{DisplayString, ASCIIString} #Args accept ASCIIString as well.
 
+include("defaults.jl")
 include("codegen.jl")
 include("math.jl")
 include("math_graphics.jl")
 include("numericfmt.jl")
+include("events.jl")
 include("datasets.jl")
 include("base.jl")
 include("grids.jl")
@@ -108,11 +98,11 @@ Convenience functions:
 =#
 
 #Create new plot window (Is this a good idea?):
-#	figure(args...; kwargs...) = GtkPlotWindow(args...; kwargs...)
+#	figure(args...; kwargs...) = GtkPlot(args...; kwargs...)
 
 #Accessors:
-	Plot(gplot::GtkPlot) = gplot.src
-	Plot(wnd::GtkPlotWindow, i::Int) = wnd.subplots[i]
+	Plot(pwidget::PlotWidget) = pwidget.src
+	Plot(gplot::GtkPlot, i::Int) = gplot.subplots[i]
 
 
 #==Already exported

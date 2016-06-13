@@ -7,6 +7,7 @@ import Gtk: getproperty, setproperty!, signal_connect, @guarded
 #TODO: Figure out why constants are Int32 instead of Int???
 import Gtk: GdkKeySyms
 import Gtk: GtkPositionType, GdkEventType, GdkEventMask
+import Gtk: GConstants.GtkShadowType
 
 
 #==Extensions
@@ -25,6 +26,11 @@ end
 function can_focus(widget::Gtk.GtkWidget,can_focus_::Bool)
 	ccall((:gtk_widget_set_can_focus,Gtk.libgtk),Void,(Ptr{Gtk.GObject},Cint),widget,can_focus_)
 	return widget
+end
+
+function window_close(window::Gtk.GtkWindow)
+	ccall((:gtk_window_close,Gtk.libgtk),Void,(Ptr{Gtk.GObject},),window)
+	return
 end
 
 function focus(window::Gtk.GtkWindow,widget)
@@ -70,7 +76,7 @@ type GtkSelection
 end
 GtkSelection() = GtkSelection(false, BoundingBox(0,0,0,0), PExtents2D())
 
-type GtkPlot
+type PlotWidget
 	widget::_Gtk.Box #Base widget
 	canvas::_Gtk.Canvas #Actual plot area
 	src::Plot
@@ -88,21 +94,24 @@ type GtkPlot
 #	bufbb::BoundingBox
 
 	sel::GtkSelection
+
+	#Event handlers:
+	eh_plothover::NullOr{HandlerInfo}
 end
 
 #Supports multiplot:
-type GtkPlotWindow
-	title::DisplayString
+type GtkPlot
 	wnd::_Gtk.Window
 	grd::_Gtk.Grid #Holds subplot widgets
-	subplots::Vector{GtkPlot}
-	ncolumns::Int
+	subplots::Vector{PlotWidget}
+	properties::Multiplot #Properties: ".subplots" ignored
+	status::_Gtk.Label
 end
 
 
 #==Mutators
 ===============================================================================#
-function settitle(::Type{GtkPlotWindow}, wnd::_Gtk.Window, title::DisplayStringArg)
+function settitle(::Type{GtkPlot}, wnd::_Gtk.Window, title::DisplayStringArg)
 	if length(title)> 0
 		title = "InspectDR - $(title)"
 	else
@@ -111,41 +120,67 @@ function settitle(::Type{GtkPlotWindow}, wnd::_Gtk.Window, title::DisplayStringA
 	Gtk.setproperty!(wnd, :title, title)
 end
 
-function settitle(gplot::GtkPlotWindow, title::DisplayStringArg)
-	gplot.title = DisplayString(title)
-	settitle(GtkPlotWindow, gplot.wnd, gplot.title)
+function settitle(gplot::GtkPlot, title::DisplayStringArg)
+	gplot.properties.title = DisplayString(title)
+	settitle(GtkPlot, gplot.wnd, gplot.properties.title)
+end
+
+
+#==Helper functions
+===============================================================================#
+function copy_properties(mp::Multiplot)
+	return Multiplot(mp.title, [], mp.ncolumns,
+		mp.wplot, mp.hplot, mp.htitle, mp.fnttitle
+	)
 end
 
 
 #==Main functions
 ===============================================================================#
 
-function invalidbuffersize(gplot::GtkPlot)
-	return width(gplot.canvas) != width(gplot.bufsurf) ||
-		height(gplot.canvas) != height(gplot.bufsurf)
+function invalidbuffersize(pwidget::PlotWidget)
+	return width(pwidget.canvas) != width(pwidget.bufsurf) ||
+		height(pwidget.canvas) != height(pwidget.bufsurf)
 end
 
-#Render GtkPlot widget to buffer:
+#Render PlotWidget widget to buffer:
 #-------------------------------------------------------------------------------
-function render(gplot::GtkPlot)
+function render(pwidget::PlotWidget)
 	#Create new buffer large enough to match canvas:
 	#TODO: Is crating surfaces expensive?  This solution might be bad.
-	if invalidbuffersize(gplot)
-		Cairo.destroy(gplot.bufsurf)
+	if invalidbuffersize(pwidget)
+		Cairo.destroy(pwidget.bufsurf)
 		#TODO: use RGB surface? Gtk.cairo_surface_for() appears to generate ARGB surface (slower?)
-		#gplot.bufsurf = Cairo.CairoRGBSurface(width(gplot.canvas),height(gplot.canvas))
-		gplot.bufsurf = Gtk.cairo_surface_for(gplot.canvas) #create similar
+		#pwidget.bufsurf = Cairo.CairoRGBSurface(width(pwidget.canvas),height(pwidget.canvas))
+		pwidget.bufsurf = Gtk.cairo_surface_for(pwidget.canvas) #create similar
 	end
 
-	w = width(gplot.canvas); h = height(gplot.canvas)
+	w = width(pwidget.canvas); h = height(pwidget.canvas)
 	bb = BoundingBox(0, w, 0, h)
-	ctx = CairoContext(gplot.bufsurf)
+	ctx = CairoContext(pwidget.bufsurf)
 
 	_reset(ctx)
 	clear(ctx, bb)
-	render(ctx, gplot.src, bb)
-	gplot.graphbb = graphbounds(bb, gplot.src.layout)
+	render(ctx, pwidget.src, bb)
+	pwidget.graphbb = graphbounds(bb, pwidget.src.layout)
 	Cairo.destroy(ctx)
 end
+
+
+#==IO functions
+===============================================================================#
+#_write() GtkPlot: Auto-coumpute w/h
+function _write(path::AbstractString, mime::MIME, gplot::GtkPlot)
+	mplot = copy_properties(gplot.properties)
+	for s in gplot.subplots
+		push!(mplot.subplots, s.src)
+	end
+	_write(path, mime, mplot)
+end
+
+write_png(path::AbstractString, gplot::GtkPlot) = _write(path, MIMEpng(), gplot)
+write_svg(path::AbstractString, gplot::GtkPlot) = _write(path, MIMEsvg(), gplot)
+write_eps(path::AbstractString, gplot::GtkPlot) = _write(path, MIMEeps(), gplot)
+write_pdf(path::AbstractString, gplot::GtkPlot) = _write(path, MIMEpdf(), gplot)
 
 #Last line

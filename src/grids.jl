@@ -53,9 +53,13 @@ end
 abstract PlotGrid
 
 type GridSmith <: PlotGrid
+	zgrid::Bool #Set to false for Y (admittance)-grid (x -> -x)
+	ref::Float64 #Scaling factor
 	majorR::Vector{DReal} #Major constant resistance/admittance circles
 	minorR::Vector{DReal} #Minor constant resistance/admittance circles
 	minorX::Vector{DReal} #Minor constant reactance circles
+	labelR::Vector{DReal}
+	labelX::Vector{DReal}
 end
 
 #Curvilinear grid (ex: polar plots):
@@ -213,12 +217,18 @@ function gridlines(axes::AxesRect, ext::PExtents2D)
 end
 
 function gridlines(axes::AxesSmith, ext::PExtents2D)
+	const labelbase = DReal[0.2, 0.4, 0.6, 2, 4, 10]
+	const minorextra = DReal[0.8, 1.5, 3, 6, 20]
 	#TODO: make grid lines user-selectable
 	#TODO: change with ext??
 	majorR = DReal[0, 1]
-	minorR = DReal[0.2, 0.4, 0.6, 0.8, 1.5, 2, 3, 4, 6, 10, 20]
-	minorX = DReal[0.2, 0.4, 0.6, 0.8, 1, 1.5, 2, 3, 4, 6, 10, 20]
-	return GridSmith(majorR, minorR, minorX)
+	minorR = vcat(labelbase, minorextra)
+	minorX = vcat(labelbase, minorextra, DReal[1])
+	labelR = vcat(labelbase, DReal[0, 1])
+	labelX = vcat(labelbase, DReal[1, 0.8, 1.5])
+
+	zgrid = isa(axes, AxesSmith{:Z})
+	return GridSmith(zgrid, axes.ref, majorR, minorR, minorX, labelR, labelX)
 end
 
 #Last line

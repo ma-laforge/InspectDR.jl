@@ -8,22 +8,19 @@ typealias MIMEsvg MIME"image/svg+xml"
 typealias MIMEeps MIME"image/eps"
 typealias MIMEpdf MIME"application/pdf"
 
+const MAPEXT2MIME = Dict{AbstractString,MIME}(
+	".png" => MIMEpng(),
+	".svg" => MIMEsvg(),
+	".eps" => MIMEeps(),
+	".pdf" => MIMEpdf(),
+)
+
 #If an easy way to read Cairo scripts back to a surface is found:
 #typealias MIMEcairo MIME"image/cairo"
 
 #All supported MIMEs:
 #EXCLUDE SVG so it can be turnd on/off??
 typealias MIMEall Union{MIMEpng, MIMEeps, MIMEpdf, MIMEsvg}
-
-
-#==Defaults
-===============================================================================#
-type Defaults
-	rendersvg::Bool #Might want to dissalow SVG renderings for performance reasons
-end
-Defaults() = Defaults(true)
-
-const defaults = Defaults()
 
 
 #=="Constructors"

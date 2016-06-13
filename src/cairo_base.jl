@@ -235,6 +235,7 @@ function render(canvas::PCanvas2D, a::Annotation, lyt::Layout)
 	const ctx = canvas.ctx
 	const bb = canvas.bb
 	const graph = canvas.graphbb
+	const TIMESTAMP_OFFSET = 3
 
 	xcenter = (graph.xmin+graph.xmax)/2
 	ycenter = (graph.ymin+graph.ymax)/2
@@ -250,6 +251,12 @@ function render(canvas::PCanvas2D, a::Annotation, lyt::Layout)
 	#Y-axis
 	pt = Point2D(bb.xmin+lyt.waxlabel/2, ycenter)
 	render(ctx, a.ylabel, pt, lyt.fntaxlabel, align=ALIGN_HCENTER|ALIGN_VCENTER, angle=-π/2)
+
+	#Time stamp
+	if lyt.showtimestamp
+		pt = Point2D(bb.xmax-TIMESTAMP_OFFSET, bb.ymax-TIMESTAMP_OFFSET)
+		render(ctx, a.timestamp, pt, lyt.fnttime, align=ALIGN_RIGHT|ALIGN_BOTTOM)
+	end
 end
 
 #Render frame around graph
