@@ -67,8 +67,12 @@ plot_logf = InspectDR.Plot2D()
 	plot_logf.axes = InspectDR.axes(:log10, :dB20)
 	plot_logf.ext_full = InspectDR.PExtents2D(xmin=10e6,ymax=5)
 	plot_logf.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
+plot_ysmith = InspectDR.Plot2D()
+	plot_ysmith.axes = InspectDR.axes(:smith, :Y)
+	plot_ysmith.ext_full = InspectDR.PExtents2D(xmin=-1.2,xmax=1.2,ymin=-1.2,ymax=1.2)
+	plot_ysmith.layout.legend.enabled=true
 plot_smith = InspectDR.Plot2D()
-	plot_smith.axes = InspectDR.axes(:smith)
+	plot_smith.axes = InspectDR.axes(:smith, :Z, ref=50)
 	plot_smith.ext_full = InspectDR.PExtents2D(xmin=-1.2,xmax=1.2,ymin=-1.2,ymax=1.2)
 	plot_smith.layout.legend.enabled=true
 
@@ -79,13 +83,18 @@ for plot in [plot_linf, plot_logf]
 	a.ylabel = "Magnitude (dB)"
 end
 
+a = plot_ysmith.annotation
+	a.title = "Y-Smith Chart"
+	a.xlabel = "Real(Γ)"
+	a.ylabel = "Imaginary(Γ)"
+
 a = plot_smith.annotation
-	a.title = "Smith Chart"
+	a.title = "Z-Smith Chart"
 	a.xlabel = "Real(Γ)"
 	a.ylabel = "Imaginary(Γ)"
 
 #Select which plots to actually display:
-plotlist = [plot_linf, plot_logf, plot_smith]
+plotlist = [plot_linf, plot_logf, plot_ysmith, plot_smith]
 #plotlist = [plot_smith]
 
 for plot in plotlist
