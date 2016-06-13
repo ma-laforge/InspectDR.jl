@@ -48,11 +48,14 @@ for i in 1:4
 	end
 end
 
-#Enable legend on last subplot:
-mplot.subplots[4].layout.legend.enabled = true
-
 #Display
 #-------------------------------------------------------------------------------
 gplot = display(InspectDR.GtkDisplay(), mplot)
+
+
+#==Save multi-plot to file
+===============================================================================#
+InspectDR.write_png("export_monochrome.png", mplot)
+InspectDR.write_svg("export_monochrome.svg", mplot)
 
 :DONE
