@@ -147,7 +147,7 @@ function PlotWidget(plot::Plot)
 	pwidget = PlotWidget(vbox, canvas, plot,
 		BoundingBox(0,1,0,1), ISNormal(),
 		w_xscale, xscale, w_xpos, xpos,
-		bufsurf, GtkSelection(),
+		bufsurf, GtkSelection(), true, true,
 		#Event handlers:
 		nothing
 	)
@@ -175,7 +175,7 @@ function PlotWidget(plot::Plot)
 		ctx = getgc(pwidget.canvas)
 		Cairo.set_source_surface(ctx, pwidget.bufsurf, 0, 0)
 		Cairo.paint(ctx) #Applies contents of bufsurf
-		selectionbox_draw(ctx, pwidget.sel)
+		selectionbox_draw(ctx, pwidget)
 		#TODO: Can/should we explicitly Cairo.destroy(ctx)???
 	end
 

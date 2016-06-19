@@ -10,17 +10,53 @@ const ZOOM_STEPRATIO = 2.0 #How much to zoom in/out with mousewheel + keybinding
 
 #==Drawing functions
 ===============================================================================#
-function selectionbox_draw(ctx::CairoContext, sel::GtkSelection)
-	if !sel.enabled; return; end
+function selectionbox_draw(ctx::CairoContext, selbb::BoundingBox, graphbb::BoundingBox, hallowed::Bool, vallowed::Bool)
+	xmin = selbb.xmin; xmax = selbb.xmax
+	ymin = selbb.ymin; ymax = selbb.ymax
+	if !hallowed
+		xmin = graphbb.xmin
+		xmax = graphbb.xmax
+	end
+	if !vallowed
+		ymin = graphbb.ymin
+		ymax = graphbb.ymax
+	end
 
 	Cairo.save(ctx) #-----
 	Cairo.set_source(ctx, COLOR_BLACK)
 	setlinestyle(ctx, :dash, 1.0)
-	Cairo.rectangle(ctx, sel.bb)
+	Cairo.rectangle(ctx, BoundingBox(xmin, xmax, ymin, ymax))
 	Cairo.stroke(ctx)
 	Cairo.restore(ctx) #-----
 
 	nothing
+end
+
+function selectionbox_draw(ctx::CairoContext, w::PlotWidget)
+	if !w.sel.enabled; return; end
+	selectionbox_draw(ctx, w.sel.bb, w.graphbb, w.hallowed, w.vallowed)
+end
+
+
+#==Switching to h/v lock (or releasing both)
+===============================================================================#
+function locdir_h(pwidget::PlotWidget)
+	pwidget.hallowed = true
+	pwidget.vallowed = false
+	render(pwidget)
+	Gtk.draw(pwidget.canvas)
+end
+function locdir_v(pwidget::PlotWidget)
+	pwidget.hallowed = false
+	pwidget.vallowed = true
+	render(pwidget)
+	Gtk.draw(pwidget.canvas)
+end
+function locdir_any(pwidget::PlotWidget)
+	pwidget.hallowed = true
+	pwidget.vallowed = true
+	render(pwidget)
+	Gtk.draw(pwidget.canvas)
 end
 
 
@@ -69,8 +105,9 @@ function zoom(pwidget::PlotWidget, bb::BoundingBox)
 
 	setextents_xfrm(pwidget.src, PExtents2D(
 		min(p1.x, p2.x), max(p1.x, p2.x),
-		min(p1.y, p2.y), max(p1.y, p2.y)
-	))
+		min(p1.y, p2.y), max(p1.y, p2.y)),
+		pwidget.hallowed, pwidget.vallowed
+	)
 	scalectrl_enabled(pwidget, false) #Scroll bar control no longer valid
 	render(pwidget)
 	Gtk.draw(pwidget.canvas)
@@ -121,19 +158,27 @@ zoom_in(pwidget::PlotWidget, x::Float64, y::Float64, stepratio::Float64=ZOOM_STE
 function zoom_xfull(pwidget::PlotWidget)
 	#TODO
 end
-function zoom_full(pwidget::PlotWidget)
-	setextents(pwidget.src, PExtents2D()) #Reset active extents
-	scalectrl_enabled(pwidget, false) #Suppress updates from setproperty!
-	setproperty!(pwidget.xscale, :value, Int(1))
-	setproperty!(pwidget.xpos, :value, Float64(0))
-	scalectrl_enabled(pwidget, true)
-	scalectrl_apply(pwidget)
+function zoom_full(pwidget::PlotWidget, hallowed::Bool=true, vallowed::Bool=true)
+	setextents(pwidget.src, PExtents2D(), hallowed, vallowed) #Reset desired extents
+	if hallowed
+		scalectrl_enabled(pwidget, false) #Suppress updates from setproperty!
+		setproperty!(pwidget.xscale, :value, Int(1))
+		setproperty!(pwidget.xpos, :value, Float64(0))
+		scalectrl_enabled(pwidget, true)
+		scalectrl_apply(pwidget)
+	else
+		render(pwidget)
+		Gtk.draw(pwidget.canvas)
+	end
 end
+zoom_hfull(pwidget::PlotWidget) = zoom_full(pwidget, true, false)
+zoom_vfull(pwidget::PlotWidget) = zoom_full(pwidget, false, true)
 
 
 #==Box-zoom control
 ===============================================================================#
 function boxzoom_setstart(pwidget::PlotWidget, x::Float64, y::Float64)
+	locdir_any(pwidget)
 	pwidget.sel.enabled = true
 	pwidget.sel.bb = BoundingBox(x, x, y, y)
 end
@@ -193,15 +238,18 @@ function mousepan_delta(pwidget::PlotWidget, ext::PExtents2D, Δx::Float64, Δy:
 	xf = Transform2D(ext, pwidget.graphbb)
 	Δvec = vecmap_rev(xf, Point2D(-Δx, -Δy))
 
+	setextents_xfrm(pwidget.src, ext) #Restore original extents before overwriting
 	setextents_xfrm(pwidget.src, PExtents2D(
 		ext.xmin+Δvec.x, ext.xmax+Δvec.x,
-		ext.ymin+Δvec.y, ext.ymax+Δvec.y
-	))
+		ext.ymin+Δvec.y, ext.ymax+Δvec.y),
+		pwidget.hallowed, pwidget.vallowed
+	)
 	scalectrl_enabled(pwidget, false) #Scroll bar control no longer valid
 	render(pwidget)
 	Gtk.draw(pwidget.canvas)
 end
 function mousepan_setstart(pwidget::PlotWidget, x::Float64, y::Float64)
+	locdir_any(pwidget)
 	pwidget.sel.bb = BoundingBox(x, x, y, y) #Tracks start/end pos
 	pwidget.sel.ext_start = getextents_xfrm(pwidget.src)
 end
@@ -219,5 +267,6 @@ function mousepan_move(pwidget::PlotWidget, x::Float64, y::Float64)
 	Δx = bb.xmax-bb.xmin; Δy = bb.ymax-bb.ymin
 	mousepan_delta(pwidget, pwidget.sel.ext_start, Δx, Δy)
 end
+
 
 #Last line

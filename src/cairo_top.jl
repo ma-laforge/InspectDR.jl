@@ -16,10 +16,15 @@ function render(canvas::PCanvas2D, plot::Plot2D)
 #	render_axes
 
 	#Plot actual data
-	Cairo.save(canvas.ctx)
+Cairo.save(canvas.ctx)
 	setclip(canvas.ctx, canvas.graphbb)
 	render(canvas, plot.display_data)
-	Cairo.restore(canvas.ctx)
+
+	#Plot secondary annotation:
+	render(canvas, plot.markers, plot.axes)
+	render(canvas, plot.atext, plot.axes)
+
+Cairo.restore(canvas.ctx)
 
 	#Re-render axis over data:
 	render_axes(canvas, plot.layout, grid)

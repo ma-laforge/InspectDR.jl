@@ -57,7 +57,9 @@ InspectDR.jl supports keybindings to improve/accelerate user control.  The follo
 
 | Function | Key |
 | -------: | :---: |
-| Zoom out to full extents | `f` |
+| Zoom out to full extents | `CTRL` + `f` |
+| Zoom out horizontally to full extents | `CTRL` + `h` |
+| Zoom out vertically to full extents | `CTRL` + `v` |
 | Box zoom (in) | `right-click` + `mousemove`|
 | Zoom in / zoom out | `+` / `-` |
 | Zoom in / zoom out | `CTRL` + `mousewheel`|
@@ -66,6 +68,15 @@ InspectDR.jl supports keybindings to improve/accelerate user control.  The follo
 | Pan left / pan right | &lArr; / &rArr; |
 | Pan left / pan right | `SHIFT` + `mousewheel`|
 | Pan anywhere | (`SHIFT` + `left-click`) + `mousemove` |
+
+#### Mouse Pan/Zoom Locks
+There are also keybindings to lock directionnality during mouse pan / zoom operations:
+
+| Function | Key |
+| -------: | :---: |
+| Lock along horizontal | `h` |
+| Lock along vertical | `v`|
+| Allow both directions | `b` |
 
 ## Select Documentation
 

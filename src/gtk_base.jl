@@ -95,6 +95,10 @@ type PlotWidget
 
 	sel::GtkSelection
 
+	#Restrict h/v motion:
+	hallowed::Bool
+	vallowed::Bool
+
 	#Event handlers:
 	eh_plothover::NullOr{HandlerInfo}
 end

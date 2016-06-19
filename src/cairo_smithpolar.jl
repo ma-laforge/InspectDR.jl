@@ -121,6 +121,8 @@ end
 _rescale(inputlist::Vector{IWaveform}, axes::AxesSmith) =
 	map((input)->getrealimag(input), inputlist)
 
+_rescale(pt::Point2D, axes::AxesSmith) = pt
+
 
 #==High-level rendering functions
 ===============================================================================#

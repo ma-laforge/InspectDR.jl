@@ -144,6 +144,7 @@ type Font
 	bold::Bool
 end
 Font(name::AbstractString, _size::Real; bold::Bool=false) = Font(name, _size, bold)
+Font(_size::Real; bold::Bool=false) = Font(defaults.fontname, _size, bold)
 
 #Legend layout/style
 type LegendLStyle
@@ -201,6 +202,42 @@ Layout(;fontname::AbstractString=defaults.fontname, fontscale=defaults.fontscale
 	TickLabelStyle(), TickLabelStyle(), defaults.showtimestamp
 )
 
+#Tag data as being part of a given coordinate system:
+immutable CoordSystem{ID}; end
+typealias DeviceCoord CoordSystem{:dev}
+typealias NormCoord CoordSystem{:norm}
+typealias DataCoord CoordSystem{:data}
+
+immutable TypedCoord{CT<:CoordSystem}
+	v::DReal
+end
+#Annotation coordinates can match data or be normalized to plot bounds (0 -> 1):
+typealias AnnotationCoord Union{TypedCoord{NormCoord}, TypedCoord{DataCoord}}
+coord(s::Symbol, v::DReal) = TypedCoord{CoordSystem{s}}(v)
+
+type TextAnnotation
+	text::DisplayString
+	pt::Point2D #Data coordinates - set NaN to use offsets only
+	xoffset::DReal #Normalized to [0,1] plot bounds
+	yoffset::DReal #Normalized to [0,1] plot bounds
+	font::Font
+	color::Colorant
+	angle::DReal #Degrees
+	align::Symbol #tl, tc, tr, cl, cc, cr, bl, bc, br
+end
+#Don't use "text"... high probability of collisions when exported...
+atext(text::AbstractString; x::Real=DNaN, y::Real=DNaN, xoffset=0, yoffset=0,
+	font=Font(10), color=COLOR_BLACK, angle=0, align=:bl) =
+	TextAnnotation(text, Point2D(x,y), xoffset, yoffset, font, color, angle, align)
+
+type HVMarker
+	vmarker::Bool #false: hmarker
+	pos::DReal
+	line::LineAttributes
+end
+vmarker(pos, line=InspectDR.line()) = HVMarker(true, pos, line)
+hmarker(pos, line=InspectDR.line()) = HVMarker(false, pos, line)
+
 #2D plot.
 type Plot2D <: Plot
 	layout::Layout
@@ -213,6 +250,8 @@ type Plot2D <: Plot
 	ext::PExtents2D #Current/active extents
 
 	data::Vector{IWaveform}
+	markers::Vector{HVMarker}
+	atext::Vector{TextAnnotation}
 
 	#Display data cache:
 	invalid_ddata::Bool #Is cache of display data invalid?
@@ -224,7 +263,7 @@ type Plot2D <: Plot
 end
 
 Plot2D(;title="") = Plot2D(Layout(), AxesRect(), Annotation(title=title),
-	PExtents2D(), PExtents2D(), PExtents2D(), [], true, [], 1000
+	PExtents2D(), PExtents2D(), PExtents2D(), [], [], [], true, [], 1000
 )
 
 type Multiplot
@@ -328,6 +367,16 @@ function _add(plot::Plot2D, x::Vector, y::Vector; id::AbstractString="", dataf1=
 	return ds
 end
 
+function _add(plot::Plot2D, marker::HVMarker)
+	push!(plot.markers, marker)
+	return marker
+end
+
+function _add(plot::Plot2D, a::TextAnnotation)
+	push!(plot.atext, a)
+	return a
+end
+
 
 #==Mapping/interpolation functions
 ===============================================================================#
@@ -403,15 +452,24 @@ getextents_xfrm(plot::Plot2D) = rescale(plot.ext, plot.axes)
 getextents_full(plot::Plot2D) = merge(plot.ext_data, plot.ext_full)
 
 #Set active plot extents using data coordinates:
-function setextents(plot::Plot2D, ext::PExtents2D)
+function setextents(plot::Plot2D, ext::PExtents2D, hallowed::Bool=true, vallowed::Bool=true)
+	xmin = ext.xmin; xmax = ext.xmax; ymin = ext.ymin; ymax = ext.ymax
+	if !hallowed
+		xmin = plot.ext.xmin
+		xmax = plot.ext.xmax
+	end
+	if !vallowed
+		ymin = plot.ext.ymin
+		ymax = plot.ext.ymax
+	end
 	#Automatically fill-in any NaN fields, if possible:
-	plot.ext = merge(getextents_full(plot), ext)
+	plot.ext = merge(getextents_full(plot), PExtents2D(xmin, xmax, ymin, ymax))
 	invalidate_extents(plot)
 end
 
 #Set active plot extents using xfrm display coordinates:
-setextents_xfrm(plot::Plot2D, ext::PExtents2D) =
-	setextents(plot, rescale_rev(ext, plot.axes))
+setextents_xfrm(plot::Plot2D, ext::PExtents2D, hallowed::Bool=true, vallowed::Bool=true) =
+	setextents(plot, rescale_rev(ext, plot.axes), hallowed, vallowed)
 
 function setextents_full(plot::Plot2D, ext::PExtents2D)
 	plot.ext_full = ext
@@ -493,6 +551,11 @@ _rescale(inputlist::Vector{IWaveform}, xscale::AxisScale, yscale::AxisScale) =
 	map((input)->_rescale(input, xscale, yscale), inputlist)
 
 _rescale(inputlist::Vector{IWaveform}, axes::AxesRect) = _rescale(inputlist, axes.xscale, axes.yscale)
+
+_rescale(pt::Point2D, xscale::AxisScale, yscale::AxisScale) =
+	Point2D(datamap(DReal, xscale)(pt.x), datamap(DReal, yscale)(pt.y))
+_rescale(pt::Point2D, axes::AxesRect) = _rescale(pt, axes.xscale, axes.yscale)
+
 
 #Preprocess input dataset (rescale/reduce quantity of data/...):
 #-------------------------------------------------------------------------------

@@ -29,6 +29,7 @@ include("base.jl")
 include("grids.jl")
 include("cairo_ext.jl")
 include("cairo_base.jl")
+include("cairo_annotation.jl")
 include("cairo_smithpolar.jl")
 include("cairo_legends.jl")
 include("cairo_top.jl")
@@ -37,6 +38,7 @@ include("gtk_base.jl")
 include("gtk_input.jl")
 include("gtk_zoom.jl")
 include("gtk_top.jl")
+#include("precompile.jl")
 
 keybindings_setdefaults(keybindings)
 
@@ -83,6 +85,7 @@ About bounds:
 add = _add #Danger: high risk of collision (common name)
 export add, line, glyph, grid
 export axes
+export vmarker, hmarker, atext
 
 #==Unexported interface
 ================================================================================

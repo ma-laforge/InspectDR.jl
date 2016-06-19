@@ -148,6 +148,12 @@ function handleevent_keypress(::ISSelectingArea, pwidget::PlotWidget, event::Gtk
 	if GdkKeySyms.Escape == event.keyval
 		boxzoom_cancel(pwidget)
 		pwidget.state = ISNormal()
+	elseif 'h' == event.keyval
+		locdir_h(pwidget)
+	elseif 'v' == event.keyval
+		locdir_v(pwidget)
+	elseif 'b' == event.keyval
+		locdir_any(pwidget)
 	end
 end
 function handleevent_mouserelease(::ISSelectingArea, pwidget::PlotWidget, event::Gtk.GdkEventButton)
@@ -168,6 +174,12 @@ function handleevent_keypress(::ISPanningData, pwidget::PlotWidget, event::Gtk.G
 	if GdkKeySyms.Escape == event.keyval
 		mousepan_cancel(pwidget)
 		pwidget.state = ISNormal()
+	elseif 'h' == event.keyval || 'H' == event.keyval
+		locdir_h(pwidget)
+	elseif 'v' == event.keyval || 'V' == event.keyval
+		locdir_v(pwidget)
+	elseif 'b' == event.keyval || 'B' == event.keyval
+		locdir_any(pwidget)
 	end
 end
 function handleevent_mouserelease(::ISPanningData, pwidget::PlotWidget, event::Gtk.GdkEventButton)
@@ -187,7 +199,6 @@ end
 function keybindings_setdefaults(bnd::KeyBindings)
 	bnd.nomod = KeyMap(
 		GdkKeySyms.Escape => userinput_setstate_normal,
-		'f' => zoom_full,
 		GdkKeySyms.Up => pan_up,
 		GdkKeySyms.Down => pan_down,
 		GdkKeySyms.Left => pan_left,
@@ -198,6 +209,9 @@ function keybindings_setdefaults(bnd::KeyBindings)
 	bnd.shiftmod = KeyMap(
 	)
 	bnd.ctrlmod = KeyMap(
+		'f' => zoom_full,
+		'h' => zoom_hfull,
+		'v' => zoom_vfull,
 	)
 	bnd.altmod = KeyMap(
 	)
