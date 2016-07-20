@@ -202,7 +202,6 @@ Sample code to construct InspectDR objects can be found [here](sample/).
  - Does not yet render plot data in separate thread (will improve interactive experience with large datasets).
  - Mouse events currently function even outside data area (a bit odd).
  - Mouse cursor does not change as user switches mousemodes (ex: drag icon, cross-hairs, ...).
- - Smith charts are not yet constrained to square aspect ratios.
  - Significant slowdowns observed when zooming **deep** into non-F1 data... Can likely be solved by discarding data outside plot extents.
   - Workaround: make sure x-values are sorted (F1-acceleration discards data & is less prone to slowdowns).
  - F1 accelleration adds points not present in data.  Extra points are evident when symbols are displayed.  Potentially solved by declaring data as "discrete" (vs continuous) & not adding intermediate points.
@@ -213,7 +212,7 @@ Sample code to construct InspectDR objects can be found [here](sample/).
 
 Extensive compatibility testing of InspectDR.jl has not been performed.  The module has been tested using the following environment(s):
 
- - Linux / Julia-0.4.2 / Gtk 0.9.3 (Gtk+ 3) / Cairo 0.2.31
+ - Linux / Julia-0.4.5 / Gtk 0.9.3 (Gtk+ 3) / Cairo 0.2.31
 
 ## Disclaimer
 

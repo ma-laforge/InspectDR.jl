@@ -67,7 +67,7 @@ end
 #plothover event: show plot coordinates under mouse.
 #-------------------------------------------------------------------------------
 plothover_coordformatting(lstyle::TickLabelStyle, lines::AbstractGridLines) =
-	NumericFormatting() #Just use default
+	number_fmt() #Just use default
 function plothover_coordformatting(lstyle::TickLabelStyle, lines::GridLines)
 	fmt = TickLabelFormatting(lstyle, lines.rnginfo).fmt
 	fmt.ndigits += 2 #TODO: Better algorithm?
@@ -79,9 +79,9 @@ function plothover_coordstr(axes::AxesRect, ext::PExtents2D, xlstyle::TickLabelS
 	y = datamap_rev(y, axes.yscale)
 	grid = gridlines(axes, ext)
 	fmt = plothover_coordformatting(xlstyle, grid.xlines)
-	xstr = string(fmt, x)
+	xstr = formatted(x, fmt)
 	fmt = plothover_coordformatting(ylstyle, grid.ylines)
-	ystr = string(fmt, y)
+	ystr = formatted(y, fmt)
 	return "(x, y) = ($xstr, $ystr)"
 end
 

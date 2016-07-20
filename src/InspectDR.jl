@@ -6,6 +6,7 @@ module InspectDR
 
 using Colors
 using Graphics
+using NumericIO
 import Gtk
 const _Gtk = Gtk.ShortNames
 import Cairo

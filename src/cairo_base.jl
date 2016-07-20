@@ -332,7 +332,7 @@ function render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font
 			tstr = @sprintf("%0.1e", val)
 		end
 	else
-		tstr = string(fmt.fmt, val, showexp=!fmt.splitexp)
+		tstr = formatted(val, fmt.fmt, showexp=!fmt.splitexp)
 	end
 	render(ctx, tstr, pt, font, align=align)
 end
@@ -341,7 +341,7 @@ render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::
 	render_power(ctx, 10, val, pt, font, align)
 
 function render_axisscalelabel(ctx::CairoContext, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, ::AxisScale)
-	tstr = string_exp(fmt.fmt)
+	tstr = formatted_exp(fmt.fmt)
 	render(ctx, tstr, pt, font, align=align)
 end
 

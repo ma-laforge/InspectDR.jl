@@ -479,6 +479,26 @@ end
 #==Plot/graph bounding boxes
 ===============================================================================#
 
+aspect_square(::Axes) = false
+aspect_square(::AxesSmith) = true
+
+#Returns a centered bounding box with square aspect ratio.
+function squarebounds(bb::BoundingBox)
+	w = width(bb); h = height(bb)
+	xmin = bb.xmin; xmax = bb.xmax
+	ymin = bb.ymin; ymax = bb.ymax
+	if w < h
+		hdim = w / 2
+		c = (ymin + ymax) / 2
+		ymin = c - hdim; ymax = c + hdim
+	else
+		hdim = h / 2
+		c = (xmin + xmax) / 2
+		xmin = c - hdim; xmax = c + hdim
+	end
+	return BoundingBox(xmin, xmax, ymin, ymax)
+end
+
 #Get bounding box of graph (plot data area):
 function graphbounds(plotb::BoundingBox, lyt::Layout)
 	xmin = plotb.xmin + lyt.waxlabel + lyt.wticklabel
@@ -502,6 +522,14 @@ function graphbounds(plotb::BoundingBox, lyt::Layout)
 	return BoundingBox(xmin, xmax, ymin, ymax)
 end
 
+function graphbounds(plotb::BoundingBox, lyt::Layout, axes::Axes)
+	graphbb = graphbounds(plotb, lyt)
+	if aspect_square(axes)
+		graphbb = squarebounds(graphbb)
+	end
+	return graphbb
+end
+
 #Get bounding box of entire plot:
 function plotbounds(lyt::Layout, graphw::Float64, graphh::Float64)
 	xmax = graphw + lyt.waxlabel + lyt.wticklabel
@@ -511,7 +539,13 @@ function plotbounds(lyt::Layout, graphw::Float64, graphh::Float64)
 end
 
 #Get suggested plot bounds:
-plotbounds(lyt::Layout) = plotbounds(lyt, lyt.wdata, lyt.hdata)
+function plotbounds(lyt::Layout, axes::Axes)
+	wdata = lyt.wdata; hdata = lyt.hdata
+	if aspect_square(axes)
+		wdata = hdata = min(wdata, hdata)
+	end
+	return plotbounds(lyt, wdata, hdata)
+end
 
 
 #==Pre-processing display data

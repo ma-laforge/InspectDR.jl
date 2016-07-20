@@ -166,7 +166,7 @@ function render(pwidget::PlotWidget)
 	_reset(ctx)
 	clear(ctx, bb)
 	render(ctx, pwidget.src, bb)
-	pwidget.graphbb = graphbounds(bb, pwidget.src.layout)
+	pwidget.graphbb = graphbounds(bb, pwidget.src.layout, pwidget.src.axes)
 	Cairo.destroy(ctx)
 end
 

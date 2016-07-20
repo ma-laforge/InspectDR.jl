@@ -32,7 +32,7 @@ end
 
 #Render entire plot within provided bounding box:
 function render(ctx::CairoContext, plot::Plot2D, bb::BoundingBox)
-	graphbb = graphbounds(bb, plot.layout)
+	graphbb = graphbounds(bb, plot.layout, plot.axes)
 	update_ddata(plot) #Also computes new extents
 	canvas = PCanvas2D(ctx, bb, graphbb, getextents_xfrm(plot))
 	render(canvas, plot)
