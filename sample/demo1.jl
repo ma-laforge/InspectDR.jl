@@ -2,6 +2,7 @@
 #-------------------------------------------------------------------------------
 using InspectDR
 using Colors
+import NumericIO: UEXPONENT_SI
 
 
 #==Input
@@ -16,16 +17,18 @@ blue = RGB24(0, 0, 1)
 
 #Input data
 #-------------------------------------------------------------------------------
+tcycle = 1e-9
 npts = 2000 #Relatively large dataset
 ncycles = 4
-Δ = ncycles/(npts-1)
-x = collect(0:Δ:ncycles)
-y = sin(2pi*x)
+tmax = tcycle*ncycles
+Δ = tmax/(npts-1)
+t = collect(0:Δ:tmax)
+y = sin(t*(ncycles*2pi/tmax))
 
-x[end] = x[1] #x-values are no longer ordered
+t[end] = t[1] #x-values are no longer ordered
 
-#Lower resolution x-vector:
-x_lres = collect(0:(ncycles/10):ncycles)
+#Lower resolution t-vector:
+t_lres = collect(0:(tmax/10):tmax)
 
 
 #==Generate plot
@@ -36,13 +39,14 @@ plot.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
 plot.layout.legend.enabled = true
 plot.layout.legend.width = 150
 plot.layout.showtimestamp = true
+plot.layout.xlabelformat.expdisplay = UEXPONENT_SI #Use SI notation on x-axis
 
 style = :dashdot #solid/dashdot/...
-wfrm = add(plot, x, y+1, id="sin(2πt)+1")
+wfrm = add(plot, t, y+1, id="sin(2πt)+1")
 	wfrm.line = line(color=blue, width=1, style=style)
-wfrm = add(plot, x, y-1, id="sin(2πt)-1")
+wfrm = add(plot, t, y-1, id="sin(2πt)-1")
 	wfrm.line = line(color=red, width=5, style=style)
-wfrm = add(plot, x_lres, -2+4*(x_lres./ncycles), id="-2+4t/$ncycles")
+wfrm = add(plot, t_lres, -2+4*(t_lres./tmax), id="-2+4t/tmax")
 	wfrm.line = line(color=blue, width=3, style=:dash)
 	wfrm.glyph = glyph(shape=:*, size=10)
 #= Supported shapes:
