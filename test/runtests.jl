@@ -2,9 +2,9 @@
 #-------------------------------------------------------------------------------
 
 using InspectDR
+using Base.Test
 
-warn("No real test code yet... just ensuring that \"using\" works.")
-
-info("Run sample/runsamples.jl for sample usage.")
+#Simply test for exceptions on sample plots for now:
+include("../sample/runsamples.jl")
 
 :Test_Complete
