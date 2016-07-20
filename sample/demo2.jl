@@ -112,13 +112,16 @@ gplot = display(InspectDR.GtkDisplay(), mplot)
 #==Save multi-plot to file
 ===============================================================================#
 
-#Target plot size to get square Smith plots:
-lyt = plot_smith.layout
-	lyt.wdata = 500
-	lyt.hdata = 500
-bb = InspectDR.plotbounds(lyt) #Required
-	mplot.wplot = width(bb)
-	mplot.hplot = height(bb)
+maximize_square = true
+if maximize_square
+	#Target plot size to get square Smith plots without gaps:
+	lyt = plot_smith.layout
+		lyt.wdata = 500
+		lyt.hdata = 500
+	bb = InspectDR.plotbounds(lyt, plot_smith.axes) #Required
+		mplot.wplot = width(bb)
+		mplot.hplot = height(bb)
+end
 
 InspectDR.write_png("export_multiplot.png", mplot)
 InspectDR.write_svg("export_multiplot.svg", mplot)
