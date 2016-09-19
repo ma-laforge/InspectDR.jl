@@ -1,10 +1,15 @@
+# :art: Galleries (Sample Output) :art:
+
+[:chart_with_upwards_trend: Sample plots](https://github.com/ma-laforge/FileRepo/tree/master/InspectDR/sampleplots/README.md) (might be out of date).
+
+**Generated With Other Modules:**
+
+ - [:satellite: SignalProcessing.jl](https://github.com/ma-laforge/FileRepo/tree/master/SignalProcessing/sampleplots/README.md) (Using EasyPlotInspect.jl; See [CData.jl](https://github.com/ma-laforge/CData.jl) for details.)
+
+
 # InspectDR.jl: Fast, Interactive Plots
 
 [![Build Status](https://travis-ci.org/ma-laforge/InspectDR.jl.svg?branch=master)](https://travis-ci.org/ma-laforge/InspectDR.jl)
-
-[Sample plots](https://github.com/ma-laforge/FileRepo/tree/master/InspectDR/sampleplots/README.md) (might be out of date).<br>
-
-[More plots (Signal processing)](https://github.com/ma-laforge/FileRepo/tree/master/SignalProcessing/sampleplots/README.md): CData.jl/EasyPlotInspect.jl/SignalProcessing.jl
 
 **WARNING:** [NOT ALL FEATURES ARE YET IMPLEMENTED](#KnownLimitations)
 
