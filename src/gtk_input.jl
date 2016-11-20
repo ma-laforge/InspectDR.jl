@@ -148,11 +148,11 @@ function handleevent_keypress(::ISSelectingArea, pwidget::PlotWidget, event::Gtk
 	if GdkKeySyms.Escape == event.keyval
 		boxzoom_cancel(pwidget)
 		pwidget.state = ISNormal()
-	elseif 'h' == event.keyval
+	elseif Int('h') == event.keyval
 		locdir_h(pwidget)
-	elseif 'v' == event.keyval
+	elseif Int('v') == event.keyval
 		locdir_v(pwidget)
-	elseif 'b' == event.keyval
+	elseif Int('b') == event.keyval
 		locdir_any(pwidget)
 	end
 end
@@ -174,11 +174,11 @@ function handleevent_keypress(::ISPanningData, pwidget::PlotWidget, event::Gtk.G
 	if GdkKeySyms.Escape == event.keyval
 		mousepan_cancel(pwidget)
 		pwidget.state = ISNormal()
-	elseif 'h' == event.keyval || 'H' == event.keyval
+	elseif Int('h') == event.keyval || Int('H') == event.keyval
 		locdir_h(pwidget)
-	elseif 'v' == event.keyval || 'V' == event.keyval
+	elseif Int('v') == event.keyval || Int('V') == event.keyval
 		locdir_v(pwidget)
-	elseif 'b' == event.keyval || 'B' == event.keyval
+	elseif Int('b') == event.keyval || Int('B') == event.keyval
 		locdir_any(pwidget)
 	end
 end
