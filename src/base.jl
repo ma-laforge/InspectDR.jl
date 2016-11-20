@@ -73,7 +73,7 @@ grid(;vmajor=false, vminor=false, hmajor=false, hminor=false) =
 
 #Dispatchable scale:
 immutable AxisScale{T}
-	(t::Type{AxisScale})() = error("$t not supported")
+	(t::Type{AxisScale{T}}){T}() = error("$t not supported")
 	(::Type{AxisScale{:lin}})() = new{:lin}()
 	(::Type{AxisScale{:log2}})() = new{:log2}()
 	(::Type{AxisScale{:log10}})() = new{:log10}()
@@ -104,7 +104,7 @@ AxesCurv(rscale::Symbol=:lin) = AxesCurv(AxisScale{rscale}())
 
 immutable AxesSmith{T} <: Axes
 	ref::Float64 #Y/Zref
-	(t::Type{AxesSmith})(ref::Real) = error("$t not supported")
+	(t::Type{AxesSmith{T}}){T}(ref::Real) = error("$t not supported")
 	(::Type{AxesSmith{:Z}})(ref::Real) = new{:Z}(ref)
 	(::Type{AxesSmith{:Y}})(ref::Real) = new{:Y}(ref)
 end
