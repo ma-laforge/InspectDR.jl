@@ -12,8 +12,8 @@ import NumericIO: UEXPONENT
 ===============================================================================#
 
 #Convenience aliases
-typealias NumericFormatting NumericIO.IOFormattingReal{UTF8String}
-typealias ExponentFormatting NumericIO.IOFormattingExp{UTF8String}
+typealias NumericFormatting NumericIO.IOFormattingReal
+typealias ExponentFormatting NumericIO.IOFormattingExp
 
 abstract RangeDisplayInfo
 
@@ -59,7 +59,7 @@ function formatted_exp(fmt::NumericFormatting)
 	NumericIO.print_formatted_exp(s, fmt)
 	d = s.data
 	resize!(d, s.size)
-	return bytestring(d)
+	return String(d)
 end
 
 

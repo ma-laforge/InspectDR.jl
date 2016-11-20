@@ -16,8 +16,6 @@ import Cairo: CairoContext
 #==Aliases
 ===============================================================================#
 typealias NullOr{T} Union{Void, T}
-typealias DisplayString UTF8String
-typealias DisplayStringArg Union{DisplayString, ASCIIString} #Args accept ASCIIString as well.
 
 include("defaults.jl")
 include("codegen.jl")
@@ -46,7 +44,7 @@ keybindings_setdefaults(keybindings)
 
 #==Comments
 ================================================================================
--SVG output from writemime does not show up properly in Notebook.  There
+-SVG MIME output (using show) does not show up properly in Notebook.  There
  appears to be an issue with determining the extents of the image (bounding box).
 -Data area referred to as "graph" area.  This might not be correct.
 
@@ -115,7 +113,7 @@ Convenience functions:
 	Base.display(d::InspectDR.GtkDisplay, p::Plot) #Gtk mutltiplot window
 
 #Writing plot to IO stream:
-	Base.writemime(::IO, ::MIME, ::Plot2D)
+	Base.show(::IO, ::MIME, ::Plot2D)
 for the following MIMEs:
 		MIME"image/png"
 		MIME"image/svg+xml"

@@ -209,9 +209,9 @@ function keybindings_setdefaults(bnd::KeyBindings)
 	bnd.shiftmod = KeyMap(
 	)
 	bnd.ctrlmod = KeyMap(
-		'f' => zoom_full,
-		'h' => zoom_hfull,
-		'v' => zoom_vfull,
+		Int('f') => zoom_full,
+		Int('h') => zoom_hfull,
+		Int('v') => zoom_vfull,
 	)
 	bnd.altmod = KeyMap(
 	)

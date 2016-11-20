@@ -100,13 +100,13 @@ end
 
 #==Menu builders:
 ===============================================================================#
-function Gtk_addmenu(parent::Union{_Gtk.Menu, _Gtk.MenuBar}, name::AbstractString)
+function Gtk_addmenu(parent::Union{_Gtk.Menu, _Gtk.MenuBar}, name::String)
 	item = _Gtk.@MenuItem(name)
 	mnu = _Gtk.@Menu(item)
 	push!(parent, item)
 	return mnu
 end
-function Gtk_addmenuitem(mnu::_Gtk.Menu, name::AbstractString)
+function Gtk_addmenuitem(mnu::_Gtk.Menu, name::String)
 	item = _Gtk.@MenuItem(name)
 	push!(mnu, item)
 	return item

@@ -44,7 +44,7 @@ render_xcircles(ctx::CairoContext, clist::Vector{DReal}) =
 	(for c in clist; render_xcircle(ctx, c); end)
 
 #xflip: Mirror x-direction for admittance(Y)-labels
-function render_rcirclelabel(ctx::CairoContext, xf::Transform2D, pt::Point2D, xflip::Bool, lbl::DisplayString)
+function render_rcirclelabel(ctx::CairoContext, xf::Transform2D, pt::Point2D, xflip::Bool, lbl::String)
 	xscale = xflip? -1: 1
 	xalign = xflip? ALIGN_LEFT: ALIGN_RIGHT
 	pt = ptmap(xf, Point2D(xscale*pt.x, pt.y))
@@ -56,7 +56,7 @@ function render_rcirclelabel(ctx::CairoContext, xf::Transform2D, xflip::Bool, re
 	xintercept = (c-1)/(c+1)
 	pt = Point2D(xintercept, 0)
 	cstr = smithlabel(c*refscale)
-	tstr = DisplayString("$cstr")
+	tstr = "$cstr"
 	render_rcirclelabel(ctx, xf, pt, xflip, tstr)
 end
 render_rcirclelabels(ctx::CairoContext, xf::Transform2D, xflip::Bool, refscale::Real, clist::Vector{DReal}) =
@@ -64,7 +64,7 @@ render_rcirclelabels(ctx::CairoContext, xf::Transform2D, xflip::Bool, refscale::
 
 
 #xflip: Mirror x-direction for admittance(Y)-labels
-function render_xcirclelabel(ctx::CairoContext, xf::Transform2D, pt::Point2D, xflip::Bool, lbl::DisplayString)
+function render_xcirclelabel(ctx::CairoContext, xf::Transform2D, pt::Point2D, xflip::Bool, lbl::String)
 	xscale = xflip? -1: 1
 	corr = -xscale*xf.xs/xf.ys #Correct for aspect ratio
 	#Compute text angle:
@@ -85,9 +85,9 @@ function render_xcirclelabel(ctx::CairoContext, xf::Transform2D, xflip::Bool, re
 	x = 1-y*radius
 
 	cstr = smithlabel(c*refscale)
-	tstr = DisplayString("$(cstr)j")
+	tstr = "$(cstr)j"
 	render_xcirclelabel(ctx, xf, Point2D(x, y), xflip, tstr)
-	tstr = DisplayString("-$(cstr)j")
+	tstr = "-$(cstr)j"
 	render_xcirclelabel(ctx, xf, Point2D(x, -y), xflip, tstr)
 end
 render_xcirclelabels(ctx::CairoContext, xf::Transform2D, xflip::Bool, refscale::Real, clist::Vector{DReal}) =

@@ -8,7 +8,7 @@ typealias MIMEsvg MIME"image/svg+xml"
 typealias MIMEeps MIME"image/eps"
 typealias MIMEpdf MIME"application/pdf"
 
-const MAPEXT2MIME = Dict{AbstractString,MIME}(
+const MAPEXT2MIME = Dict{String,MIME}(
 	".png" => MIMEpng(),
 	".svg" => MIMEsvg(),
 	".eps" => MIMEeps(),
@@ -55,16 +55,16 @@ function withsurf(fn::Function, stream::IO, mime::MIMEpng, w::Float64, h::Float6
 end
 
 
-#=="writemime" interface
+#==MIME interface
 ===============================================================================#
 
 #Maintain text/plain MIME support (Is this ok?).
-Base.writemime(io::IO, ::MIME"text/plain", plot::Plot) = Base.showlimited(io, plot)
-Base.writemime(io::IO, ::MIME"text/plain", mplot::Multiplot) = Base.showlimited(io, mplot)
+Base.show(io::IO, ::MIME"text/plain", plot::Plot) = Base.showlimited(io, plot)
+Base.show(io::IO, ::MIME"text/plain", mplot::Multiplot) = Base.showlimited(io, mplot)
 
 
 #w, h: w/h of a SINGLE plot.
-function _writemime(stream::IO, mime::MIME, mplot::Multiplot, w::Float64, h::Float64)
+function _show(stream::IO, mime::MIME, mplot::Multiplot, w::Float64, h::Float64)
 	nplots = length(mplot.subplots)
 	ncols = mplot.ncolumns
 	nrows = div(nplots-1, ncols) + 1
@@ -89,31 +89,31 @@ function _writemime(stream::IO, mime::MIME, mplot::Multiplot, w::Float64, h::Flo
 	end
 end
 
-#_writemime() Plot: Leverage write to Multiplot
-function _writemime(stream::IO, mime::MIME, plot::Plot, w::Float64, h::Float64)
+#_show() Plot: Leverage write to Multiplot
+function _show(stream::IO, mime::MIME, plot::Plot, w::Float64, h::Float64)
 	mplot = Multiplot()
 	mplot.htitle = 0
 	push!(mplot.subplots, plot)
-	_writemime(stream, mime, mplot, w, h)
+	_show(stream, mime, mplot, w, h)
 end
 
-#_writemime() Plot2D: Auto-coumpute w/h
-function _writemime(stream::IO, mime::MIME, plot::Plot2D)
+#_show() Plot2D: Auto-coumpute w/h
+function _show(stream::IO, mime::MIME, plot::Plot2D)
 	bb = plotbounds(plot.layout, plot.axes)
-	_writemime(stream, mime, plot, bb.xmax, bb.ymax)
+	_show(stream, mime, plot, bb.xmax, bb.ymax)
 end
 
-#Default writemime behaviour: MethodError
-Base.writemime(io::IO, mime::MIME, mplot::Multiplot) =
-	throw(MethodError(writemime, (io, mime, mplot)))
-Base.writemime(io::IO, mime::MIME, plot::Plot) =
-	throw(MethodError(writemime, (io, mime, plot)))
+#Default show/MIME behaviour: MethodError
+Base.show(io::IO, mime::MIME, mplot::Multiplot) =
+	throw(MethodError(show, (io, mime, mplot)))
+Base.show(io::IO, mime::MIME, plot::Plot) =
+	throw(MethodError(show, (io, mime, plot)))
 
-#writemime() Plot/Multiplot: Supported MIMEs:
-Base.writemime(io::IO, mime::MIMEall, mplot::Multiplot) =
-	_writemime(io, mime, mplot, mplot.wplot, mplot.hplot)
-Base.writemime(io::IO, mime::MIMEall, plot::Plot) =
-	_writemime(io, mime, plot)
+#show() Plot/Multiplot: Supported MIMEs:
+Base.show(io::IO, mime::MIMEall, mplot::Multiplot) =
+	_show(io, mime, mplot, mplot.wplot, mplot.hplot)
+Base.show(io::IO, mime::MIMEall, plot::Plot) =
+	_show(io, mime, plot)
 
 
 #=="mimewritable" interface
@@ -131,14 +131,14 @@ Base.mimewritable(mime::MIME, p::Plot) = Base.mimewritable(mime::MIME, Multiplot
 ===============================================================================#
 
 #_write() Multiplot:
-function _write(path::AbstractString, mime::MIME, mplot::Multiplot, w::Float64, h::Float64)
+function _write(path::String, mime::MIME, mplot::Multiplot, w::Float64, h::Float64)
 	io = open(path, "w")
-	_writemime(io, mime, mplot, w, h)
+	_show(io, mime, mplot, w, h)
 	close(io)
 end
 
 #_write() Plot: Leverage write to Multiplot
-function _write(path::AbstractString, mime::MIME, plot::Plot, w::Float64, h::Float64)
+function _write(path::String, mime::MIME, plot::Plot, w::Float64, h::Float64)
 	mplot = Multiplot()
 	mplot.htitle = 0
 	push!(mplot.subplots, plot)
@@ -146,11 +146,11 @@ function _write(path::AbstractString, mime::MIME, plot::Plot, w::Float64, h::Flo
 end
 
 #_write() Multiplot: Auto-coumpute w/h
-_write(path::AbstractString, mime::MIME, mplot::Multiplot) =
+_write(path::String, mime::MIME, mplot::Multiplot) =
 	_write(path, mime, mplot, mplot.wplot, mplot.hplot)
 
 #_write() Plot2D: Auto-coumpute w/h
-function _write(path::AbstractString, mime::MIME, plot::Plot2D)
+function _write(path::String, mime::MIME, plot::Plot2D)
 	bb = plotbounds(plot.layout, plot.axes)
 	_write(path, mime, plot, bb.xmax, bb.ymax)
 end
@@ -159,14 +159,14 @@ end
 #==Non-MIME write interface (convenience functions)
 ===============================================================================#
 
-write_png(path::AbstractString, mplot::Multiplot) = _write(path, MIMEpng(), mplot)
-write_svg(path::AbstractString, mplot::Multiplot) = _write(path, MIMEsvg(), mplot)
-write_eps(path::AbstractString, mplot::Multiplot) = _write(path, MIMEeps(), mplot)
-write_pdf(path::AbstractString, mplot::Multiplot) = _write(path, MIMEpdf(), mplot)
+write_png(path::String, mplot::Multiplot) = _write(path, MIMEpng(), mplot)
+write_svg(path::String, mplot::Multiplot) = _write(path, MIMEsvg(), mplot)
+write_eps(path::String, mplot::Multiplot) = _write(path, MIMEeps(), mplot)
+write_pdf(path::String, mplot::Multiplot) = _write(path, MIMEpdf(), mplot)
 
-write_png(path::AbstractString, plot::Plot) = _write(path, MIMEpng(), plot)
-write_svg(path::AbstractString, plot::Plot) = _write(path, MIMEsvg(), plot)
-write_eps(path::AbstractString, plot::Plot) = _write(path, MIMEeps(), plot)
-write_pdf(path::AbstractString, plot::Plot) = _write(path, MIMEpdf(), plot)
+write_png(path::String, plot::Plot) = _write(path, MIMEpng(), plot)
+write_svg(path::String, plot::Plot) = _write(path, MIMEsvg(), plot)
+write_eps(path::String, plot::Plot) = _write(path, MIMEeps(), plot)
+write_pdf(path::String, plot::Plot) = _write(path, MIMEpdf(), plot)
 
 #Last line

@@ -67,9 +67,9 @@ function vecnorm(pt::Point2D)
 end
 
 #Simple scaling - no commutativity:
-Base.(:*)(s::DReal, pt::Point2D) = Point2D(s*pt.x, s*pt.y)
-Base.(:*)(s::Real, pt::Point2D) = DReal(s)*pt
-Base.(:+)(p1::Point2D, p2::Point2D) = Point2D(p1.x+p2.x, p1.y+p2.y)
+Base.:*(s::DReal, pt::Point2D) = Point2D(s*pt.x, s*pt.y)
+Base.:*(s::Real, pt::Point2D) = DReal(s)*pt
+Base.:+(p1::Point2D, p2::Point2D) = Point2D(p1.x+p2.x, p1.y+p2.y)
 
 function union(e1::PExtents2D, e2::PExtents2D)
 	return PExtents2D(

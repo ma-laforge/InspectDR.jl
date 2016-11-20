@@ -115,7 +115,7 @@ end
 
 #==Mutators
 ===============================================================================#
-function settitle(::Type{GtkPlot}, wnd::_Gtk.Window, title::DisplayStringArg)
+function settitle(::Type{GtkPlot}, wnd::_Gtk.Window, title::String)
 	if length(title)> 0
 		title = "InspectDR - $(title)"
 	else
@@ -124,8 +124,8 @@ function settitle(::Type{GtkPlot}, wnd::_Gtk.Window, title::DisplayStringArg)
 	Gtk.setproperty!(wnd, :title, title)
 end
 
-function settitle(gplot::GtkPlot, title::DisplayStringArg)
-	gplot.properties.title = DisplayString(title)
+function settitle(gplot::GtkPlot, title::String)
+	gplot.properties.title = title
 	settitle(GtkPlot, gplot.wnd, gplot.properties.title)
 end
 
@@ -174,7 +174,7 @@ end
 #==IO functions
 ===============================================================================#
 #_write() GtkPlot: Auto-coumpute w/h
-function _write(path::AbstractString, mime::MIME, gplot::GtkPlot)
+function _write(path::String, mime::MIME, gplot::GtkPlot)
 	mplot = copy_properties(gplot.properties)
 	for s in gplot.subplots
 		push!(mplot.subplots, s.src)
@@ -182,9 +182,9 @@ function _write(path::AbstractString, mime::MIME, gplot::GtkPlot)
 	_write(path, mime, mplot)
 end
 
-write_png(path::AbstractString, gplot::GtkPlot) = _write(path, MIMEpng(), gplot)
-write_svg(path::AbstractString, gplot::GtkPlot) = _write(path, MIMEsvg(), gplot)
-write_eps(path::AbstractString, gplot::GtkPlot) = _write(path, MIMEeps(), gplot)
-write_pdf(path::AbstractString, gplot::GtkPlot) = _write(path, MIMEpdf(), gplot)
+write_png(path::String, gplot::GtkPlot) = _write(path, MIMEpng(), gplot)
+write_svg(path::String, gplot::GtkPlot) = _write(path, MIMEsvg(), gplot)
+write_eps(path::String, gplot::GtkPlot) = _write(path, MIMEeps(), gplot)
+write_pdf(path::String, gplot::GtkPlot) = _write(path, MIMEpdf(), gplot)
 
 #Last line

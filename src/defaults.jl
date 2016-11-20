@@ -13,7 +13,7 @@ const DEFAULT_PLOT_WIDTH = 600.0
 const DEFAULT_PLOT_HEIGHT = DEFAULT_PLOT_WIDTH / φ #Use golden ratio
 
 #Default font:
-const DEFAULT_FONTNAME = @windows? "Cambria": "Serif"
+const DEFAULT_FONTNAME = (@static is_windows()? "Cambria": "Serif")
 #Cairo "built-in": Serif, Sans, Serif, Fantasy, Monospace
 
 
@@ -22,7 +22,7 @@ const DEFAULT_FONTNAME = @windows? "Cambria": "Serif"
 type Defaults
 	rendersvg::Bool #Might want to dissalow SVG renderings for performance reasons
 	showtimestamp::Bool
-	fontname::AbstractString
+	fontname::String
 	fontscale::Float64
 
 	#Default values for data-area dimensions (saving single plot):

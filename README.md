@@ -217,7 +217,7 @@ Sample code to construct InspectDR objects can be found [here](sample/).
 
 Extensive compatibility testing of InspectDR.jl has not been performed.  The module has been tested using the following environment(s):
 
- - Linux / Julia-0.4.5 / Gtk 0.9.3 (Gtk+ 3) / Cairo 0.2.31
+ - Windows / Linux / Julia-0.5.0 / Gtk 0.10.4 (Gtk+ 3) / Cairo 0.2.35
 
 ## Disclaimer
 

@@ -13,7 +13,7 @@ NOTE: might be useful to move to a separate module.
 immutable CAlignment #Cairo alignment
 	v::Int
 end
-Base.|(a::CAlignment, b::CAlignment) = CAlignment(a.v|b.v)
+Base.:|(a::CAlignment, b::CAlignment) = CAlignment(a.v|b.v)
 
 const ALIGN_LEFT = CAlignment(0)
 const ALIGN_HCENTER = CAlignment(1)
@@ -125,7 +125,7 @@ end
 #Render text using "advanced" properties.
 #-------------------------------------------------------------------------------
 #angle: radians
-function render(ctx::CairoContext, t::DisplayString, pt::Point2D,
+function render(ctx::CairoContext, t::String, pt::Point2D,
 	align::CAlignment, angle::Float64, color::Colorant)
 	t_ext = Cairo.text_extents(ctx, t)
 	(xoff, yoff) = textoffset(t_ext, align)
@@ -143,15 +143,15 @@ function render(ctx::CairoContext, t::DisplayString, pt::Point2D,
 
 	Cairo.restore(ctx) #-----
 end
-render(ctx::CairoContext, t::AbstractString, pt::Point2D;
+render(ctx::CairoContext, t::String, pt::Point2D;
 	align::CAlignment=ALIGN_BOTTOM|ALIGN_LEFT, angle::Real=0, color::Colorant=COLOR_BLACK) =
-	render(ctx, DisplayString(t), pt, align, Float64(angle), color)
+	render(ctx, t, pt, align, Float64(angle), color)
 
 #Convenience: also set font.
-function render(ctx::CairoContext, t::AbstractString, pt::Point2D, font::Font;
+function render(ctx::CairoContext, t::String, pt::Point2D, font::Font;
 	align::CAlignment=ALIGN_BOTTOM|ALIGN_LEFT, angle::Real=0, color::Colorant=COLOR_BLACK)
 	setfont(ctx, font)
-	render(ctx, DisplayString(t), pt, align, Float64(angle), color)
+	render(ctx, t, pt, align, Float64(angle), color)
 end
 
 

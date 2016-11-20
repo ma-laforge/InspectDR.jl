@@ -73,15 +73,15 @@ grid(;vmajor=false, vminor=false, hmajor=false, hminor=false) =
 
 #Dispatchable scale:
 immutable AxisScale{T}
-	call{T}(t::Type{AxisScale{T}}) = error("$t not supported")
-	call(::Type{AxisScale{:lin}}) = new{:lin}()
-	call(::Type{AxisScale{:log2}}) = new{:log2}()
-	call(::Type{AxisScale{:log10}}) = new{:log10}()
-	call(::Type{AxisScale{:dB10}}) = new{:dB10}()
-	call(::Type{AxisScale{:dB20}}) = new{:dB20}()
+	(t::Type{AxisScale})() = error("$t not supported")
+	(::Type{AxisScale{:lin}})() = new{:lin}()
+	(::Type{AxisScale{:log2}})() = new{:log2}()
+	(::Type{AxisScale{:log10}})() = new{:log10}()
+	(::Type{AxisScale{:dB10}})() = new{:dB10}()
+	(::Type{AxisScale{:dB20}})() = new{:dB20}()
 
 	#Aliases:
-	call(::Type{AxisScale{:log}}) = new{:log10}()
+	(::Type{AxisScale{:log}})() = new{:log10}()
 end
 AxisScale(t::Symbol) = AxisScale{t}()
 
@@ -104,15 +104,15 @@ AxesCurv(rscale::Symbol=:lin) = AxesCurv(AxisScale{rscale}())
 
 immutable AxesSmith{T} <: Axes
 	ref::Float64 #Y/Zref
-	call{T}(t::Type{AxesSmith{T}}, ref::Real) = error("$t not supported")
-	call(::Type{AxesSmith{:Z}}, ref::Real) = new{:Z}(ref)
-	call(::Type{AxesSmith{:Y}}, ref::Real) = new{:Y}(ref)
+	(t::Type{AxesSmith})(ref::Real) = error("$t not supported")
+	(::Type{AxesSmith{:Z}})(ref::Real) = new{:Z}(ref)
+	(::Type{AxesSmith{:Y}})(ref::Real) = new{:Y}(ref)
 end
 AxesSmith(t::Symbol, ref::Real=1) = AxesSmith{t}(ref)
 AxesSmith(t::Symbol, ref::Void) = AxesSmith(t)
 
 type Waveform{T}
-	id::DisplayString
+	id::String
 	ds::T
 	line::LineAttributes
 	glyph::GlyphAttributes
@@ -131,19 +131,19 @@ to track x-values of complex data??
 =#
 
 type Annotation
-	title::DisplayString
-	xlabel::DisplayString
-	ylabel::DisplayString
-	timestamp::DisplayString
+	title::String
+	xlabel::String
+	ylabel::String
+	timestamp::String
 end
 Annotation(;title="") = Annotation(title, "", "", Libc.strftime(time()))
 
 type Font
-	name::AbstractString
+	name::String
 	_size::Float64
 	bold::Bool
 end
-Font(name::AbstractString, _size::Real; bold::Bool=false) = Font(name, _size, bold)
+Font(name::String, _size::Real; bold::Bool=false) = Font(name, _size, bold)
 Font(_size::Real; bold::Bool=false) = Font(defaults.fontname, _size, bold)
 
 #Legend layout/style
@@ -189,7 +189,7 @@ type Layout
 	ylabelformat::TickLabelStyle
 	showtimestamp::Bool
 end
-Layout(;fontname::AbstractString=defaults.fontname, fontscale=defaults.fontscale) =
+Layout(;fontname::String=defaults.fontname, fontscale=defaults.fontscale) =
 	Layout(
 	20*fontscale, 20*fontscale, 20*fontscale, 45, #Title/main labels
 	60*fontscale, 15*fontscale, 3, 7, 2, #Ticks/frame
@@ -216,7 +216,7 @@ typealias AnnotationCoord Union{TypedCoord{NormCoord}, TypedCoord{DataCoord}}
 coord(s::Symbol, v::DReal) = TypedCoord{CoordSystem{s}}(v)
 
 type TextAnnotation
-	text::DisplayString
+	text::String
 	pt::Point2D #Data coordinates - set NaN to use offsets only
 	xoffset::DReal #Normalized to [0,1] plot bounds
 	yoffset::DReal #Normalized to [0,1] plot bounds
@@ -226,7 +226,7 @@ type TextAnnotation
 	align::Symbol #tl, tc, tr, cl, cc, cr, bl, bc, br
 end
 #Don't use "text"... high probability of collisions when exported...
-atext(text::AbstractString; x::Real=DNaN, y::Real=DNaN, xoffset=0, yoffset=0,
+atext(text::String; x::Real=DNaN, y::Real=DNaN, xoffset=0, yoffset=0,
 	font=Font(10), color=COLOR_BLACK, angle=0, align=:bl) =
 	TextAnnotation(text, Point2D(x,y), xoffset, yoffset, font, color, angle, align)
 
@@ -267,7 +267,7 @@ Plot2D(;title="") = Plot2D(Layout(), AxesRect(), Annotation(title=title),
 )
 
 type Multiplot
-	title::DisplayString
+	title::String
 
 	subplots::Vector{Plot}
 	ncolumns::Int
@@ -339,11 +339,11 @@ end
 
 #==Mutators
 ===============================================================================#
-settitle(mplot::Plot2D, title::DisplayStringArg) =
-	(mplot.annotation.title = DisplayString(title))
+settitle(mplot::Plot2D, title::String) =
+	(mplot.annotation.title = String(title))
 
-settitle(mplot::Multiplot, title::DisplayStringArg) =
-	(mplot.title = DisplayString(title))
+settitle(mplot::Multiplot, title::String) =
+	(mplot.title = String(title))
 
 
 #=="add" interface
@@ -357,7 +357,7 @@ _add{T<:Plot}(mp::Multiplot, ::Type{T}) = _add(mp, T())
 
 
 #Set dataf1=false to overwrite optimizations for functions of 1 argument.
-function _add(plot::Plot2D, x::Vector, y::Vector; id::AbstractString="", dataf1=true)
+function _add(plot::Plot2D, x::Vector, y::Vector; id::String="", dataf1=true)
 	if dataf1
 		dataf1 = isincreasing(x) #Can we use optimizations?
 	end
