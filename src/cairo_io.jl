@@ -59,8 +59,8 @@ end
 ===============================================================================#
 
 #Maintain text/plain MIME support (Is this ok?).
-Base.show(io::IO, ::MIME"text/plain", plot::Plot) = Base.showlimited(io, plot)
-Base.show(io::IO, ::MIME"text/plain", mplot::Multiplot) = Base.showlimited(io, mplot)
+Base.show(io::IO, ::MIME"text/plain", plot::Plot) = Base.showcompact(io, plot)
+Base.show(io::IO, ::MIME"text/plain", mplot::Multiplot) = Base.showcompact(io, mplot)
 
 
 #w, h: w/h of a SINGLE plot.
