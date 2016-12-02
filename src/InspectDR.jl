@@ -97,6 +97,10 @@ Convenience functions:
 	write_svg(path, ::Plot)
 	write_eps(path, ::Plot)
 	write_pdf(path, ::Plot)
+
+Other:
+	refresh(w::PlotWidget)
+	refresh(p::GtkPlot)
 =#
 
 #Create new plot window (Is this a good idea?):

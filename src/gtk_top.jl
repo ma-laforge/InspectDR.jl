@@ -246,6 +246,9 @@ GtkPlot(args...; kwargs...) = GtkPlot(Plot2D(), args...; kwargs...)
 
 #==High-level interface
 ===============================================================================#
+refresh(w::PlotWidget) = (render(w); Gtk.draw(w.canvas); return w)
+refresh(p::GtkPlot) = (map(refresh, p.subplots); return p)
+
 function Base.display(d::GtkDisplay, mp::Multiplot)
 	return GtkPlot(mp)
 end
