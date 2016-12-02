@@ -196,6 +196,8 @@ DEFAULTS_INSPECTDR = Dict(
 
 Sample code to construct InspectDR objects can be found [here](sample/).
 
+Sample IJulia (Jupyter) notebooks can be found [here](notebook/).
+
 <a name="KnownLimitations"></a>
 ## Known Limitations
 
