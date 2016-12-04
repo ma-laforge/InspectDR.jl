@@ -11,8 +11,6 @@
 
 [![Build Status](https://travis-ci.org/ma-laforge/InspectDR.jl.svg?branch=master)](https://travis-ci.org/ma-laforge/InspectDR.jl)
 
-**WARNING:** [NOT ALL FEATURES ARE YET IMPLEMENTED](#KnownLimitations)
-
 ## Description
 
 InspectDR is a fast plotting tool.  The main goal is to allow the user to quickly navigate simulation results (interactive) before moving to the next design iteration.
