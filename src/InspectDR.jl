@@ -7,10 +7,17 @@ module InspectDR
 using Colors
 using Graphics
 using NumericIO
-import Gtk
-const _Gtk = Gtk.ShortNames
 import Cairo
 import Cairo: CairoContext
+
+GtkAvailable = false
+try
+	import Gtk
+	eval(:(const _Gtk = Gtk.ShortNames))
+	GtkAvailable = true
+catch
+	warn("InspectDR: Error loading Gtk.  GUI-based features are unavailable.")
+end
 
 
 #==Aliases
@@ -33,13 +40,16 @@ include("cairo_smithpolar.jl")
 include("cairo_legends.jl")
 include("cairo_top.jl")
 include("cairo_io.jl")
+
+if GtkAvailable
 include("gtk_base.jl")
 include("gtk_input.jl")
 include("gtk_zoom.jl")
 include("gtk_top.jl")
-#include("precompile.jl")
-
 keybindings_setdefaults(keybindings)
+end
+
+#include("precompile.jl")
 
 
 #==Comments
@@ -107,8 +117,10 @@ Other:
 #	figure(args...; kwargs...) = GtkPlot(args...; kwargs...)
 
 #Accessors:
+if GtkAvailable
 	Plot(pwidget::PlotWidget) = pwidget.src
 	Plot(gplot::GtkPlot, i::Int) = gplot.subplots[i]
+end
 
 
 #==Already exported
