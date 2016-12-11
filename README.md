@@ -13,9 +13,17 @@
 
 ## Description
 
-InspectDR is a fast plotting tool.  The main goal is to allow the user to quickly navigate simulation results (interactive) before moving to the next design iteration.
+InspectDR is a fast plotting tool with a responsive GUI, targeting quick navigation of simulation results.  In design applications, InspectDR allows for efficient, interactive data exploration, thus shortening each iteration of the design cycle.
 
-Despite their great quality, most current Julia plotting options are still either too slow, or provide inadequate interactivity for the author's needs.
+**Motivation:** Despite their great quality, most of Julia's current plotting options were found to be either too slow, and/or provide inadequate interactivity for the author's needs.
+
+The InspectDR library is implemented using **3 distinct plot layers**:
+
+ - **Plot image layer:** Implemented with the [Cairo library](https://cairographics.org/), the plot image layer allows the user to render (multi-) plots as simple images.
+ - **Plot widget layer:** Library users can also integrate plots to their own [GTK+](https://www.gtk.org/) application by instantiating a single InspectDR widget.
+ - **Plot application layer:** Most end users will likely display/interact with plots/data using the built-in Julia/[GTK+](https://www.gtk.org/) multi-plot application.
+
+Users are encouraged to open an issue if it is unclear how to utilize a particular layer.  Documentation is a bit limited at the moment.
 
 ### Features/Highlights
 
@@ -217,7 +225,7 @@ Sample IJulia (Jupyter) notebooks can be found [here](notebook/).
 
 Extensive compatibility testing of InspectDR.jl has not been performed.  The module has been tested using the following environment(s):
 
- - Windows / Linux / Julia-0.5.0 / Gtk 0.10.4 (Gtk+ 3) / Cairo 0.2.35
+ - Windows / Linux / Julia-0.5.0 / Gtk 0.10.4 (GTK+ 3) / Cairo 0.2.35
 
 ## Disclaimer
 
