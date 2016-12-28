@@ -217,9 +217,6 @@ Sample IJulia (Jupyter) notebooks can be found [here](notebook/).
  - Mouse cursor does not change as user switches mousemodes (ex: drag icon, cross-hairs, ...).
  - Significant slowdowns observed when zooming **deep** into non-F1 data... Can likely be solved by discarding data outside plot extents.
   - Workaround: make sure x-values are sorted (F1-acceleration discards data & is less prone to slowdowns).
- - F1 accelleration adds points not present in data.  Extra points are evident when symbols are displayed.  Potentially solved by declaring data as "discrete" (vs continuous) & not adding intermediate points.
-  - Workaround: use `add(plot, x, y, id="", dataf1=false)` to bypass F1 acceleration.
-
 
 ### Compatibility
 
