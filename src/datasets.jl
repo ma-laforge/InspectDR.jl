@@ -51,11 +51,13 @@ end
 #returns: Vector{Point2D}
 function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
 	const xres = (ext.xmax - ext.xmin)/ xres_max
-	const min_lookahead = 2 #number of xres windows to potentially collapse
-	const thresh_xres = (min_lookahead+1)*xres
+	const min_lookahead = 3 #number of xres windows to potentially collapse
+	const thresh_xres = min_lookahead*xres #maximum x-distance to look ahead for reduction
 	x = input.x; y = input.y
 	n_ds = length(x) #numer of points of input dataset
-	sz = min(n_ds, xres_max)+4 #Add 4 pts, just in case (TODO: fix)
+	#FIXME: improve algorithm
+	#Algorithm succeptible to cumulative errors (esp w large x-values & large xres_max):
+	sz = min(n_ds, xres_max)+1+2*min_lookahead #Allow extra points in case
 	result = Array(Point2D, sz)
 	n = 0 #Number of points in reduced dataset
 	i = 1 #Index into input dataset
@@ -74,8 +76,7 @@ function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
 	end
 
 	i = max(i-1, 1)
-	prevx = x[i]
-	prevy = y[i]
+	prevx = x[i]; prevy = y[i]
 	n+=1
 	result[n] = Point2D(prevx, prevy)
 	i+=1
@@ -83,7 +84,7 @@ function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
 	while i <= n_ds
 		if prevx >= ext.xmax; break; end
 		xthresh = min(prevx+thresh_xres, ext.xmax)
-		ilahead_start = i+min_lookahead
+		ilahead_start = i+(min_lookahead-1) #If we consolidate, must at least reach here
 		ilahead = min(ilahead_start, n_ds)
 		while ilahead < n_ds
 			if x[ilahead] >= xthresh; break; end
@@ -92,21 +93,18 @@ function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
 
 		#@assert(ilahead<=nds)
 
-		if ilahead > ilahead_start #More data than xres allows
+		if ilahead > ilahead_start #More data points than xres allows
 			#TODO: make this a function??
-			#"Internal limits":
-			ilast = ilahead-1
-			p1 = Point2D(x[ilast], y[ilast])
-			#p2 = Point2D(x[ilahead], y[ilahead])
-			#nexty = interpolate(p1, p2, xthresh) #BAD: Adds in points that don't exist in dataset
-			nexty = p1.y #Use last point of window instead
+			#final point of the data-reduced window:
+			ifin = ilahead-1 #ilahead is now beyond minimum xres window
+			pfin = Point2D(x[ifin], y[ifin])
 
 			#Find smallest/largest y-value (before/after xres window):
-			(ymin, ymax) = minmax(prevy, nexty)
+			(ymin, ymax) = minmax(prevy, pfin.y)
 
 			#Add points representing "internal limits"
 			#(if they exceed external):
-			ywnd = view(y, i:ilast) #y-window ~within 1 xres.
+			ywnd = view(y, i:ifin) #y-window ~within 1 xres.
 			i_ymin = i-1+indmin(ywnd); i_ymax = i-1+indmax(ywnd)
 			ymin_wnd = y[i_ymin]; ymax_wnd = y[i_ymax]
 			xint = [x[i_ymin], x[i_ymax]]
@@ -117,7 +115,7 @@ function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
 #ysel = Bool[true, true] #Debug: add points no matter what
 #@show ilahead-i
 			#offset: Decide whether to display min or max first - improves look of minres "glitch"
-			offset = prevy < nexty ?0 :1 #Depending if trend is increasing or decreasing
+			offset = prevy < pfin.y ?0 :1 #Depending if trend is increasing or decreasing
 			for j in (offset+(1:2))
 				idx = 1+(j&0x1)
 				if !ysel[idx]; continue; end #Only add points if desired
@@ -126,10 +124,8 @@ function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
 			end
 			#Done adding points
 
+			prevx = pfin.x; prevy = pfin.y
 			n+=1;
-			#prevx = xthresh #BAD: Adds in points that don't exist in dataset
-			prevx = p1.x #Use last point of window instead
-			prevy = nexty
 			result[n] = Point2D(prevx, prevy)
 			i = ilahead
 		else #Plot actual data points
