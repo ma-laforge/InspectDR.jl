@@ -36,6 +36,10 @@ end
 
 #==Callback wrapper functions (GtkPlot-level)
 ===============================================================================#
+@guarded function cb_wnddestroyed(w::Ptr{Gtk.GObject}, gplot::GtkPlot)
+	gplot.destroyed = true
+	nothing #Void signature
+end
 @guarded function cb_mnufileexport(w::Ptr{Gtk.GObject}, gplot::GtkPlot)
 	filepath = Gtk.save_dialog("Export plot...", _Gtk.Null(),
 		(_Gtk.@FileFilter("*.png,*.svg,*.eps", name="All supported formats"), "*.png", "*.svg", "*.eps")
@@ -181,6 +185,48 @@ function PlotWidget(plot::Plot)
 
 	return pwidget
 end
+#Build a PlotWidget & register event handlers for GtkPlot object
+function PlotWidget(gplot::GtkPlot, plot::Plot)
+	pwidget = PlotWidget(plot)
+	pwidget.eh_plothover = HandlerInfo(gplot, handleevent_plothover)
+	return pwidget
+end
+
+#Synchronize with gplot.src.subplots
+function sync_subplots(gplot::GtkPlot)
+	wlist = gplot.subplots #widget list
+	plist = gplot.src.subplots #(sub)plot list
+	resize!(wlist, length(plist))
+
+	for (i, s) in enumerate(plist)
+		if !isassigned(wlist, i)
+			wlist[i] = PlotWidget(gplot, s)
+		else
+			if wlist[i].src != s
+				Gtk.destroy(wlist[i].widget)
+				wlist[i] = PlotWidget(gplot, s)
+			end
+		end
+	end
+
+	#Blindly re-construct grid:
+	for i in length(gplot.grd):-1:1
+		Gtk.delete!(gplot.grd, gplot.grd[i]) #Does not destroy existing child widgets
+	end
+	const ncols = gplot.src.ncolumns
+	for (i, w) in enumerate(wlist)
+		row = div(i-1, ncols)+1
+		col = i - ((row-1)*ncols)
+		gplot.grd[col,row] = w.widget
+
+		#FIXME/HACK: rebuilding grd appears to inhibit the redraw mechanism.
+		#Toggling w.canvas -> visible unclogs refresh algorithm somehow.
+		Gtk.setproperty!(w.canvas, :visible, false)
+		Gtk.setproperty!(w.canvas, :visible, true)
+	end
+	return
+end
+
 
 #-------------------------------------------------------------------------------
 function GtkPlot(mp::Multiplot)
@@ -205,30 +251,17 @@ function GtkPlot(mp::Multiplot)
 		push!(vbox, grd) #Subplots
 		push!(vbox, sbar_frame) #status bar
 	wnd = Gtk.@Window(vbox, "", 640, 480, true)
-	settitle(GtkPlot, wnd, mp.title)
+	settitle(wnd, mp.title)
 
-	properties = copy_properties(mp)
-	gplot = GtkPlot(wnd, grd, [], properties, status)
+	gplot = GtkPlot(false, wnd, grd, [], mp, status)
+	sync_subplots(gplot)
 
-	_focus = nothing
-	ncols = properties.ncolumns
-
-	#Add subplots:
-	for (i, sp) in enumerate(mp.subplots)
-		row = div(i-1, ncols)+1
-		col = i - ((row-1)*ncols)
-		pwidget = PlotWidget(sp)
-		pwidget.eh_plothover = HandlerInfo(gplot, handleevent_plothover)
-		_focus = pwidget.widget
-		push!(gplot.subplots, pwidget)
-		grd[col, row] = pwidget.widget
-	end
-
-	if _focus != nothing
-		focus(wnd, _focus)
+	if length(gplot.subplots) > 0
+		focus(wnd, gplot.subplots[end].widget)
 	end
 
 	showall(wnd)
+	signal_connect(cb_wnddestroyed, wnd, "destroy", Void, (), false, gplot)
 	signal_connect(cb_mnufileexport, mnuexport, "activate", Void, (), false, gplot)
 	signal_connect(cb_mnufileclose, mnuquit, "activate", Void, (), false, gplot)
 
@@ -246,8 +279,27 @@ GtkPlot(args...; kwargs...) = GtkPlot(Plot2D(), args...; kwargs...)
 
 #==High-level interface
 ===============================================================================#
+function clearsubplots(gplot::GtkPlot)
+	for s in gplot.subplots
+		Gtk.destroy(s.widget)
+	end
+	gplot.subplots = []
+	gplot.src.subplots = []
+	return gplot
+end
+
 refresh(w::PlotWidget) = (render(w); Gtk.draw(w.canvas); return w)
-refresh(p::GtkPlot) = (map(refresh, p.subplots); return p)
+function refresh(gplot::GtkPlot)
+	if !gplot.destroyed
+		settitle(gplot.wnd, gplot.src.title)
+		setproperty!(gplot.grd, :visible, false) #Suppress gliching
+			sync_subplots(gplot)
+			map(refresh, gplot.subplots) #Is this necessary?
+		setproperty!(gplot.grd, :visible, true)
+		showall(gplot.grd)
+	end
+	return gplot
+end
 
 function Base.display(d::GtkDisplay, mp::Multiplot)
 	return GtkPlot(mp)

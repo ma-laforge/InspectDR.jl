@@ -109,8 +109,9 @@ Convenience functions:
 	write_pdf(path, ::Plot)
 
 Other:
-	refresh(w::PlotWidget)
-	refresh(p::GtkPlot)
+	refresh(::PlotWidget)
+	refresh(::GtkPlot)
+	clearsubplots(::GtkPlot)
 =#
 
 #Create new plot window (Is this a good idea?):

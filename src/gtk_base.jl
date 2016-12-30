@@ -105,17 +105,18 @@ end
 
 #Supports multiplot:
 type GtkPlot
+	destroyed::Bool #Way to know if window is actually desplayed
 	wnd::_Gtk.Window
 	grd::_Gtk.Grid #Holds subplot widgets
 	subplots::Vector{PlotWidget}
-	properties::Multiplot #Properties: ".subplots" ignored
+	src::Multiplot #Akward for sync: subplots.src are references to src.subplots.
 	status::_Gtk.Label
 end
 
 
 #==Mutators
 ===============================================================================#
-function settitle(::Type{GtkPlot}, wnd::_Gtk.Window, title::String)
+function settitle(wnd::_Gtk.Window, title::String)
 	if length(title)> 0
 		title = "InspectDR - $(title)"
 	else
@@ -125,17 +126,8 @@ function settitle(::Type{GtkPlot}, wnd::_Gtk.Window, title::String)
 end
 
 function settitle(gplot::GtkPlot, title::String)
-	gplot.properties.title = title
-	settitle(GtkPlot, gplot.wnd, gplot.properties.title)
-end
-
-
-#==Helper functions
-===============================================================================#
-function copy_properties(mp::Multiplot)
-	return Multiplot(mp.title, [], mp.ncolumns,
-		mp.wplot, mp.hplot, mp.htitle, mp.fnttitle
-	)
+	gplot.src.title = title
+	settitle(gplot.wnd, gplot.src.title)
 end
 
 
@@ -175,11 +167,7 @@ end
 ===============================================================================#
 #_write() GtkPlot: Auto-coumpute w/h
 function _write(path::String, mime::MIME, gplot::GtkPlot)
-	mplot = copy_properties(gplot.properties)
-	for s in gplot.subplots
-		push!(mplot.subplots, s.src)
-	end
-	_write(path, mime, mplot)
+	_write(path, mime, gplot.src)
 end
 
 write_png(path::String, gplot::GtkPlot) = _write(path, MIMEpng(), gplot)
