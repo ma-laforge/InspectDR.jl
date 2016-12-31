@@ -297,6 +297,8 @@ function refresh(gplot::GtkPlot)
 			map(refresh, gplot.subplots) #Is this necessary?
 		setproperty!(gplot.grd, :visible, true)
 		showall(gplot.grd)
+		#TODO: find a way to force GUI to updates here... Animations don't refresh...
+		sleep(eps(0.0)) #Ugly Hack: No guarantee this works... There must be a better way.
 	end
 	return gplot
 end
