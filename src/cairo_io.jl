@@ -6,6 +6,8 @@
 typealias MIMEpng MIME"image/png"
 typealias MIMEsvg MIME"image/svg+xml"
 typealias MIMEeps MIME"image/eps"
+typealias MIMEeps2 MIME"application/eps" #Apparently this is also a MIME
+typealias MIMEps MIME"application/postscript" #TODO: support
 typealias MIMEpdf MIME"application/pdf"
 
 const MAPEXT2MIME = Dict{String,MIME}(
@@ -20,7 +22,7 @@ const MAPEXT2MIME = Dict{String,MIME}(
 
 #All supported MIMEs:
 #EXCLUDE SVG so it can be turnd on/off??
-typealias MIMEall Union{MIMEpng, MIMEeps, MIMEpdf, MIMEsvg}
+typealias MIMEall Union{MIMEpng, MIMEeps, MIMEeps2, MIMEpdf, MIMEsvg}
 
 
 #=="Constructors"
@@ -28,6 +30,8 @@ typealias MIMEall Union{MIMEpng, MIMEeps, MIMEpdf, MIMEsvg}
 _CairoSurface(io::IO, ::MIMEsvg, w::Float64, h::Float64) =
 	Cairo.CairoSVGSurface(io, w, h)
 _CairoSurface(io::IO, ::MIMEeps, w::Float64, h::Float64) =
+	Cairo.CairoEPSSurface(io, w, h)
+_CairoSurface(io::IO, ::MIMEeps2, w::Float64, h::Float64) =
 	Cairo.CairoEPSSurface(io, w, h)
 _CairoSurface(io::IO, ::MIMEpdf, w::Float64, h::Float64) =
 	Cairo.CairoPDFSurface(io, w, h)
