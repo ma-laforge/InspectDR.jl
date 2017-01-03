@@ -1,13 +1,6 @@
 #InspectDR: Base functionnality and types for Cairo layer
 #-------------------------------------------------------------------------------
 
-#=TODO
--Fix glyph size for "constant area" (appearance).  Currently, algorithms use
- "constant bounding box" to avoid repeating complex math (ex: h=sqrt(a^2+b^2)).
- Solution: Create glyph object that takes Vector{Point2D} - or something
- similar.  That way, complex math is done only once per curve.
-=#
-
 
 #==Constants
 ===============================================================================#
@@ -25,9 +18,6 @@ type PCanvas2D <: PlotCanvas
 end
 PCanvas2D(ctx, bb, graphbb, ext) =
 	PCanvas2D(ctx, bb, graphbb, ext, Transform2D(ext, graphbb))
-
-immutable CGlyph{GTYPE}; end #Dispatchable glyph object
-CGlyph(gtype::Symbol) = CGlyph{gtype}()
 
 
 #==Basic rendering
@@ -84,145 +74,55 @@ function renderfill(ctx::CairoContext, fill::Colorant)
 	Cairo.restore(ctx) #-----
 end
 
-function drawglyph{T}(ctx::CairoContext, ::CGlyph{T}, pt::Point2D, size::DReal, fill)
-	warn("Glyph shape not supported: $T")
+function drawglyph(ctx::CairoContext, g::GlyphPolyline, pt::Point2D, size::DReal, fill)
+	#TODO: could scale GlyphPolyline only once for efficiency (instead of every time we draw).
+	x = g.x*size; y = g.y*(-1*size) #Compensate for y-reversal
+	Cairo.move_to(ctx, pt.x, pt.y)
+	Cairo.rel_move_to(ctx, x[1], y[1]) #rel: Probably less prone to rounding errors
+
+	dxv = diff(x); dyv = diff(y)
+	for (dx, dy) in zip(dxv, dyv)
+		Cairo.rel_line_to(ctx, dx, dy)
+	end
+	if g.closepath
+		Cairo.close_path(ctx)
+		renderfill(ctx, fill)
+	end
+	Cairo.stroke(ctx)
+	return
 end
-
-#= Supported:
-	:square, :diamond,
-	:uarrow, :darrow, :larrow, :rarrow, #usually triangles
-	:cross, :+, :diagcross, :x,
-	:circle, :o, :star, :*,
-=#
-
-function drawglyph(ctx::CairoContext, ::CGlyph{:circle}, pt::Point2D, size::DReal, fill)
-	radius = size/2
-	Cairo.arc(ctx, pt.x, pt.y, radius, 0, 2pi)
+function drawglyph(ctx::CairoContext, g::GlyphLineSegments, pt::Point2D, size::DReal, fill)
+	dxv = size * (g.x2 - g.x1)
+	dyv = -size * (g.y2 - g.y1)
+	x1v = size * g.x1
+	y1v = -size * g.y1
+	for (x1, y1, dx, dy) in zip(x1v, y1v, dxv, dyv)
+		Cairo.move_to(ctx, pt.x, pt.y)
+		Cairo.rel_move_to(ctx, x1, y1) #rel: Probably less prone to rounding errors
+		Cairo.rel_line_to(ctx, dx, dy)
+		Cairo.stroke(ctx)
+	end
+	return
+end
+function drawglyph(ctx::CairoContext, g::GlyphCircle, pt::Point2D, size::DReal, fill)
+	Cairo.arc(ctx, pt.x, pt.y, g.radius*size, 0, 2pi)
 	renderfill(ctx, fill)
 	Cairo.stroke(ctx)
 end
-drawglyph(ctx::CairoContext, ::CGlyph{:o}, pt::Point2D, size::DReal, fill) =
-	drawglyph(ctx, CGlyph{:circle}(), pt, size, fill)
-
-function drawglyph(ctx::CairoContext, ::CGlyph{:square}, pt::Point2D, size::DReal, fill)
-	elen = size #full edge length
-	hlen = elen/2 #halflength
-	Cairo.rectangle(ctx, pt.x-hlen, pt.y-hlen, elen, elen)
-	renderfill(ctx, fill)
-	Cairo.stroke(ctx)
-end
-
-function drawglyph(ctx::CairoContext, ::CGlyph{:cross}, pt::Point2D, size::DReal, fill)
-	elen = size*sqrt(2) #full edge length
-	hlen = elen/2 #halflength
-	Cairo.move_to(ctx, pt.x, pt.y-hlen)
-	Cairo.rel_line_to(ctx, 0, elen)
-	Cairo.stroke(ctx)
-	Cairo.move_to(ctx, pt.x-hlen, pt.y)
-	Cairo.rel_line_to(ctx, elen, 0)
-	Cairo.stroke(ctx)
-end
-drawglyph(ctx::CairoContext, ::CGlyph{:+}, pt::Point2D, size::DReal, fill) =
-	drawglyph(ctx, CGlyph{:cross}(), pt, size, fill)
-
-function drawglyph(ctx::CairoContext, ::CGlyph{:diagcross}, pt::Point2D, size::DReal, fill)
-	elen = size #full edge length
-	hlen = elen/2 #halflength
-	Cairo.move_to(ctx, pt.x-hlen, pt.y-hlen)
-	Cairo.rel_line_to(ctx, elen, elen)
-	Cairo.stroke(ctx)
-	Cairo.move_to(ctx, pt.x-hlen, pt.y+hlen)
-	Cairo.rel_line_to(ctx, elen, -elen)
-	Cairo.stroke(ctx)
-end
-drawglyph(ctx::CairoContext, ::CGlyph{:x}, pt::Point2D, size::DReal, fill) =
-	drawglyph(ctx, CGlyph{:diagcross}(), pt, size, fill)
-
-function drawglyph(ctx::CairoContext, ::CGlyph{:star}, pt::Point2D, size::DReal, fill)
-	elen = size*sqrt(2) #full edge length
-	hlen = elen/2 #halflength
-
-	Cairo.move_to(ctx, pt.x, pt.y-hlen)
-	Cairo.rel_line_to(ctx, 0, elen)
-	Cairo.stroke(ctx)
-	Cairo.move_to(ctx, pt.x-hlen, pt.y)
-	Cairo.rel_line_to(ctx, elen, 0)
-	Cairo.stroke(ctx)
-
-	elen = size #full edge length
-	hlen = elen/2 #halflength
-
-	Cairo.move_to(ctx, pt.x-hlen, pt.y-hlen)
-	Cairo.rel_line_to(ctx, elen, elen)
-	Cairo.stroke(ctx)
-	Cairo.move_to(ctx, pt.x-hlen, pt.y+hlen)
-	Cairo.rel_line_to(ctx, elen, -elen)
-	Cairo.stroke(ctx)
-end
-drawglyph(ctx::CairoContext, ::CGlyph{:*}, pt::Point2D, size::DReal, fill) =
-	drawglyph(ctx, CGlyph{:star}(), pt, size, fill)
-
-function drawglyph(ctx::CairoContext, ::CGlyph{:diamond}, pt::Point2D, size::DReal, fill)
-	elen = size #full edge length
-	hlen = elen/2 #halflength
-	Cairo.move_to(ctx, pt.x, pt.y-hlen)
-	Cairo.rel_line_to(ctx, hlen, hlen)
-	Cairo.rel_line_to(ctx, -hlen, hlen)
-	Cairo.rel_line_to(ctx, -hlen, -hlen)
-	Cairo.close_path(ctx)
-	renderfill(ctx, fill)
-	Cairo.stroke(ctx)
-end
-
-
-#dir=1: up, -1: down
-function drawglyph_varrow(ctx::CairoContext, pt::Point2D, size::DReal, dir::Int, fill)
-	elen = size #full edge length
-	hlen = elen/2 #halflength
-	dlen = dir*elen #directional edge
-	Cairo.move_to(ctx, pt.x, pt.y-dir*hlen)
-	Cairo.rel_line_to(ctx, hlen, dlen)
-	Cairo.rel_line_to(ctx, -elen, 0)
-	Cairo.close_path(ctx)
-	renderfill(ctx, fill)
-	Cairo.stroke(ctx)
-end
-
-drawglyph(ctx::CairoContext, ::CGlyph{:uarrow}, pt::Point2D, size::DReal, fill) =
-	drawglyph_varrow(ctx, pt, size, 1, fill)
-drawglyph(ctx::CairoContext, ::CGlyph{:darrow}, pt::Point2D, size::DReal, fill) =
-	drawglyph_varrow(ctx, pt, size, -1, fill)
-
-#dir=1: right, -1: left
-function drawglyph_harrow(ctx::CairoContext, pt::Point2D, size::DReal, dir::Int, fill)
-	elen = size #full edge length
-	hlen = elen/2 #halflength
-	dlen = dir*elen #directional edge
-	Cairo.move_to(ctx, pt.x+dir*hlen, pt.y)
-	Cairo.rel_line_to(ctx, -dlen, hlen)
-	Cairo.rel_line_to(ctx, 0, -elen)
-	Cairo.close_path(ctx)
-	renderfill(ctx, fill)
-	Cairo.stroke(ctx)
-end
-
-drawglyph(ctx::CairoContext, ::CGlyph{:larrow}, pt::Point2D, size::DReal, fill) =
-	drawglyph_harrow(ctx, pt, size, -1, fill)
-drawglyph(ctx::CairoContext, ::CGlyph{:rarrow}, pt::Point2D, size::DReal, fill) =
-	drawglyph_harrow(ctx, pt, size, 1, fill)
 
 #Correctly displays a glyph, given wfrm properties.
 function drawglyph_safe(ctx::CairoContext, wfrm::DWaveform, pt::Point2D)
-	if wfrm.glyph.shape != :none
-		_glyph = CGlyph(wfrm.glyph.shape)
-		setlinestyle(ctx, :solid, Float64(wfrm.line.width))
-		linecolor = getglyphcolor(wfrm.glyph, wfrm.line)
-		Cairo.set_source(ctx, linecolor)
-		fill = getglyphfill(wfrm.glyph)
-		gsize = Float64(wfrm.glyph.size)
+	_glyph = Glyph(wfrm.glyph.shape)
+	if nothing == _glyph; return; end
 
-		drawglyph(ctx, _glyph, pt, gsize, fill)
-	end
+	setlinestyle(ctx, :solid, Float64(wfrm.line.width))
+	linecolor = getglyphcolor(wfrm.glyph, wfrm.line)
+	Cairo.set_source(ctx, linecolor)
+	fill = getglyphfill(wfrm.glyph)
+	gsize = Float64(wfrm.glyph.size)
+
+	drawglyph(ctx, _glyph, pt, gsize, fill)
+	return
 end
 
 
@@ -445,8 +345,8 @@ if wfrm.line.style != :none
 	Cairo.stroke(ctx)
 end
 
-	if :none == wfrm.glyph.shape; return; end
-	_glyph = CGlyph(wfrm.glyph.shape)
+	_glyph = Glyph(wfrm.glyph.shape)
+	if nothing == _glyph; return; end
 
 	#TODO: do not draw when outside graph extents.
 
