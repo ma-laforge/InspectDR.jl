@@ -7,7 +7,7 @@ typealias MIMEpng MIME"image/png"
 typealias MIMEsvg MIME"image/svg+xml"
 typealias MIMEeps MIME"image/eps"
 typealias MIMEeps2 MIME"application/eps" #Apparently this is also a MIME
-typealias MIMEps MIME"application/postscript" #TODO: support
+typealias MIMEps MIME"application/postscript" #TODO: support when Cairo.jl supports PSSurface
 typealias MIMEpdf MIME"application/pdf"
 
 const MAPEXT2MIME = Dict{String,MIME}(
