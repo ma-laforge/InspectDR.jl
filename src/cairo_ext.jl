@@ -37,6 +37,21 @@ const PANGO_ELLIPSIZE_END = 3
 #==Basic rendering
 ===============================================================================#
 
+#Reset context to known state:
+function _reset(ctx::CairoContext)
+	#TODO: reset transforms???
+	Cairo.set_source(ctx, COLOR_BLACK)
+	Cairo.set_line_width(ctx, 1);
+	Cairo.set_dash(ctx, Float64[], 0)
+end
+
+#Clears a rectangle-shaped area with a solid color
+function clear(ctx::CairoContext, bb::BoundingBox, color::Colorant=COLOR_WHITE)
+	Cairo.set_source(ctx, color)
+	Cairo.rectangle(ctx, bb)
+	Cairo.fill(ctx)
+end
+
 function setclip(ctx::CairoContext, bb::BoundingBox)
 	Cairo.rectangle(ctx, bb)
 	Cairo.clip(ctx)
@@ -64,12 +79,36 @@ function setlinestyle(ctx::CairoContext, style::Symbol, linewidth::Float64)
 	Cairo.set_dash(ctx, dashes.*linewidth, offset)
 end
 
+function setlinestyle(ctx::CairoContext, a::LineAttributes)
+	Cairo.set_source(ctx, a.color)
+	setlinestyle(ctx, a.style, Float64(a.width))
+end
+
+#Conditionnaly render fill (preserve path for stroke)
+#-------------------------------------------------------------------------------
+renderfill(ctx::CairoContext, fill::Void) = nothing
+function renderfill(ctx::CairoContext, fill::Colorant)
+	Cairo.save(ctx) #-----
+	Cairo.set_source(ctx, fill)
+	Cairo.fill_preserve(ctx)
+	Cairo.restore(ctx) #-----
+end
 
 #Draw a simple line on a CairoContext
 #-------------------------------------------------------------------------------
 function drawline(ctx::CairoContext, p1::Point2D, p2::Point2D)
 	Cairo.move_to(ctx, p1.x, p1.y)
 	Cairo.line_to(ctx, p2.x, p2.y)
+	Cairo.stroke(ctx)
+end
+
+#Draw a rectangle, given AreaAttributes
+#-------------------------------------------------------------------------------
+function drawrectangle(ctx::CairoContext, bb::BoundingBox, aa::AreaAttributes)
+	Cairo.set_source(ctx, aa.fillcolor)
+	Cairo.rectangle(ctx, bb)
+	Cairo.fill_preserve(ctx)
+	setlinestyle(ctx, aa.line)
 	Cairo.stroke(ctx)
 end
 
@@ -118,6 +157,7 @@ text_dims(t_ext::Array{Float64}) = tuple(t_ext[3], t_ext[4]) #w, h
 function setfont(ctx::CairoContext, font::Font)
 	const weight = font.bold? Cairo.FONT_WEIGHT_BOLD: Cairo.FONT_WEIGHT_NORMAL
 	const noitalic = Cairo.FONT_SLANT_NORMAL
+	Cairo.set_source(ctx, font.color)
 	Cairo.select_font_face(ctx, font.name, noitalic, weight)
 	Cairo.set_font_size(ctx, font._size)
 end
@@ -126,7 +166,7 @@ end
 #-------------------------------------------------------------------------------
 #angle: radians
 function render(ctx::CairoContext, t::String, pt::Point2D,
-	align::CAlignment, angle::Float64, color::Colorant)
+	align::CAlignment, angle::Float64)
 	t_ext = Cairo.text_extents(ctx, t)
 	(xoff, yoff) = textoffset(t_ext, align)
 
@@ -138,20 +178,19 @@ function render(ctx::CairoContext, t::String, pt::Point2D,
 	end
 
 	Cairo.move_to(ctx, xoff, yoff)
-	Cairo.set_source(ctx, color)
 	Cairo.show_text(ctx, t)
 
 	Cairo.restore(ctx) #-----
 end
 render(ctx::CairoContext, t::String, pt::Point2D;
-	align::CAlignment=ALIGN_BOTTOM|ALIGN_LEFT, angle::Real=0, color::Colorant=COLOR_BLACK) =
-	render(ctx, t, pt, align, Float64(angle), color)
+	align::CAlignment=ALIGN_BOTTOM|ALIGN_LEFT, angle::Real=0) =
+	render(ctx, t, pt, align, Float64(angle))
 
 #Convenience: also set font.
 function render(ctx::CairoContext, t::String, pt::Point2D, font::Font;
-	align::CAlignment=ALIGN_BOTTOM|ALIGN_LEFT, angle::Real=0, color::Colorant=COLOR_BLACK)
+	align::CAlignment=ALIGN_BOTTOM|ALIGN_LEFT, angle::Real=0)
 	setfont(ctx, font)
-	render(ctx, t, pt, align, Float64(angle), color)
+	render(ctx, t, pt, align, Float64(angle))
 end
 
 

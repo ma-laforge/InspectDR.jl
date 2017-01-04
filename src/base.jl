@@ -45,6 +45,13 @@ line(;style=:solid, width=1, color=COLOR_BLACK) =
 #TODO: Inadequate
 #eval(genexpr_attriblistbuilder(:line, LineAttributes, reqfieldcnt=0))
 
+type AreaAttributes #<: AttributeList
+	line::LineAttributes
+	fillcolor::Colorant
+end
+AreaAttributes(;line=InspectDR.line(style=:none), fillcolor=COLOR_TRANSPARENT) =
+	AreaAttributes(line, fillcolor)
+
 type GlyphAttributes <: AttributeList #Don't use "Symbol" - name used by Julia
 #==IMPORTANT:
 Edge width & color taken from LineAttributes
@@ -143,9 +150,12 @@ type Font
 	name::String
 	_size::Float64
 	bold::Bool
+	color::Colorant
 end
-Font(name::String, _size::Real; bold::Bool=false) = Font(name, _size, bold)
-Font(_size::Real; bold::Bool=false) = Font(defaults.fontname, _size, bold)
+Font(name::String, _size::Real; bold::Bool=false, color=COLOR_BLACK) =
+	Font(name, _size, bold, color)
+Font(_size::Real; bold::Bool=false, color=COLOR_BLACK) =
+	Font(defaults.fontname, _size, bold, color)
 
 #Legend layout/style
 type LegendLStyle
@@ -159,7 +169,10 @@ type LegendLStyle
 	vgap::Float64 #Vertical spacing between (% of text height).
 	linegap::Float64 #Spacing between line and label (% of M character).
 	linelength::Float64 #length of line segment to display.
+	frame::AreaAttributes
 end
+LegendLStyle(;enabled=false, font=Font(12)) =
+	LegendLStyle(enabled, font, 100.0, .25, 0.5, 20, AreaAttributes())
 
 #Plot layout
 #TODO: Split Layout into "StyleInfo" - which includes Layout??
@@ -174,8 +187,6 @@ type Layout
 	hlabeloffset::Float64
 	vlabeloffset::Float64
 
-	tframe::Float64 #Frame thickness
-
 	wdata::Float64 #Suggested width of data (graph) area
 	hdata::Float64 #Suggested height of data (graph) area
 
@@ -188,19 +199,24 @@ type Layout
 	legend::LegendLStyle
 	xlabelformat::TickLabelStyle
 	ylabelformat::TickLabelStyle
+	frame::AreaAttributes #Area under entire plot
+	framedata::AreaAttributes #Data area
 	showtimestamp::Bool
 end
 Layout(;fontname::String=defaults.fontname, fontscale=defaults.fontscale) =
 	Layout(
 	20*fontscale, 20*fontscale, 20*fontscale, 45, #Title/main labels
-	60*fontscale, 15*fontscale, 3, 7, 2, #Ticks/frame
+	60*fontscale, 15*fontscale, 3, 7, #Ticks/frame
 	defaults.wdata, defaults.hdata,
 	Font(fontname, fontscale*14, bold=true), #Title
 	Font(fontname, fontscale*14), Font(fontname, fontscale*12), #Axis/Tick labels
 	Font(fontname, fontscale*8), #Time stamp
 	GridAttributes(true, false, true, false),
-	LegendLStyle(false, Font(fontname, fontscale*12), 100.0, .25, 0.5, 20),
-	TickLabelStyle(), TickLabelStyle(), defaults.showtimestamp
+	LegendLStyle(font=Font(fontname, fontscale*12)),
+	TickLabelStyle(), TickLabelStyle(),
+	AreaAttributes(),
+	AreaAttributes(line=InspectDR.line(style=:solid, color=COLOR_BLACK, width=2)),
+	defaults.showtimestamp
 )
 
 #Tag data as being part of a given coordinate system:
@@ -222,14 +238,13 @@ type TextAnnotation
 	xoffset::DReal #Normalized to [0,1] plot bounds
 	yoffset::DReal #Normalized to [0,1] plot bounds
 	font::Font
-	color::Colorant
 	angle::DReal #Degrees
 	align::Symbol #tl, tc, tr, cl, cc, cr, bl, bc, br
 end
 #Don't use "text"... high probability of collisions when exported...
 atext(text::String; x::Real=DNaN, y::Real=DNaN, xoffset=0, yoffset=0,
-	font=Font(10), color=COLOR_BLACK, angle=0, align=:bl) =
-	TextAnnotation(text, Point2D(x,y), xoffset, yoffset, font, color, angle, align)
+	font=Font(10), angle=0, align=:bl) =
+	TextAnnotation(text, Point2D(x,y), xoffset, yoffset, font, angle, align)
 
 type HVMarker
 	vmarker::Bool #false: hmarker

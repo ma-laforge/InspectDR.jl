@@ -10,6 +10,10 @@ function render(canvas::PCanvas2D, plot::Plot2D)
 		legend_render(canvas, plot)
 	end
 
+	#Draw data area & grid lines
+Cairo.save(canvas.ctx)
+	drawrectangle(canvas.ctx, canvas.graphbb, plot.layout.framedata)
+Cairo.restore(canvas.ctx)
 	grid = gridlines(plot.axes, canvas.ext)
 	render_grid(canvas, plot.layout, grid)
 	#TODO: render axes first once drawing is multi-threaded.
@@ -18,13 +22,13 @@ function render(canvas::PCanvas2D, plot::Plot2D)
 	#Plot actual data
 Cairo.save(canvas.ctx)
 	setclip(canvas.ctx, canvas.graphbb)
+
 	render(canvas, plot.display_data)
 
 	#Plot secondary annotation:
 	render(canvas, plot.markers, plot.axes)
 	render(canvas, plot.atext, plot.axes)
 	render(canvas, plot.apline, plot.axes)
-
 Cairo.restore(canvas.ctx)
 
 	#Re-render axis over data:
@@ -33,8 +37,12 @@ end
 
 #Render entire plot within provided bounding box:
 function render(ctx::CairoContext, plot::Plot2D, bb::BoundingBox)
+	_reset(ctx)
 	graphbb = graphbounds(bb, plot.layout, plot.axes)
 	update_ddata(plot) #Also computes new extents
+Cairo.save(ctx)
+	drawrectangle(ctx, bb, plot.layout.frame)
+Cairo.restore(ctx)
 	canvas = PCanvas2D(ctx, bb, graphbb, getextents_xfrm(plot))
 	render(canvas, plot)
 end

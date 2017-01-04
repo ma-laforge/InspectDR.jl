@@ -23,20 +23,6 @@ PCanvas2D(ctx, bb, graphbb, ext) =
 #==Basic rendering
 ===============================================================================#
 
-#Reset context to known state:
-function _reset(ctx::CairoContext)
-	Cairo.set_source(ctx, COLOR_BLACK)
-	Cairo.set_line_width(ctx, 1);
-	Cairo.set_dash(ctx, Float64[], 0)
-end
-
-#Clears a rectangle-shaped area with a solid color
-function clear(ctx::CairoContext, bb::BoundingBox, color::Colorant=COLOR_WHITE)
-	Cairo.set_source(ctx, color)
-	Cairo.rectangle(ctx, bb)
-	Cairo.fill(ctx)
-end
-
 #Apply transform to Cairo (when easier to do so):
 function setxfrm(ctx::CairoContext, xf::Transform2D)
 	xorig = xf.x0*xf.xs
@@ -63,15 +49,6 @@ function getglyphfill(glyph::GlyphAttributes)
 		fill = nothing
 	end
 	return fill
-end
-
-#Conditionnaly render fill (preserve path for stroke)
-renderfill(ctx::CairoContext, fill::Void) = nothing
-function renderfill(ctx::CairoContext, fill::Colorant)
-	Cairo.save(ctx) #-----
-	Cairo.set_source(ctx, fill)
-	Cairo.fill_preserve(ctx)
-	Cairo.restore(ctx) #-----
 end
 
 function drawglyph(ctx::CairoContext, g::GlyphPolyline, pt::Point2D, size::DReal, fill)
@@ -161,12 +138,14 @@ end
 
 #Render frame around graph
 #-------------------------------------------------------------------------------
-function render_graphframe(canvas::PCanvas2D)
+function render_graphframe(canvas::PCanvas2D, aa::AreaAttributes)
 	const ctx = canvas.ctx
-	Cairo.set_source(ctx, COLOR_BLACK)
-	Cairo.set_line_width(ctx, 2);
+Cairo.save(ctx)
+	setlinestyle(ctx, aa.line)
 	Cairo.rectangle(ctx, canvas.graphbb)
 	Cairo.stroke(ctx)
+Cairo.restore(ctx)
+	return
 end
 
 #==Render grid
@@ -174,16 +153,14 @@ end
 render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::AbstractGridLines) = nothing
 function render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::GridLines)
 	if lyt.grid.vmajor
-		setlinestyle(ctx, :dash, GRID_MAJOR_WIDTH)
-		Cairo.set_source(ctx, GRID_MAJOR_COLOR)
+		setlinestyle(ctx, GRID_MAJOR_LINE)
 		for xline in xlines.major
 			x = ptmap(xf, Point2D(xline, 0)).x
 			drawline(ctx, Point2D(x, graphbb.ymin), Point2D(x, graphbb.ymax))
 		end
 	end
 	if lyt.grid.vminor
-		setlinestyle(ctx, :dash, GRID_MINOR_WIDTH)
-		Cairo.set_source(ctx, GRID_MINOR_COLOR)
+		setlinestyle(ctx, GRID_MINOR_LINE)
 		for xline in xlines.minor
 			x = ptmap(xf, Point2D(xline, 0)).x
 			drawline(ctx, Point2D(x, graphbb.ymin), Point2D(x, graphbb.ymax))
@@ -193,16 +170,14 @@ end
 render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::AbstractGridLines) = nothing
 function render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::GridLines)
 	if lyt.grid.hmajor
-		setlinestyle(ctx, :dash, GRID_MAJOR_WIDTH)
-		Cairo.set_source(ctx, GRID_MAJOR_COLOR)
+		setlinestyle(ctx, GRID_MAJOR_LINE)
 		for yline in ylines.major
 			y = ptmap(xf, Point2D(0, yline)).y
 			drawline(ctx, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
 		end
 	end
 	if lyt.grid.hminor
-		setlinestyle(ctx, :dash, GRID_MINOR_WIDTH)
-		Cairo.set_source(ctx, GRID_MINOR_COLOR)
+		setlinestyle(ctx, GRID_MINOR_LINE)
 		for yline in ylines.minor
 			y = ptmap(xf, Point2D(0, yline)).y
 			drawline(ctx, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
@@ -252,6 +227,7 @@ end
 #Render ticks: Well-defined GridLines
 #-------------------------------------------------------------------------------
 function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::GridLines)
+	const tframe = DReal(lyt.framedata.line.width) #TODO: Fix LineAttributes to have concrete type
 	fmt = TickLabelFormatting(lyt.xlabelformat, xlines.rnginfo)
 	yframe = graphbb.ymax
 	ylabel = graphbb.ymax + lyt.vlabeloffset
@@ -265,11 +241,12 @@ function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MINOR_LEN))
 	end
 	if fmt.splitexp
-		xlabel = graphbb.xmax + lyt.tframe
+		xlabel = graphbb.xmax + tframe
 		render_axisscalelabel(ctx, Point2D(xlabel, yframe), lyt.fntticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, xlines.scale)
 	end
 end
 function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::GridLines)
+	const tframe = DReal(lyt.framedata.line.width) #TODO: Fix LineAttributes to have concrete type
 	fmt = TickLabelFormatting(lyt.ylabelformat, ylines.rnginfo)
 	xframe = graphbb.xmin
 	xlabel = graphbb.xmin - lyt.hlabeloffset
@@ -283,7 +260,7 @@ function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MINOR_LEN, y))
 	end
 	if fmt.splitexp
-		ylabel = graphbb.ymin - lyt.tframe
+		ylabel = graphbb.ymin - tframe
 		render_axisscalelabel(ctx, Point2D(xframe, ylabel), lyt.fntticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, ylines.scale)
 	end
 end
@@ -321,7 +298,7 @@ end
 #Render axis labels, ticks, ...
 #-------------------------------------------------------------------------------
 function render_axes(canvas::PCanvas2D, lyt::Layout, grid::GridRect)
-	render_graphframe(canvas)
+	render_graphframe(canvas, lyt.framedata)
 	render_ticks(canvas, lyt, grid)
 end
 
@@ -337,8 +314,7 @@ function render(canvas::PCanvas2D, wfrm::DWaveform)
 	end
 
 if wfrm.line.style != :none
-	Cairo.set_source(ctx, wfrm.line.color)
-	setlinestyle(ctx, wfrm.line.style, Float64(wfrm.line.width))
+	setlinestyle(ctx, wfrm.line)
 	pt = ptmap(canvas.xf, ds[1])
 	Cairo.move_to(ctx, pt.x, pt.y)
 	for i in 2:length(ds)

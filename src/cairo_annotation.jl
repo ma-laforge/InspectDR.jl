@@ -27,7 +27,6 @@ function render(canvas::PCanvas2D, a::TextAnnotation, axes::Axes)
 	align = get(ALIGN_MAP, a.align, ALIGN_BOTTOM | ALIGN_LEFT)
 	angle = deg2rad(a.angle)
 
-	Cairo.set_source(ctx, a.color)
 	pt = _rescale(a.pt, axes)
 	pt = ptmap(canvas.xf, pt)
 	x = pt.x; y = pt.y

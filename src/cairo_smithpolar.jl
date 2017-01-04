@@ -129,8 +129,6 @@ _rescale(pt::Point2D, axes::AxesSmith) = pt
 function render_grid(canvas::PCanvas2D, lyt::Layout, grid::GridSmith)
 	const ctx = canvas.ctx
 	const graphbb = canvas.graphbb
-	const MINOR_COLOR = GRID_MINOR_COLOR
-	const MAJOR_COLOR = COLOR_BLACK #GRID_MAJOR_COLOR
 	const xflip = !grid.zgrid #Flip x-axis for admittance(Y)-grid lines
 
 Cairo.save(ctx) #-----
@@ -141,13 +139,10 @@ Cairo.save(ctx) #-----
 	if xflip
 		Cairo.scale(ctx, -1, 1)
 	end
-
-	setlinestyle(ctx, :solid, GRID_MINOR_WIDTH)
-	Cairo.set_source(ctx, MINOR_COLOR)
+	setlinestyle(ctx, SMITH_MINOR_LINE)
 		render_rcircles(ctx, grid.minorR)
 		render_xcircles(ctx, grid.minorX)
-	setlinestyle(ctx, :solid, GRID_MAJOR_WIDTH)
-	Cairo.set_source(ctx, MAJOR_COLOR)
+	setlinestyle(ctx, SMITH_MAJOR_LINE)
 		render_rcircles(ctx, grid.majorR)
 Cairo.restore(ctx) #-----
 
@@ -155,8 +150,7 @@ Cairo.save(ctx) #-----
 	setclip(ctx, graphbb)
 
 	#Draw X=0 line:
-	setlinestyle(ctx, :solid, GRID_MINOR_WIDTH)
-	Cairo.set_source(ctx, MINOR_COLOR)
+	setlinestyle(ctx, SMITH_MINOR_LINE)
 	y = ptmap(canvas.xf, Point2D(0, 0)).y
 	drawline(ctx::CairoContext, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
 
@@ -171,7 +165,7 @@ Cairo.restore(ctx) #-----
 end
 
 function render_axes(canvas::PCanvas2D, lyt::Layout, grid::GridSmith)
-	render_graphframe(canvas)
+	render_graphframe(canvas, lyt.framedata)
 
 	#Display linear grid:
 	#TODO: make it possible to disable?
