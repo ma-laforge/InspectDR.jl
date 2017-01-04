@@ -70,4 +70,35 @@ end
 render(canvas::PCanvas2D, mkrlist::Vector{HVMarker}, axes::Axes) =
 	map((mkr)->render(canvas, mkr, axes::Axes), mkrlist)
 
+
+#==Rendering polyline for annotation
+===============================================================================#
+function render(canvas::PCanvas2D, a::PolylineAnnotation, axes::Axes)
+	const ctx = canvas.ctx
+
+	x = a.x; y = a.y
+	Cairo.set_source(ctx, a.line.color)
+	setlinestyle(ctx, a.line.style, Float64(a.line.width))
+	pt = ptmap(canvas.xf, Point2D(x[1], y[1]))
+	Cairo.move_to(ctx, pt.x, pt.y)
+	for i in 2:length(x)
+		pt = ptmap(canvas.xf, Point2D(x[i], y[i]))
+		Cairo.line_to(ctx, pt.x, pt.y)
+	end
+#	set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_MITER)
+	if a.closepath
+		Cairo.close_path(ctx)
+		renderfill(ctx, a.fillcolor)
+	end
+	Cairo.stroke(ctx)
+
+#	function xf(x, y)
+#		pt = ptmap(canvas.xf, _rescale(Point2D(x,y), axes))
+#		return (x, y)
+#	end
+	return
+end
+
+render(canvas::PCanvas2D, alist::Vector{PolylineAnnotation}, axes::Axes) =
+	map((a)->render(canvas, a, axes::Axes), alist)
 #Last line

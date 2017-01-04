@@ -23,6 +23,7 @@ Cairo.save(canvas.ctx)
 	#Plot secondary annotation:
 	render(canvas, plot.markers, plot.axes)
 	render(canvas, plot.atext, plot.axes)
+	render(canvas, plot.apline, plot.axes)
 
 Cairo.restore(canvas.ctx)
 

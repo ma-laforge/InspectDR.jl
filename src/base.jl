@@ -75,6 +75,7 @@ grid(;vmajor=false, vminor=false, hmajor=false, hminor=false) =
 immutable AxisScale{T}
 	(t::Type{AxisScale{T}}){T}() = error("$t not supported")
 	(::Type{AxisScale{:lin}})() = new{:lin}()
+	(::Type{AxisScale{:ln}})() = new{:ln}()
 	(::Type{AxisScale{:log2}})() = new{:log2}()
 	(::Type{AxisScale{:log10}})() = new{:log10}()
 	(::Type{AxisScale{:dB10}})() = new{:dB10}()
@@ -238,6 +239,17 @@ end
 vmarker(pos, line=InspectDR.line()) = HVMarker(true, pos, line)
 hmarker(pos, line=InspectDR.line()) = HVMarker(false, pos, line)
 
+type PolylineAnnotation
+	#TODO: preferable to use Point2D?
+	x::Vector{DReal}
+	y::Vector{DReal}
+	line::LineAttributes
+	fillcolor::Colorant
+	closepath::Bool
+end
+PolylineAnnotation(x, y; line=InspectDR.line(), fillcolor=COLOR_TRANSPARENT, closepath=true) =
+	PolylineAnnotation(x, y, line, fillcolor, closepath)
+
 #2D plot.
 type Plot2D <: Plot
 	layout::Layout
@@ -252,6 +264,7 @@ type Plot2D <: Plot
 	data::Vector{IWaveform}
 	markers::Vector{HVMarker}
 	atext::Vector{TextAnnotation}
+	apline::Vector{PolylineAnnotation}
 
 	#Display data cache:
 	invalid_ddata::Bool #Is cache of display data invalid?
@@ -263,7 +276,7 @@ type Plot2D <: Plot
 end
 
 Plot2D(;title="") = Plot2D(Layout(), AxesRect(), Annotation(title=title),
-	PExtents2D(), PExtents2D(), PExtents2D(), [], [], [], true, [], 1000
+	PExtents2D(), PExtents2D(), PExtents2D(), [], [], [], [], true, [], 1000
 )
 
 type Multiplot
@@ -386,6 +399,8 @@ end
 datamap{T<:Number}(::Type{T}, ::AxisScale) = (x::T)->DReal(x)
 datamap{T<:Number}(::Type{T}, ::AxisScale{:dB10}) = (x::T)->(5*log10(DReal(abs2(x))))
 datamap{T<:Number}(::Type{T}, ::AxisScale{:dB20}) = (x::T)->(10*log10(DReal(abs2(x))))
+datamap{T<:Number}(::Type{T}, ::AxisScale{:ln}) =
+	(x::T)->(x<0? DNaN: log(DReal(x)))
 datamap{T<:Number}(::Type{T}, ::AxisScale{:log2}) =
 	(x::T)->(x<0? DNaN: log2(DReal(x)))
 datamap{T<:Number}(::Type{T}, ::AxisScale{:log10}) =
@@ -394,6 +409,7 @@ datamap{T<:Number}(::Type{T}, ::AxisScale{:log10}) =
 
 datamap_rev{T<:Number}(::Type{T}, ::AxisScale) = (x::T)->DReal(x)
 #NOTE: Values dBs remain in dBs for readability
+datamap_rev{T<:Number}(::Type{T}, ::AxisScale{:ln}) = (x::T)->(exp(x))
 datamap_rev{T<:Number}(::Type{T}, ::AxisScale{:log2}) = (x::T)->(2.0^x)
 datamap_rev{T<:Number}(::Type{T}, ::AxisScale{:log10}) = (x::T)->(10.0^x)
 
@@ -404,11 +420,13 @@ datamap_rev{T<:Number}(v::T, s::AxisScale) = datamap_rev(T,s)(v) #One-off conver
 #-------------------------------------------------------------------------------
 extentsmap(::AxisScale) = (x::DReal)->x #Most axis types don't need to re-map extents.
 #NOTE: Extents in dBs remain extents in dBs
+extentsmap(t::AxisScale{:ln}) = datamap(DReal, t)
 extentsmap(t::AxisScale{:log2}) = datamap(DReal, t)
 extentsmap(t::AxisScale{:log10}) = datamap(DReal, t)
 
 extentsmap_rev(::AxisScale) = (x::DReal)->x #Most axis types don't need to re-map extents.
 #NOTE: Extents in dBs remain extents in dBs
+extentsmap_rev(t::AxisScale{:ln}) = datamap_rev(DReal, t)
 extentsmap_rev(t::AxisScale{:log2}) = datamap_rev(DReal, t)
 extentsmap_rev(t::AxisScale{:log10}) = datamap_rev(DReal, t)
 

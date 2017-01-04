@@ -157,14 +157,13 @@ end
 
 #Draws number as base, raised to a power (ex: 10^9):
 #-------------------------------------------------------------------------------
-function render_power(ctx::CairoContext, base::Int, val::DReal, pt::Point2D, font::Font, align::CAlignment)
+function render_power(ctx::CairoContext, tbase::String, val::DReal, pt::Point2D, font::Font, align::CAlignment)
 	const EXP_SCALE = 0.75
 	const EXP_SHIFT = 0.5
 	fontexp = deepcopy(font)
 	fontexp._size = font._size*EXP_SCALE
 
 	setfont(ctx, font)
-	tbase = @sprintf("%d", base)
 	(wbase, hbase) = text_dims(Cairo.text_extents(ctx, tbase))
 	setfont(ctx, fontexp)
 	texp = @sprintf("%0.0f", val)

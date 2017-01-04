@@ -201,8 +201,15 @@ function gridlines(scale::AxisScale{:log10}, logmin::DReal, logmax::DReal; kwarg
 	return grd
 end
 
+#Compute grid line configuration for a ln scale
+function gridlines(scale::AxisScale{:ln}, min::DReal, max::DReal)
+	#TODO: Limit major grid lines to step sizes >= e^1?
+	return GridLines(scale)
+end
+
 #Compute grid line configuration for a log2 scale
 function gridlines(scale::AxisScale{:log2}, min::DReal, max::DReal)
+	#TODO: Limit major grid lines to step sizes >= 2^1?
 	return GridLines(scale)
 end
 
