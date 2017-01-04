@@ -34,7 +34,7 @@ immutable GlyphPolyline <: Glyph
 	y::Vector{DReal}
 	closepath::Bool
 end
-GlyphPolyline(x, y; closepath::Bool=true, scale::DReal=1) =
+GlyphPolyline(x, y; closepath::Bool=true, scale::DReal=1.0) =
 	GlyphPolyline(x*scale, y*scale, closepath)
 immutable GlyphLineSegments <: Glyph
 	x1::Vector{DReal}
@@ -43,13 +43,13 @@ immutable GlyphLineSegments <: Glyph
 	y2::Vector{DReal}
 end
 #NOTE: defining x1::Vector so that we can add "scale" keyword without re-definition issues.
-GlyphLineSegments(x1::Vector, x2, y1, y2; scale::DReal=1) =
+GlyphLineSegments(x1::Vector, x2, y1, y2; scale::DReal=1.0) =
 	GlyphLineSegments(x1*scale, x2*scale, y1*scale, y2*scale)
 
 
 #==Generator functions
 ===============================================================================#
-function _stargenerator(n::Int, webscale::DReal; scale::DReal=1)
+function _stargenerator(n::Int, webscale::DReal; scale::DReal=1.0)
 	x = Vector{DReal}(2*n)
 	y = Vector{DReal}(2*n)
 	ϕ = linspace(0, 2*pi, 2*n+1)
@@ -64,7 +64,7 @@ function _stargenerator(n::Int, webscale::DReal; scale::DReal=1)
 	return GlyphPolyline(x, y, scale=scale)
 end
 
-function _polygongenerator(n::Int; scale::DReal=1)
+function _polygongenerator(n::Int; scale::DReal=1.0)
 	x = Vector{DReal}(n)
 	y = Vector{DReal}(n)
 	ϕ = linspace(0, 2*pi, n+1)
