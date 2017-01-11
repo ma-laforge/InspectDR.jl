@@ -271,7 +271,7 @@ end
 #-------------------------------------------------------------------------------
 function GtkPlot(plot::Plot, args...; kwargs...)
 	mp = Multiplot(args...; kwargs...)
-	add(mp, plot)
+	_add(mp, plot)
 	return GtkPlot(mp)
 end
 GtkPlot(args...; kwargs...) = GtkPlot(Plot2D(), args...; kwargs...)
