@@ -10,7 +10,14 @@ using NumericIO
 import Cairo
 import Cairo: CairoContext
 
-GtkAvailable = false
+const GtkAvailable = true
+import Gtk
+const _Gtk = Gtk.ShortNames
+#=
+REMINDER:
+Conditional inclusion causes issues with __precompile__() (source: tkelman).
+Not worth risking precompile issues just for current troubles with JuliaBox/Gtk.
+
 try
 	import Gtk
 	eval(:(const _Gtk = Gtk.ShortNames))
@@ -18,6 +25,7 @@ try
 catch
 	warn("InspectDR: Error loading Gtk.  GUI-based features are unavailable.")
 end
+=#
 
 
 #==Aliases
