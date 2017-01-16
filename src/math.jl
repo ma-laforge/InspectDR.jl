@@ -13,8 +13,9 @@ These tools should eventually be moved to a separate unit.
 function isincreasing(v::Vector)
 	if length(v) < 1; return true; end
 	prev = v[1]
+
 	for x in v[2:end]
-		if x <= prev
+		if !(x > prev) #Make sure works for NaN
 			return false
 		end
 	end
