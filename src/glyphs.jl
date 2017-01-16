@@ -77,6 +77,16 @@ function _polygongenerator(n::Int; scale::DReal=1.0)
 	return GlyphPolyline(x, y, scale=scale)
 end
 
+function ptmap_rotate(g::GlyphPolyline, Θ::Float64)
+	const cosΘ = cos(Θ); const sinΘ = sin(Θ)
+	x = similar(g.x); y = similar(g.y)
+	for i in 1:length(g.x)
+		xi = g.x[i]; yi = g.y[i]
+		x[i] = xi*cosΘ - yi*sinΘ
+		y[i] = xi*sinΘ + yi*cosΘ
+	end
+	return GlyphPolyline(x, y)
+end
 
 #==Predefined glyphs (implicitly defines relative sizes)
 ===============================================================================#
@@ -111,19 +121,25 @@ const GLYPH_RTRIANGLE = GlyphPolyline(
 	[0,  1, -1], #y
 	scale = 0.5
 )
-const GLYPH_CROSS = GlyphLineSegments(
+const GLYPH_CROSS = GlyphPolyline(
+	[-1, +1, +1, +4, +4, +1, +1, -1, -1, -4, -4, -1], #x
+	[+4, +4, +1, +1, -1, -1, -4, -4, -1, -1, +1, +1], #y
+	scale = 1/8
+)
+const GLYPH_LINECROSS = GlyphLineSegments(
 	[-1, 0], [ 1, 0], #x1, x2
 	[ 0,-1], [ 0, 1], #y1, y2
 	scale = sqrt(2)/2
 )
-const GLYPH_XCROSS = GlyphLineSegments(
+const GLYPH_XCROSS = ptmap_rotate(GLYPH_CROSS, pi/4)
+const GLYPH_LINEXCROSS = GlyphLineSegments(
 	[-1,-1], [ 1, 1], #x1, x2
 	[ 1,-1], [-1, 1], #y1, y2
 	scale = 0.5
 )
 const GLYPH_ASTERISK = GlyphLineSegments(
-	vcat(GLYPH_CROSS.x1, GLYPH_XCROSS.x1), vcat(GLYPH_CROSS.x2, GLYPH_XCROSS.x2),
-	vcat(GLYPH_CROSS.y1, GLYPH_XCROSS.y1), vcat(GLYPH_CROSS.y2, GLYPH_XCROSS.y2),
+	vcat(GLYPH_LINECROSS.x1, GLYPH_LINEXCROSS.x1), vcat(GLYPH_LINECROSS.x2, GLYPH_LINEXCROSS.x2),
+	vcat(GLYPH_LINECROSS.y1, GLYPH_LINEXCROSS.y1), vcat(GLYPH_LINECROSS.y2, GLYPH_LINEXCROSS.y2),
 )
 const GLYPH_HLINE = GlyphLineSegments(
 	[-1], [ 1], #x1, x2
@@ -158,8 +174,8 @@ const GLYPH_OCTAGON = _polygongenerator(8, scale=0.6)
 function Glyph(s::Symbol)
 	#TODO: use Map instead?  precompile issues?
 	s == :o && return GLYPH_CIRCLE
-	s == :+ && return GLYPH_CROSS
-	s == :x && return GLYPH_XCROSS
+	s == :+ && return GLYPH_LINECROSS
+	s == :x && return GLYPH_LINEXCROSS
 	s == :* && return GLYPH_ASTERISK
 
 	s == :circle && return GLYPH_CIRCLE
