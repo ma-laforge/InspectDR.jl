@@ -60,6 +60,13 @@ a = plot.annotation
 a.xlabel = "Time (s)"
 a.ylabel = "Signal Voltage (V)"
 
+#Show if uses f1 acceleration:
+for wfrm in plot.data
+	id = wfrm.id
+	f1accel = isa(wfrm.ds, InspectDR.IDataset{true})
+	@show id, f1accel
+end
+
 gplot = display(InspectDR.GtkDisplay(), plot)
 
 InspectDR.write_png("export_plot.png", plot)
