@@ -285,13 +285,15 @@ type Plot2D <: Plot
 	invalid_ddata::Bool #Is cache of display data invalid?
 	display_data::Vector{DWaveform} #Clipped to current extents
 
+	displayNaN::Bool #Costly (time) on large datasets
+
 	#Maximum # of x-pts in display:
 	#TODO: move to layout?
 	xres::Int
 end
 
 Plot2D(;title="") = Plot2D(Layout(), AxesRect(), Annotation(title=title),
-	PExtents2D(), PExtents2D(), PExtents2D(), [], [], [], [], true, [], 1000
+	PExtents2D(), PExtents2D(), PExtents2D(), [], [], [], [], true, [], false, 1000
 )
 
 type Multiplot

@@ -24,6 +24,9 @@ Cairo.save(canvas.ctx)
 	setclip(canvas.ctx, canvas.graphbb)
 
 	render(canvas, plot.display_data)
+	if plot.displayNaN
+		rendernans(canvas, plot.data)
+	end
 
 	#Plot secondary annotation:
 	render(canvas, plot.markers, plot.axes)

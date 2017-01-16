@@ -302,24 +302,76 @@ function render_axes(canvas::PCanvas2D, lyt::Layout, grid::GridRect)
 	render_ticks(canvas, lyt, grid)
 end
 
+#Render NaNs on plot:
+#-------------------------------------------------------------------------------
+function rendernans(canvas::PCanvas2D, wfrm::IWaveform)
+	const NAN_LINE = LineAttributes(
+		:solid, Float64(4), ARGB32(1, 0, 0, 0.5)
+	)
+	const ctx = canvas.ctx
+	const graphbb = canvas.graphbb
+	const x = wfrm.ds.x
+	const y = wfrm.ds.y
+
+	if length(x) != length(y)
+		error("x & y - vector length mismatch.")
+	end
+
+	setlinestyle(ctx, NAN_LINE)
+	hasNaNNaN = false
+
+	for i in 1:length(x)
+		pt = Point2D(x[i], y[i])
+		xnan = isnan(pt.x); ynan = isnan(pt.y)
+
+		if xnan && ynan
+			hasNaNNaN = true #nothing practical to display
+		elseif xnan
+			pt = ptmap(canvas.xf, pt)
+			Cairo.move_to(ctx, graphbb.xmin, pt.y)
+			Cairo.line_to(ctx, graphbb.xmax, pt.y)
+			Cairo.stroke(ctx)
+		elseif ynan
+			pt = ptmap(canvas.xf, pt)
+			Cairo.move_to(ctx, pt.x, graphbb.ymin)
+			Cairo.line_to(ctx, pt.x, graphbb.ymax)
+			Cairo.stroke(ctx)
+		end
+	end
+
+	#TODO: warn hasNaNNaN?
+	return hasNaNNaN
+end
+rendernans(canvas::PCanvas2D, wfrmlist::Vector{IWaveform}) =
+	map((w)->rendernans(canvas, w), wfrmlist)
 
 #Render an actual waveform
 #-------------------------------------------------------------------------------
 function render(canvas::PCanvas2D, wfrm::DWaveform)
-	ctx = canvas.ctx
-	ds = wfrm.ds
+	const ctx = canvas.ctx
+	const ds = wfrm.ds
 
-	if length(ds) < 2
-		return
-	end
+	if length(ds) < 1; return; end
 
 if wfrm.line.style != :none
 	setlinestyle(ctx, wfrm.line)
-	pt = ptmap(canvas.xf, ds[1])
-	Cairo.move_to(ctx, pt.x, pt.y)
-	for i in 2:length(ds)
+	newsegment = true
+	for i in 1:length(ds)
 		pt = ptmap(canvas.xf, ds[i])
-		Cairo.line_to(ctx, pt.x, pt.y)
+		xnan = isnan(pt.x); ynan = isnan(pt.y)
+
+		#TODO: log NaNs?  Display NaNs?
+		if xnan && ynan
+			Cairo.stroke(ctx) #Close last line
+			newsegment = true
+		elseif xnan || ynan
+			#Simply skip this point
+		elseif newsegment
+			Cairo.move_to(ctx, pt.x, pt.y)
+			newsegment = false
+		else
+			Cairo.line_to(ctx, pt.x, pt.y)
+		end
 	end
 #	set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_MITER)
 	Cairo.stroke(ctx)
