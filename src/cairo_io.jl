@@ -76,6 +76,11 @@ function _show(stream::IO, mime::MIME, mplot::Multiplot, w::Float64, h::Float64)
 	wtot = w*ncols; htot = h*nrows+yoffset
 
 	withsurf(stream, mime, wtot, htot) do ctx
+		_reset(ctx)
+		bb = BoundingBox(0,wtot,0,htot)
+		Cairo.save(ctx)
+			drawrectangle(ctx, bb, mplot.frame)
+		Cairo.restore(ctx)
 		render(ctx, mplot.title, Point2D(wtot/2, yoffset/2),
 			mplot.fnttitle, align=ALIGN_HCENTER|ALIGN_VCENTER
 		)

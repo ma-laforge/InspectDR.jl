@@ -308,10 +308,12 @@ type Multiplot
 
 	htitle::Float64 #Title height allocation
 	fnttitle::Font
+
+	frame::AreaAttributes
 end
 Multiplot(;title="", ncolumns=1, titlefont=Font(defaults.fontname, 20),
 		wplot=defaults.wplot, hplot=defaults.hplot) =
-	Multiplot(title, [], ncolumns, wplot, hplot, 30, titlefont)
+	Multiplot(title, [], ncolumns, wplot, hplot, 30, titlefont, AreaAttributes())
 
 
 #==Constructor-like functions
