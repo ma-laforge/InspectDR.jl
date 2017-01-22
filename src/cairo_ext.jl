@@ -43,6 +43,9 @@ function _reset(ctx::CairoContext)
 	Cairo.set_source(ctx, COLOR_BLACK)
 	Cairo.set_line_width(ctx, 1);
 	Cairo.set_dash(ctx, Float64[], 0)
+
+	#Bevel is fastest.  Also not "spiky" like miter (default):
+	Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_BEVEL)
 end
 
 #Clears a rectangle-shaped area with a solid color
