@@ -11,12 +11,12 @@ function legend_renderitem(ctx::CairoContext, wfrm::DWaveform, x::Float64, y::Fl
 	linestart = x+linegap
 	lineend = linestart+linelength
 
-	Cairo.set_source(ctx, wfrm.line.color)
-	setlinestyle(ctx, wfrm.line.style, Float64(wfrm.line.width))
+Cairo.save(ctx)
+	setlinestyle(ctx, wfrm.line)
 	drawline(ctx, Point2D(linestart, y), Point2D(lineend, y))
 	drawglyph_safe(ctx, wfrm, Point2D(linestart+linelength/2, y))
+Cairo.restore(ctx)
 	x = lineend+linegap #Compute new x
-	Cairo.set_source(ctx, COLOR_BLACK)
 	render(ctx, wfrm.id, Point2D(x, y), align=ALIGN_VCENTER|ALIGN_LEFT)
 end
 
