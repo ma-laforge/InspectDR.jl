@@ -373,7 +373,6 @@ if wfrm.line.style != :none
 			Cairo.line_to(ctx, pt.x, pt.y)
 		end
 	end
-#	set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_MITER)
 	Cairo.stroke(ctx)
 end
 

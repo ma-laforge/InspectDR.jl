@@ -52,8 +52,7 @@ function render(canvas::PCanvas2D, mkr::HVMarker, axes::Axes)
 		return
 	end
 
-	Cairo.set_source(ctx, mkr.line.color)
-	setlinestyle(ctx, mkr.line.style, Float64(mkr.line.width))
+	setlinestyle(ctx, mkr.line)
 	pt = _rescale(Point2D(mkr.pos, mkr.pos), axes)
 	pt = ptmap(canvas.xf, pt)
 
@@ -76,15 +75,13 @@ function render(canvas::PCanvas2D, a::PolylineAnnotation, axes::Axes)
 	const ctx = canvas.ctx
 
 	x = a.x; y = a.y
-	Cairo.set_source(ctx, a.line.color)
-	setlinestyle(ctx, a.line.style, Float64(a.line.width))
+	setlinestyle(ctx, a.line)
 	pt = ptmap(canvas.xf, Point2D(x[1], y[1]))
 	Cairo.move_to(ctx, pt.x, pt.y)
 	for i in 2:length(x)
 		pt = ptmap(canvas.xf, Point2D(x[i], y[i]))
 		Cairo.line_to(ctx, pt.x, pt.y)
 	end
-#	set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_MITER)
 	if a.closepath
 		Cairo.close_path(ctx)
 		renderfill(ctx, a.fillcolor)
