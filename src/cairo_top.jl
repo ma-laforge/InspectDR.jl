@@ -39,6 +39,8 @@ Cairo.restore(canvas.ctx)
 end
 
 #Render entire plot within provided bounding box:
+#TODO: Should base API be written such that user provides graphbb, and have
+#      InspectDR calculate outwards instead?
 function render(ctx::CairoContext, plot::Plot2D, bb::BoundingBox)
 	_reset(ctx)
 	graphbb = graphbounds(bb, plot.layout, plot.axes)

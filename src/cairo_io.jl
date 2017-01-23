@@ -66,33 +66,35 @@ end
 Base.show(io::IO, ::MIME"text/plain", plot::Plot) = Base.showcompact(io, plot)
 Base.show(io::IO, ::MIME"text/plain", mplot::Multiplot) = Base.showcompact(io, mplot)
 
-
-#w, h: w/h of a SINGLE plot.
+#w, h: w/h of entire figure.
 function _show(stream::IO, mime::MIME, mplot::Multiplot, w::Float64, h::Float64)
-	nplots = length(mplot.subplots)
-	ncols = mplot.ncolumns
-	nrows = div(nplots-1, ncols) + 1
 	yoffset = mplot.htitle
-	wtot = w*ncols; htot = h*nrows+yoffset
+	nrows, ncols = griddims_auto(mplot)
+	wplot = w/ncols; hplot = (h-yoffset)/nrows
 
-	withsurf(stream, mime, wtot, htot) do ctx
+	withsurf(stream, mime, w, h) do ctx
 		_reset(ctx)
-		bb = BoundingBox(0,wtot,0,htot)
+		bb = BoundingBox(0,w,0,h)
 		Cairo.save(ctx)
 			drawrectangle(ctx, bb, mplot.frame)
 		Cairo.restore(ctx)
-		render(ctx, mplot.title, Point2D(wtot/2, yoffset/2),
+		render(ctx, mplot.title, Point2D(w/2, yoffset/2),
 			mplot.fnttitle, align=ALIGN_HCENTER|ALIGN_VCENTER
 		)
 
-		for i in 1:nplots
-			row = div(i-1, ncols) + 1
-			col = i - (row-1)*ncols
-			xmin = (col-1)*w; ymin = yoffset+(row-1)*h
-			bb = BoundingBox(xmin, xmin+w, ymin, ymin+h)
+		for (i, plot) in enumerate(mplot.subplots)
+			bb = plot.plotbb
+			if nothing == bb
+				#Use auto-computed grid layout:
+				row = div(i-1, ncols) + 1
+				col = i - (row-1)*ncols
+				xmin = (col-1)*wplot; ymin = yoffset+(row-1)*hplot
+				bb = BoundingBox(xmin, xmin+wplot, ymin, ymin+hplot)
+			end
+
 			Cairo.save(ctx) #-----
 			setclip(ctx, bb) #Avoid accidental overwrites.
-			render(ctx, mplot.subplots[i], bb)
+			render(ctx, plot, bb)
 			Cairo.restore(ctx) #-----
 		end
 	end
@@ -120,7 +122,7 @@ Base.show(io::IO, mime::MIME, plot::Plot) =
 
 #show() Plot/Multiplot: Supported MIMEs:
 Base.show(io::IO, mime::MIMEall, mplot::Multiplot) =
-	_show(io, mime, mplot, mplot.wplot, mplot.hplot)
+	_show(io, mime, mplot, size_auto(mplot)...)
 Base.show(io::IO, mime::MIMEall, plot::Plot) =
 	_show(io, mime, plot)
 
@@ -156,7 +158,7 @@ end
 
 #_write() Multiplot: Auto-coumpute w/h
 _write(path::String, mime::MIME, mplot::Multiplot) =
-	_write(path, mime, mplot, mplot.wplot, mplot.hplot)
+	_write(path, mime, mplot, size_auto(mplot)...)
 
 #_write() Plot2D: Auto-coumpute w/h
 function _write(path::String, mime::MIME, plot::Plot2D)

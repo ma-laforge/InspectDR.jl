@@ -181,6 +181,7 @@ type Layout
 	waxlabel::Float64 #Vertical axis label allocation (width)
 	haxlabel::Float64 #Horizontal axis label allocation (height)
 	wnolabels::Float64 #Width to use where no labels are displayed
+	#NOTE: wnolabels needs room for axis scale (ex: ×10⁻²).
 
 	wticklabel::Float64 #y-axis values allocation (width)
 	hticklabel::Float64 #x-axis values allocation (height)
@@ -276,6 +277,8 @@ type Plot2D <: Plot
 	ext_full::PExtents2D #Defines "full" zoom when combined with ext_data
 	ext::PExtents2D #Current/active extents
 
+	plotbb::NullOr{BoundingBox} #User can specify where to draw on Multiplot
+
 	data::Vector{IWaveform}
 	markers::Vector{HVMarker}
 	atext::Vector{TextAnnotation}
@@ -293,7 +296,7 @@ type Plot2D <: Plot
 end
 
 Plot2D(;title="") = Plot2D(Layout(), AxesRect(), Annotation(title=title),
-	PExtents2D(), PExtents2D(), PExtents2D(), [], [], [], [], true, [], false, 1000
+	PExtents2D(), PExtents2D(), PExtents2D(), nothing, [], [], [], [], true, [], false, 1000
 )
 
 type Multiplot
@@ -568,11 +571,18 @@ function graphbounds(plotb::BoundingBox, lyt::Layout, axes::Axes)
 end
 
 #Get bounding box of entire plot:
-function plotbounds(lyt::Layout, graphw::Float64, graphh::Float64)
-	xmax = graphw + lyt.waxlabel + lyt.wticklabel
+function plotbounds(lyt::Layout, graphbb::BoundingBox)
+	xmin = graphbb.xmin - lyt.waxlabel - lyt.wticklabel
+	xmax = graphbb.xmax
 	xmax += lyt.legend.enabled? _width(lyt.legend): lyt.wnolabels
-	ymax = graphh + lyt.htitle + lyt.haxlabel + lyt.hticklabel
-	return BoundingBox(0, xmax, 0, ymax)
+	ymin = graphbb.ymin - lyt.htitle
+	ymax = graphbb.ymax + lyt.haxlabel + lyt.hticklabel
+	return BoundingBox(xmin, xmax, ymin, ymax)
+end
+
+function plotbounds(lyt::Layout, graphw::Float64, graphh::Float64)
+	bb = plotbounds(lyt, BoundingBox(0, graphw, 0, graphh))
+	return BoundingBox(0, width(bb), 0, height(bb))
 end
 
 #Get suggested plot bounds:
@@ -582,6 +592,23 @@ function plotbounds(lyt::Layout, axes::Axes)
 		wdata = hdata = min(wdata, hdata)
 	end
 	return plotbounds(lyt, wdata, hdata)
+end
+
+#Grid dimensions using Multiplot auto layout
+function griddims_auto(mplot::Multiplot)
+	nplots = length(mplot.subplots)
+	ncols = mplot.ncolumns
+	nrows = div(nplots-1, ncols) + 1
+	return (nrows, ncols)
+end
+
+#Computes suggested canvas size for a Multiplot object
+function size_auto(mplot::Multiplot)
+	#TODO: Compute more accurate size from Plot2D.plotbb
+	nrows, ncols = griddims_auto(mplot)
+	yoffset = mplot.htitle
+	w = Float64(mplot.wplot*ncols); h = Float64(mplot.hplot*nrows+yoffset)
+	return (w, h)
 end
 
 
