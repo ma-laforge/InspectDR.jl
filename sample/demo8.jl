@@ -31,7 +31,9 @@ mplot = InspectDR.Multiplot(title="Glyph Tests")
 mplot.ncolumns = 1
 
 plot = add(mplot, InspectDR.Plot2D())
-	plot.ext_full = InspectDR.PExtents2D(xmin=0,xmax=11,ymin=0,ymax=length(_glyphs)+1)
+	strip = plot.strips[1]
+	plot.xext_full = InspectDR.PExtents1D(min=0, max=11)
+	strip.yext_full = InspectDR.PExtents1D(min=0, max=length(_glyphs)+1)
 	plot.layout.legend.enabled=true
 
 	a = plot.annotation
@@ -42,7 +44,6 @@ plot = add(mplot, InspectDR.Plot2D())
 		wfrm.line = line(style=:solid, color=_colors[i], width=2)
 		wfrm.glyph = glyph(shape=g, size=10, color=black, fillcolor=_colors[i])
 	end
-
 
 gplot = display(InspectDR.GtkDisplay(), mplot)
 

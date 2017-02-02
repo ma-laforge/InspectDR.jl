@@ -31,7 +31,7 @@ plot = add(mplot, InspectDR.Plot2D)
 a = plot.annotation
 	a.title = "xmax = ∞"
 	a.xlabel = xlabel
-	a.ylabel = ylabel
+	a.ylabels = [ylabel]
 wfrm = add(plot, Float64[0, Inf], Float64[0, 1])
 
 #Subplot 2
@@ -40,7 +40,7 @@ plot = add(mplot, InspectDR.Plot2D)
 a = plot.annotation
 	a.title = "xmin = NaN"
 	a.xlabel = xlabel
-	a.ylabel = ylabel
+	a.ylabels = [ylabel]
 wfrm = add(plot, Float64[NaN, 1], Float64[0, 1])
 
 #Subplot 3
@@ -49,7 +49,7 @@ plot = add(mplot, InspectDR.Plot2D)
 a = plot.annotation
 	a.title = "ymin = -∞"
 	a.xlabel = xlabel
-	a.ylabel = ylabel
+	a.ylabels = [ylabel]
 wfrm = add(plot, Float64[0, 1], Float64[-Inf, 0])
 
 #Subplot 4
@@ -58,7 +58,7 @@ plot = add(mplot, InspectDR.Plot2D)
 a = plot.annotation
 	a.title = "ymax = NaN"
 	a.xlabel = xlabel
-	a.ylabel = ylabel
+	a.ylabels = [ylabel]
 wfrm = add(plot, Float64[0, 1], Float64[1, NaN])
 
 #Subplot 5
@@ -67,7 +67,7 @@ plot = add(mplot, InspectDR.Plot2D)
 a = plot.annotation
 	a.title = "No Data"
 	a.xlabel = xlabel
-	a.ylabel = ylabel
+	a.ylabels = [ylabel]
 
 #Subplot 6
 #-------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ plot = add(mplot, InspectDR.Plot2D)
 a = plot.annotation
 	a.title = "xmin = xmax"
 	a.xlabel = xlabel
-	a.ylabel = ylabel
+	a.ylabels = [ylabel]
 wfrm = add(plot, Float64[2, 2], Float64[0, 1])
 
 #Display

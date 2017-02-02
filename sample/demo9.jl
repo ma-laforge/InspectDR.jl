@@ -39,12 +39,15 @@ mplot = InspectDR.Multiplot(title="Waveforms with NaN")
 mplot.ncolumns = 1
 
 plot = add(mplot, InspectDR.Plot2D())
-	plot.axes = InspectDR.axes(:lin, :lin)
+strip = plot.strips[1]
+	plot.xscale = InspectDR.AxisScale(:lin)
+	strip.yscale = InspectDR.AxisScale(:lin)
+
 	plot.displayNaN = true
 	a = plot.annotation
-	a.title = "Transient Data"
-	a.xlabel = "Time (s)"
-	a.ylabel = "Voltage (V)"
+		a.title = "Transient Data"
+		a.xlabel = "Time (s)"
+		a.ylabels = ["Voltage (V)"]
 
 	wfrm = add(plot, x, y)
 	wfrm.line = line(color=blue, width=3)

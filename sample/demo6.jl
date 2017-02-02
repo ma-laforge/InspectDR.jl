@@ -39,10 +39,13 @@ ZL = j*ω*L+RL
 #==Generate plot
 ===============================================================================#
 mplot = InspectDR.Multiplot(title="Smith Chart (Publication Layout)")
+smithext = InspectDR.PExtents1D(min=-1.1,max=1.1) #Padded a bit
 
 plot = add(mplot, InspectDR.Plot2D)
-	plot.axes = InspectDR.axes(:smith, :Z, ref=50)
-	plot.ext_full = InspectDR.PExtents2D(xmin=-1.1,xmax=1.1,ymin=-1.1,ymax=1.1)
+	strip = plot.strips[1]
+	strip.grid = InspectDR.GridSmith(:Z, ref=50)
+	plot.xext_full = smithext
+	strip.yext_full = smithext
 	#plot.layout.legend.enabled=true
 	plot.layout.legend.width=110
 	lyt = plot.layout

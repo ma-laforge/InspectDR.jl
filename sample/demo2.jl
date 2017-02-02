@@ -59,43 +59,54 @@ end
 mplot = InspectDR.Multiplot(title="Transmission Line Example")
 mplot.ncolumns = 2
 
+smithext = InspectDR.PExtents1D(min=-1.2,max=1.2) #Padded a bit
+
 plot_linf = InspectDR.Plot2D()
-	plot_linf.axes = InspectDR.axes(:lin, :dB20)
-	plot_linf.ext_full = InspectDR.PExtents2D(ymax=5)
+	graph_linf = plot_linf.strips[1]
+	plot_linf.xscale = InspectDR.AxisScale(:lin)
+	graph_linf.yscale = InspectDR.AxisScale(:dB20)
+	graph_linf.yext_full = InspectDR.PExtents1D(max=5)
 #	plot_linf.layout.legend.enabled=true
 plot_logf = InspectDR.Plot2D()
-	plot_logf.axes = InspectDR.axes(:log10, :dB20)
-	plot_logf.ext_full = InspectDR.PExtents2D(xmin=10e6,ymax=5)
-	plot_logf.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
+	graph_logf = plot_logf.strips[1]
+	plot_logf.xscale = InspectDR.AxisScale(:log10)
+	graph_logf.yscale = InspectDR.AxisScale(:dB20)
+	plot_logf.xext_full = InspectDR.PExtents1D(min=10e6) #Avoid issues with log scale
+	graph_logf.yext_full = InspectDR.PExtents1D(max=5)
+	graph_logf.grid = InspectDR.GridRect(vmajor=true, vminor=true, hmajor=true)
 plot_ysmith = InspectDR.Plot2D()
-	plot_ysmith.axes = InspectDR.axes(:smith, :Y)
-	plot_ysmith.ext_full = InspectDR.PExtents2D(xmin=-1.2,xmax=1.2,ymin=-1.2,ymax=1.2)
+	graph_ysmith = plot_ysmith.strips[1]
+	graph_ysmith.grid = InspectDR.GridSmith(:Y)
+	plot_ysmith.xext_full = smithext
+	graph_ysmith.yext_full = smithext
 	plot_ysmith.layout.legend.enabled=true
-plot_smith = InspectDR.Plot2D()
-	plot_smith.axes = InspectDR.axes(:smith, :Z, ref=50)
-	plot_smith.ext_full = InspectDR.PExtents2D(xmin=-1.2,xmax=1.2,ymin=-1.2,ymax=1.2)
-	plot_smith.layout.legend.enabled=true
+plot_zsmith = InspectDR.Plot2D()
+	graph_zsmith = plot_zsmith.strips[1]
+	graph_zsmith.grid = InspectDR.GridSmith(:Z, ref=50)
+	plot_zsmith.xext_full = smithext
+	graph_zsmith.yext_full = smithext
+	plot_zsmith.layout.legend.enabled=true
 
 for plot in [plot_linf, plot_logf]
 	a = plot.annotation
 	a.title = "Reflection Coefficient (Γ)"
 	a.xlabel = "Frequency (Hz)"
-	a.ylabel = "Magnitude (dB)"
+	a.ylabels = ["Magnitude (dB)"]
 end
 
 a = plot_ysmith.annotation
 	a.title = "Y-Smith Chart"
 	a.xlabel = "Real(Γ)"
-	a.ylabel = "Imaginary(Γ)"
+	a.ylabels = ["Imaginary(Γ)"]
 
-a = plot_smith.annotation
+a = plot_zsmith.annotation
 	a.title = "Z-Smith Chart"
 	a.xlabel = "Real(Γ)"
-	a.ylabel = "Imaginary(Γ)"
+	a.ylabels = ["Imaginary(Γ)"]
 
 #Select which plots to actually display:
-plotlist = [plot_linf, plot_logf, plot_ysmith, plot_smith]
-#plotlist = [plot_smith]
+plotlist = [plot_linf, plot_logf, plot_ysmith, plot_zsmith]
+#plotlist = [plot_zsmith]
 
 for plot in plotlist
 	for i in 1:length(Γload)
@@ -115,12 +126,21 @@ gplot = display(InspectDR.GtkDisplay(), mplot)
 maximize_square = true
 if maximize_square
 	#Target plot size to get square Smith plots without gaps:
-	lyt = plot_smith.layout
+	#(HACK: Method not suggested)
+	lyt = plot_zsmith.layout
 		lyt.wdata = 500
 		lyt.hdata = 500
-	bb = InspectDR.plotbounds(lyt, plot_smith.axes) #Required
+	bb = InspectDR.plotbounds(lyt, InspectDR.grid1(plot_zsmith)) #Required
 		mplot.wplot = width(bb)
 		mplot.hplot = height(bb)
+end
+
+if false
+	#Test several attributes:
+	mplot.frame.line.style=:solid
+	mplot.frame.line.width=30
+	mplot.frame.line.color=red
+	mplot.frame.fillcolor=white
 end
 
 InspectDR.write_png("export_multiplot.png", mplot)

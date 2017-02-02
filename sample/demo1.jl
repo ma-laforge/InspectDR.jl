@@ -35,11 +35,13 @@ t_lres = collect(0:(tmax/10):tmax)
 ===============================================================================#
 plot = InspectDR.Plot2D(title="Sample Plot (λ)")
 plot.layout = InspectDR.Layout(fontname="monospace", fontscale=1.5)
-plot.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
 plot.layout.legend.enabled = true
 plot.layout.legend.width = 150
 plot.layout.showtimestamp = true
 plot.layout.xlabelformat.expdisplay = UEXPONENT_SI #Use SI notation on x-axis
+
+graph = plot.strips[1]
+graph.grid = InspectDR.GridRect(vmajor=true, vminor=true, hmajor=true)
 
 style = :dashdot #solid/dashdot/...
 wfrm = add(plot, t, y+1, id="sin(2πt)+1")
@@ -58,7 +60,7 @@ wfrm = add(plot, t_lres, -2+4*(t_lres./tmax), id="-2+4t/tmax")
 
 a = plot.annotation
 a.xlabel = "Time (s)"
-a.ylabel = "Signal Voltage (V)"
+a.ylabels = ["Signal Voltage (V)"]
 
 #Show if uses f1 acceleration:
 for wfrm in plot.data

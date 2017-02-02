@@ -37,7 +37,7 @@ for i in 1:4
 	plot.layout.legend.width = 80
 	a = plot.annotation
 		a.xlabel = xlabel
-		a.ylabel = ylabel
+		a.ylabels = [ylabel]
 		a.title = titles[i]
 
 	for scalei in 1:8
