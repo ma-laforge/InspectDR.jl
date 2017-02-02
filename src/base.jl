@@ -9,22 +9,7 @@
 #==Abstracts
 ===============================================================================#
 abstract Plot
-abstract PlotCanvas
-
-
-#==Constants
-===============================================================================#
-const DInf = convert(DReal, Inf)
-const DNaN = convert(DReal, NaN)
-
-const COLOR_TRANSPARENT = ARGB32(0, 0, 0, 0)
-
-const COLOR_BLACK = RGB24(0, 0, 0)
-const COLOR_WHITE = RGB24(1, 1, 1)
-
-const COLOR_RED = RGB24(1, 0, 0)
-const COLOR_GREEN = RGB24(0, 1, 0)
-const COLOR_BLUE = RGB24(0, 0, 1)
+abstract PlotCanvas #TODO: Does not appear useful
 
 
 #==Plot-level structures
@@ -33,6 +18,7 @@ const COLOR_BLUE = RGB24(0, 0, 1)
 be broken down to lower-level structures later on.
 =#
 
+#Don't want immutable like LineStyle (modified by user):
 type LineAttributes <: AttributeList
 	style
 	width #[0, 10]
@@ -40,6 +26,7 @@ type LineAttributes <: AttributeList
 end
 line(;style=:solid, width=1, color=COLOR_BLACK) =
 	LineAttributes(style, width, color)
+LineStyle(a::LineAttributes) = LineStyle(a.style, Float64(a.width), a.color)
 
 #"line" constructor:
 #TODO: Inadequate
@@ -68,63 +55,13 @@ glyph(;shape=:none, size=3, color=nothing, fillcolor=nothing) =
 #TODO: Inadequate
 #eval(genexpr_attriblistbuilder(:glyph, GlyphAttributes, reqfieldcnt=0))
 
-type GridAttributes <: AttributeList
-	#Bool values
-	vmajor
-	vminor
-	hmajor
-	hminor
-end
-grid(;vmajor=false, vminor=false, hmajor=false, hminor=false) =
-	GridAttributes(vmajor, vminor, hmajor, hminor)
-
-#Dispatchable scale:
-immutable AxisScale{T}
-	(t::Type{AxisScale{T}}){T}() = error("$t not supported")
-	(::Type{AxisScale{:lin}})() = new{:lin}()
-	(::Type{AxisScale{:ln}})() = new{:ln}()
-	(::Type{AxisScale{:log2}})() = new{:log2}()
-	(::Type{AxisScale{:log10}})() = new{:log10}()
-	(::Type{AxisScale{:dB10}})() = new{:dB10}()
-	(::Type{AxisScale{:dB20}})() = new{:dB20}()
-
-	#Aliases:
-	(::Type{AxisScale{:log}})() = new{:log10}()
-end
-AxisScale(t::Symbol) = AxisScale{t}()
-
-#Specifies configuration of axes:
-abstract Axes
-
-#Rectilinear axis (ex: normal cartesian +logarithmic, ...):
-immutable AxesRect <: Axes
-	xscale::AxisScale
-	yscale::AxisScale
-end
-AxesRect(xscale::Symbol, yscale::Symbol) = AxesRect(AxisScale{xscale}(), AxisScale{yscale}())
-AxesRect() = AxesRect(:lin, :lin)
-
-#Curvilinear axes (ex: polar plots):
-immutable AxesCurv <: Axes
-	rscale::AxisScale #Radial scale could be 
-end
-AxesCurv(rscale::Symbol=:lin) = AxesCurv(AxisScale{rscale}())
-
-immutable AxesSmith{T} <: Axes
-	ref::Float64 #Y/Zref
-	(t::Type{AxesSmith{T}}){T}(ref::Real) = error("$t not supported")
-	(::Type{AxesSmith{:Z}})(ref::Real) = new{:Z}(ref)
-	(::Type{AxesSmith{:Y}})(ref::Real) = new{:Y}(ref)
-end
-AxesSmith(t::Symbol, ref::Real=1) = AxesSmith{t}(ref)
-AxesSmith(t::Symbol, ref::Void) = AxesSmith(t)
-
 type Waveform{T}
 	id::String
 	ds::T
 	line::LineAttributes
 	glyph::GlyphAttributes
 	ext::PExtents2D
+	strip::UInt8 #Y-strip
 end
 
 #Input waveform:
@@ -141,10 +78,10 @@ to track x-values of complex data??
 type Annotation
 	title::String
 	xlabel::String
-	ylabel::String
+	ylabels::Vector{String}
 	timestamp::String
 end
-Annotation(;title="") = Annotation(title, "", "", Libc.strftime(time()))
+Annotation(;title="") = Annotation(title, "", [], Libc.strftime(time()))
 
 type Font
 	name::String
@@ -176,12 +113,14 @@ LegendLStyle(;enabled=false, font=Font(12)) =
 
 #Plot layout
 #TODO: Split Layout into "StyleInfo" - which includes Layout??
+#TODO: Sort out this w/h vs h/v confusion.
 type Layout
 	htitle::Float64 #Title allocation
 	waxlabel::Float64 #Vertical axis label allocation (width)
 	haxlabel::Float64 #Horizontal axis label allocation (height)
 	wnolabels::Float64 #Width to use where no labels are displayed
 	#NOTE: wnolabels needs room for axis scale (ex: ×10⁻²).
+	hstripgap::Float64 #Between graph strips
 
 	wticklabel::Float64 #y-axis values allocation (width)
 	hticklabel::Float64 #x-axis values allocation (height)
@@ -194,9 +133,8 @@ type Layout
 	fnttitle::Font
 	fntaxlabel::Font
 	fntticklabel::Font
-	fnttime::Font
+	fnttime::Font #Timestamp
 
-	grid::GridAttributes
 	legend::LegendLStyle
 	xlabelformat::TickLabelStyle
 	ylabelformat::TickLabelStyle
@@ -206,32 +144,19 @@ type Layout
 end
 Layout(;fontname::String=defaults.fontname, fontscale=defaults.fontscale) =
 	Layout(
-	20*fontscale, 20*fontscale, 20*fontscale, 45, #Title/main labels
+	20*fontscale, 20*fontscale, 20*fontscale, 45*fontscale, #Title/main labels
+	20*fontscale,
 	60*fontscale, 15*fontscale, 3, 7, #Ticks/frame
 	defaults.wdata, defaults.hdata,
 	Font(fontname, fontscale*14, bold=true), #Title
 	Font(fontname, fontscale*14), Font(fontname, fontscale*12), #Axis/Tick labels
 	Font(fontname, fontscale*8), #Time stamp
-	GridAttributes(true, false, true, false),
 	LegendLStyle(font=Font(fontname, fontscale*12)),
 	TickLabelStyle(), TickLabelStyle(),
 	AreaAttributes(),
 	AreaAttributes(line=InspectDR.line(style=:solid, color=COLOR_BLACK, width=2)),
 	defaults.showtimestamp
 )
-
-#Tag data as being part of a given coordinate system:
-immutable CoordSystem{ID}; end
-typealias DeviceCoord CoordSystem{:dev}
-typealias NormCoord CoordSystem{:norm}
-typealias DataCoord CoordSystem{:data}
-
-immutable TypedCoord{CT<:CoordSystem}
-	v::DReal
-end
-#Annotation coordinates can match data or be normalized to plot bounds (0 -> 1):
-typealias AnnotationCoord Union{TypedCoord{NormCoord}, TypedCoord{DataCoord}}
-coord(s::Symbol, v::DReal) = TypedCoord{CoordSystem{s}}(v)
 
 type TextAnnotation
 	text::String
@@ -241,19 +166,21 @@ type TextAnnotation
 	font::Font
 	angle::DReal #Degrees
 	align::Symbol #tl, tc, tr, cl, cc, cr, bl, bc, br
+	strip::UInt8
 end
 #Don't use "text"... high probability of collisions when exported...
 atext(text::String; x::Real=DNaN, y::Real=DNaN, xoffset=0, yoffset=0,
-	font=Font(10), angle=0, align=:bl) =
-	TextAnnotation(text, Point2D(x,y), xoffset, yoffset, font, angle, align)
+	font=Font(10), angle=0, align=:bl, strip=1) =
+	TextAnnotation(text, Point2D(x,y), xoffset, yoffset, font, angle, align, strip)
 
 type HVMarker
 	vmarker::Bool #false: hmarker
 	pos::DReal
 	line::LineAttributes
+	strip::UInt8
 end
-vmarker(pos, line=InspectDR.line()) = HVMarker(true, pos, line)
-hmarker(pos, line=InspectDR.line()) = HVMarker(false, pos, line)
+vmarker(pos, line=InspectDR.line(); strip=0) = HVMarker(true, pos, line, strip)
+hmarker(pos, line=InspectDR.line(); strip=1) = HVMarker(false, pos, line, strip)
 
 type PolylineAnnotation
 	#TODO: preferable to use Point2D?
@@ -262,23 +189,37 @@ type PolylineAnnotation
 	line::LineAttributes
 	fillcolor::Colorant
 	closepath::Bool
+	strip::UInt8
 end
-PolylineAnnotation(x, y; line=InspectDR.line(), fillcolor=COLOR_TRANSPARENT, closepath=true) =
-	PolylineAnnotation(x, y, line, fillcolor, closepath)
+PolylineAnnotation(x, y; line=InspectDR.line(), fillcolor=COLOR_TRANSPARENT, closepath=true, strip=1) =
+	PolylineAnnotation(x, y, line, fillcolor, closepath, strip)
+
+#Single graph strip of a Plot2D (shared x-coord):
+type GraphStrip
+	yscale::AxisScale
+	ext_data::PExtents2D #Maximum extents of data in strip (typically all finite)
+	yext_full::PExtents1D #y-extents when zoomed out to "full" (NaN values: use ext_data)
+	yext::PExtents1D #Current/active y-extents (typically all finite)
+	grid::PlotGrid
+end
+GraphStrip() = GraphStrip(AxisScale(:lin, tgtmajor=8, tgtminor=2),
+	PExtents2D(), PExtents1D(), PExtents1D(),
+	GridRect(vmajor=true, vminor=false, hmajor=true, hminor=false))
 
 #2D plot.
 type Plot2D <: Plot
+	xscale::AxisScale
 	layout::Layout
-	axes::Axes
 	annotation::Annotation
 
 	#Plot extents (access using getextents):
-	ext_data::PExtents2D #Maximum extents of data
-	ext_full::PExtents2D #Defines "full" zoom when combined with ext_data
-	ext::PExtents2D #Current/active extents
+	xext_data::PExtents1D #Maximum x-extents of data in strip (typically all finite)
+	xext_full::PExtents1D #x-extents when zoomed out to "full" (NaN values: use xext_data)
+	xext::PExtents1D #Current/active x-extents (typically all finite)
 
 	plotbb::NullOr{BoundingBox} #User can specify where to draw on Multiplot
 
+	strips::Vector{GraphStrip}
 	data::Vector{IWaveform}
 	markers::Vector{HVMarker}
 	atext::Vector{TextAnnotation}
@@ -295,8 +236,10 @@ type Plot2D <: Plot
 	xres::Int
 end
 
-Plot2D(;title="") = Plot2D(Layout(), AxesRect(), Annotation(title=title),
-	PExtents2D(), PExtents2D(), PExtents2D(), nothing, [], [], [], [], true, [], false, 1000
+Plot2D(;title="") = Plot2D(AxisScale(:lin, tgtmajor=3.5, tgtminor=4),
+	Layout(), Annotation(title=title),
+	PExtents1D(), PExtents1D(), PExtents1D(),
+	nothing, [GraphStrip()], [], [], [], [], true, [], false, 1000
 )
 
 type Multiplot
@@ -323,13 +266,14 @@ Multiplot(;title="", ncolumns=1, titlefont=Font(defaults.fontname, 20),
 ===============================================================================#
 
 #axes function:
+#TODO: deprecate axes()... left for reference
 #Interface is a bit irregular, but should be easy to use...
 #-------------------------------------------------------------------------------
 function axes(a1::Symbol)
 	if :smith == a1
-		return AxesSmith(:Z)
+		return :smith_Z
 	elseif :polar == a1
-		return AxesCurv()
+		return :polar
 	else
 		throw(MethodError(axes, (a1,)))
 	end
@@ -337,21 +281,21 @@ end
 
 function axes(a1::Symbol, a2::Symbol; ref = nothing)
 	if :smith == a1
-		return AxesSmith(a2, ref)
+		return Symbol("smith_$(a2)_$(ref)")
 	elseif ref != nothing
 		error("cannot set ref for axes(:$a1, :$a2)")
 	end
 
 	if :polar == a1
-		return AxesCurv(a2)
+		return Symbol("polar_$(a2)")
 	else
-		return AxesRect(a1, a2)
+		return Symbol("rect_$(a1)_$(a2)")
 	end
 end
 
 function axes(a1::Symbol, a2::Symbol, a3::Symbol)
 	if :polar == a1
-		return AxesCurv(a2, a3)
+		return Symbol("polar_$(a2)_$(a3)")
 	else
 		throw(MethodError(axes, (a1,a2,a3)))
 	end
@@ -363,10 +307,12 @@ end
 _width(style::LegendLStyle) = style.width
 
 getextents(d::IWaveform) = getextents(d.ds)
-function getextents(dlist::Vector{IWaveform})
+function getextents(dlist::Vector{IWaveform}, strip::Int=1)
 	result = PExtents2D(DNaN, DNaN, DNaN, DNaN)
 	for d in dlist
-		result = union(result, d.ext)
+		if strip == d.strip
+			result = union(result, d.ext)
+		end
 	end
 	return result
 end
@@ -392,12 +338,12 @@ _add{T<:Plot}(mp::Multiplot, ::Type{T}) = _add(mp, T())
 
 
 #Set dataf1=false to overwrite optimizations for functions of 1 argument.
-function _add(plot::Plot2D, x::Vector, y::Vector; id::String="", dataf1=true)
+function _add(plot::Plot2D, x::Vector, y::Vector; id::String="", dataf1=true, strip=1)
 	if dataf1
 		dataf1 = isincreasing(x) #Can we use optimizations?
 	end
 	ext = PExtents2D() #Don't care at the moment
-	ds = IWaveform(id, IDataset{dataf1}(x, y), line(), glyph(), ext)
+	ds = IWaveform(id, IDataset{dataf1}(x, y), line(), glyph(), ext, strip)
 	push!(plot.data, ds)
 	return ds
 end
@@ -413,46 +359,6 @@ function _add(plot::Plot2D, a::TextAnnotation)
 end
 
 
-#==Mapping/interpolation functions
-===============================================================================#
-
-#Mapping functions, depending on axis type:
-#-------------------------------------------------------------------------------
-datamap{T<:Number}(::Type{T}, ::AxisScale) = (x::T)->DReal(x)
-datamap{T<:Number}(::Type{T}, ::AxisScale{:dB10}) = (x::T)->(5*log10(DReal(abs2(x))))
-datamap{T<:Number}(::Type{T}, ::AxisScale{:dB20}) = (x::T)->(10*log10(DReal(abs2(x))))
-datamap{T<:Number}(::Type{T}, ::AxisScale{:ln}) =
-	(x::T)->(x<0? DNaN: log(DReal(x)))
-datamap{T<:Number}(::Type{T}, ::AxisScale{:log2}) =
-	(x::T)->(x<0? DNaN: log2(DReal(x)))
-datamap{T<:Number}(::Type{T}, ::AxisScale{:log10}) =
-	(x::T)->(x<0? DNaN: log10(DReal(x)))
-#TODO: find a way to show negative values for log10?
-
-datamap_rev{T<:Number}(::Type{T}, ::AxisScale) = (x::T)->DReal(x)
-#NOTE: Values dBs remain in dBs for readability
-datamap_rev{T<:Number}(::Type{T}, ::AxisScale{:ln}) = (x::T)->(exp(x))
-datamap_rev{T<:Number}(::Type{T}, ::AxisScale{:log2}) = (x::T)->(2.0^x)
-datamap_rev{T<:Number}(::Type{T}, ::AxisScale{:log10}) = (x::T)->(10.0^x)
-
-datamap_rev{T<:Number}(v::T, s::AxisScale) = datamap_rev(T,s)(v) #One-off conversion
-
-
-#Extents mapping functions, depending on axis type:
-#-------------------------------------------------------------------------------
-extentsmap(::AxisScale) = (x::DReal)->x #Most axis types don't need to re-map extents.
-#NOTE: Extents in dBs remain extents in dBs
-extentsmap(t::AxisScale{:ln}) = datamap(DReal, t)
-extentsmap(t::AxisScale{:log2}) = datamap(DReal, t)
-extentsmap(t::AxisScale{:log10}) = datamap(DReal, t)
-
-extentsmap_rev(::AxisScale) = (x::DReal)->x #Most axis types don't need to re-map extents.
-#NOTE: Extents in dBs remain extents in dBs
-extentsmap_rev(t::AxisScale{:ln}) = datamap_rev(DReal, t)
-extentsmap_rev(t::AxisScale{:log2}) = datamap_rev(DReal, t)
-extentsmap_rev(t::AxisScale{:log10}) = datamap_rev(DReal, t)
-
-
 #==Plot extents
 ===============================================================================#
 
@@ -465,64 +371,67 @@ function invalidate_datalist(plot::Plot2D)
 	plot.invalid_ddata = true
 end
 
-rescale(ext::PExtents2D, axes::Axes) = ext #Default
-function rescale(ext::PExtents2D, axes::AxesRect)
-	xmap = extentsmap(axes.xscale)
-	ymap = extentsmap(axes.yscale)
-	return PExtents2D(
-		xmap(ext.xmin), xmap(ext.xmax),
-		ymap(ext.ymin), ymap(ext.ymax)
-	)
-end
-rescale_rev(ext::PExtents2D, axes::Axes) = ext #Default
-function rescale_rev(ext::PExtents2D, axes::AxesRect)
-	xmap = extentsmap_rev(axes.xscale)
-	ymap = extentsmap_rev(axes.yscale)
-	return PExtents2D(
-		xmap(ext.xmin), xmap(ext.xmax),
-		ymap(ext.ymin), ymap(ext.ymax)
-	)
-end
-
-#Accessor:
-getextents(plot::Plot2D) = plot.ext
-getextents_xfrm(plot::Plot2D) = rescale(plot.ext, plot.axes)
-
+#Get/set functions for graph extents:
+#-------------------------------------------------------------------------------
 #Full extents are always merged (ext_full expected to be incomplete):
-getextents_full(plot::Plot2D) = merge(plot.ext_data, plot.ext_full)
+getxextents_full(plot::Plot2D) = merge(plot.xext_data, plot.xext_full)
+getyextents_full(strip::GraphStrip) = merge(yvalues(strip.ext_data), strip.yext_full)
 
-#Set active plot extents using data coordinates:
-function setextents(plot::Plot2D, ext::PExtents2D, hallowed::Bool=true, vallowed::Bool=true)
-	xmin = ext.xmin; xmax = ext.xmax; ymin = ext.ymin; ymax = ext.ymax
-	if !hallowed
-		xmin = plot.ext.xmin
-		xmax = plot.ext.xmax
-	end
-	if !vallowed
-		ymin = plot.ext.ymin
-		ymax = plot.ext.ymax
-	end
-	#Automatically fill-in any NaN fields, if possible:
-	plot.ext = merge(getextents_full(plot), PExtents2D(xmin, xmax, ymin, ymax))
+#Active extents:
+#(Obtain values from full extents when supplied ext contains NaN fields):
+#NOTE: no need for get functions.. simply access structures directly.
+_setxextents(plot::Plot2D, ext::PExtents1D) =
+	(plot.xext = merge(getxextents_full(plot), ext))
+_setyextents(strip::GraphStrip, ext::PExtents1D) =
+	(strip.yext = merge(getyextents_full(strip), ext))
+
+function setyextents(plot::Plot2D, ext::PExtents1D, strip::Int = 1)
+	_setyextents(plot.strips[strip], ext)
+	#No need to invalidate... data reduction depends on x extents
+	#invalidate_extents(plot)
+end
+function setxextents(plot::Plot2D, ext::PExtents1D)
+	_setxextents(plot, ext)
 	invalidate_extents(plot)
 end
 
-#Set active plot extents using xfrm display coordinates:
-setextents_xfrm(plot::Plot2D, ext::PExtents2D, hallowed::Bool=true, vallowed::Bool=true) =
-	setextents(plot, rescale_rev(ext, plot.axes), hallowed, vallowed)
+#NOTE: set/get*extents_axis functions: set/get extents in axis coordinates
+#      (stored in user-"read"-able coordinates).
+getxextents_axis(plot::Plot2D) = read2axis(plot.xext, InputXfrm1D(plot.xscale))
+getyextents_axis(strip::GraphStrip) = read2axis(strip.yext, InputXfrm1D(strip.yscale))
+getyextents_axis(plot::Plot2D, strip::Int) = getyextents_axis(plot.strips[strip])
+getextents_axis(plot::Plot2D, strip::Int) =
+	PExtents2D(getxextents_axis(plot), getyextents_axis(plot.strips[strip]))
 
-function setextents_full(plot::Plot2D, ext::PExtents2D)
-	plot.ext_full = ext
+setxextents_axis(plot::Plot2D, ext::PExtents1D) =
+	setxextents(plot, axis2read(ext, InputXfrm1D(plot.xscale)))
+setyextents_axis(plot::Plot2D, ext::PExtents1D, strip::Int) =
+	setyextents(plot, axis2read(ext, InputXfrm1D(plot.strips[strip].yscale)), strip)
+function setextents_axis(plot::Plot2D, ext::PExtents2D, strip::Int)
+	setxextents_axis(plot, xvalues(ext))
+	setyextents_axis(plot, yvalues(ext), strip)
 end
 
 
 #==Plot/graph bounding boxes
 ===============================================================================#
 
-aspect_square(::Axes) = false
-aspect_square(::AxesSmith) = true
+#TODO: Move aspect_square functionality to graph (not data area)
+aspect_square(::PlotGrid) = false
+aspect_square(::GridSmith) = true
+
+#TODO: Deprecate this strange hack:
+function grid1(plot::Plot2D)
+	if length(plot.strips) > 0
+		return plot.strips[1].grid
+	else
+		return GridRect()
+	end
+end
+
 
 #Returns a centered bounding box with square aspect ratio.
+#TODO: use in graphbounds - not databounds
 function squarebounds(bb::BoundingBox)
 	w = width(bb); h = height(bb)
 	xmin = bb.xmin; xmax = bb.xmax
@@ -539,8 +448,8 @@ function squarebounds(bb::BoundingBox)
 	return BoundingBox(xmin, xmax, ymin, ymax)
 end
 
-#Get bounding box of graph (plot data area):
-function graphbounds(plotb::BoundingBox, lyt::Layout)
+#Get bounding box of plot data area:
+function databounds(plotb::BoundingBox, lyt::Layout)
 	xmin = plotb.xmin + lyt.waxlabel + lyt.wticklabel
 	xmax = plotb.xmax
 	xmax -= lyt.legend.enabled? _width(lyt.legend): lyt.wnolabels
@@ -562,12 +471,51 @@ function graphbounds(plotb::BoundingBox, lyt::Layout)
 	return BoundingBox(xmin, xmax, ymin, ymax)
 end
 
-function graphbounds(plotb::BoundingBox, lyt::Layout, axes::Axes)
-	graphbb = graphbounds(plotb, lyt)
-	if aspect_square(axes)
+#TODO: Move aspect_square to graphbounds.
+function databounds(plotb::BoundingBox, lyt::Layout, grid::PlotGrid)
+	graphbb = databounds(plotb, lyt)
+	if aspect_square(grid)
 		graphbb = squarebounds(graphbb)
 	end
 	return graphbb
+end
+
+#Compute graph height (given n strips)
+#TODO: Causes graphs to start/end on fractional pixels... behaves poorly.
+#TODO: Latch to integer pixel boundaries.
+function graph_h(datab::BoundingBox, gap::Float64, nstrips::Int)
+	h = height(datab)
+	if nstrips > 1
+		h = (h - gap*(nstrips-1)) / nstrips
+	end
+	return max(h, 0)
+end
+
+#Get bounding box of graph "istrip":
+function _graphbounds(datab::BoundingBox, h::Float64, pitch::Float64, istrip::Int)
+	ymin = datab.ymin + pitch*(istrip-1)
+	ymax = ymin + h
+	return BoundingBox(datab.xmin, datab.xmax, ymin, ymax)
+end
+
+#TODO: Layout->hstripgap??
+function graphbounds(datab::BoundingBox, lyt::Layout, nstrips::Int, istrip::Int)
+	gap = lyt.hstripgap
+	h = graph_h(datab, gap, nstrips)
+	return _graphbounds(datab, h, h+gap, istrip)
+end
+
+#Get vector of graphbounds:
+function graphbounds_list(datab::BoundingBox, lyt::Layout, nstrips::Int)
+	result = Vector{BoundingBox}(nstrips)
+	gap = lyt.hstripgap
+	h = graph_h(datab, gap, nstrips)
+	pitch = h+gap
+
+	for i in 1:nstrips
+		result[i] = _graphbounds(datab, h, pitch, i)
+	end
+	return result
 end
 
 #Get bounding box of entire plot:
@@ -586,9 +534,9 @@ function plotbounds(lyt::Layout, graphw::Float64, graphh::Float64)
 end
 
 #Get suggested plot bounds:
-function plotbounds(lyt::Layout, axes::Axes)
+function plotbounds(lyt::Layout, grid::PlotGrid)
 	wdata = lyt.wdata; hdata = lyt.hdata
-	if aspect_square(axes)
+	if aspect_square(grid)
 		wdata = hdata = min(wdata, hdata)
 	end
 	return plotbounds(lyt, wdata, hdata)
@@ -615,62 +563,77 @@ end
 #==Pre-processing display data
 ===============================================================================#
 
-function _reduce(input::IWaveform, ext::PExtents2D, xres_max::Integer)
-	return DWaveform(input.id, _reduce(input.ds, ext, xres_max), input.line, input.glyph, input.ext)
+function _reduce(input::IWaveform, xext::PExtents1D, xres_max::Integer)
+	return DWaveform(input.id, _reduce(input.ds, xext, xres_max), input.line, input.glyph, input.ext, input.strip)
 end
 
-_reduce(inputlist::Vector{IWaveform}, ext::PExtents2D, xres_max::Integer) =
-	map((input)->_reduce(input, ext, xres_max::Integer), inputlist)
+_reduce(inputlist::Vector{IWaveform}, xext::PExtents1D, xres_max::Integer) =
+	map((input)->_reduce(input, xext, xres_max::Integer), inputlist)
 
 #Rescale input dataset:
 #-------------------------------------------------------------------------------
-function _rescale{T<:Number}(d::Vector{T}, scale::AxisScale)
-	#Apparently, passing functions as arguments is not efficient in Julia.
-	#-->Specializing on AxisScale, hoping to improve efficiency on dmap:
-	dmap = datamap(T, scale)
 
-	result = Array(DReal, length(d))
-	for i in 1:length(d)
-		result[i] = dmap(d[i])
+map2axis{T<:IDataset}(input::T, x::InputXfrm1DSpec, y::InputXfrm1DSpec) =
+	T(map2axis(input.x, x), map2axis(input.y, y))
+
+function map2axis(input::IWaveform, x::InputXfrm1DSpec, y::InputXfrm1DSpec)
+	ds = map2axis(input.ds, x, y)
+	return IWaveform(input.id, ds, input.line, input.glyph, getextents(ds), input.strip)
+end
+
+function map2axis(inputlist::Vector{IWaveform}, xflist::Vector{InputXfrm2D})
+	const n = length(inputlist)
+	const nstrips = length(xflist)
+	const emptyds = IDataset{true}([], [])
+	result = Vector{IWaveform}(n)
+
+	for i in 1:n
+		input = inputlist[i]
+		strip = input.strip
+		if strip > 0 && strip <= nstrips
+			result[i] = map2axis(input, xflist[strip].x, xflist[strip].y)
+		else #No scale for this strip... return empty waveform
+			result = IWaveform(input.id, emptyds, input.line, input.glyph, PExtents2D(), strip)
+		end
 	end
 	return result
 end
-_rescale{T<:Number}(d::Vector{T}, scale::AxisScale{:lin}) = d #Optimization: Linear scale does not need re-scaling
-_rescale{T<:IDataset}(input::T, xscale::AxisScale, yscale::AxisScale) =
-	T(_rescale(input.x, xscale), _rescale(input.y, yscale))
-
-function _rescale(input::IWaveform, xscale::AxisScale, yscale::AxisScale)
-	ds = _rescale(input.ds, xscale, yscale)
-	return IWaveform(input.id, ds, input.line, input.glyph, getextents(ds))
-end
-
-#Specialized on xscale/yscale for efficiency:
-_rescale(inputlist::Vector{IWaveform}, xscale::AxisScale, yscale::AxisScale) =
-	map((input)->_rescale(input, xscale, yscale), inputlist)
-
-_rescale(inputlist::Vector{IWaveform}, axes::AxesRect) = _rescale(inputlist, axes.xscale, axes.yscale)
-
-_rescale(pt::Point2D, xscale::AxisScale, yscale::AxisScale) =
-	Point2D(datamap(DReal, xscale)(pt.x), datamap(DReal, yscale)(pt.y))
-_rescale(pt::Point2D, axes::AxesRect) = _rescale(pt, axes.xscale, axes.yscale)
-
 
 #Preprocess input dataset (rescale/reduce quantity of data/...):
 #-------------------------------------------------------------------------------
 #   (Updates display_data)
 function preprocess_data(plot::Plot2D)
 	#TODO: Find a way to preprocess x-vectors referencing same data only once?
+	const nstrips = length(plot.strips)
+
+	#Figure out required input data tranform for each strip:
+	xflist = Vector{InputXfrm2D}(nstrips)
+	for i in 1:nstrips
+		strip = plot.strips[i]
+
+		#Need to take grid into account:
+		xflist[i] = InputXfrm2D(plot.xscale, strip.yscale, strip.grid)
+	end
 
 	#Rescale data
-	wfrmlist = _rescale(plot.data, plot.axes)
+	wfrmlist = map2axis(plot.data, xflist)
 
-	#Update extents:
-	plot.ext_data = rescale_rev(getextents(wfrmlist), plot.axes) #Update max extents
-	setextents(plot, plot.ext) #Update extents, resolving any NaN fields.
-	ext = getextents_xfrm(plot) #Read back extents, in transformed coordinates
+	for i in 1:nstrips
+		strip = plot.strips[i]
+		xf = InputXfrm2D(plot.xscale, strip.yscale)
+
+		#Update extents:
+		strip.ext_data = axis2read(getextents(wfrmlist, i), xf)
+		_setyextents(strip, strip.yext) #Update extents, resolving any NaN fields.
+	end
+
+	#Extract maximum xextents from all strips:
+	plot.xext_data = union([xvalues(strip.ext_data) for strip in plot.strips])
+	_setxextents(plot, plot.xext) #Update extents, resolving any NaN fields.
 
 	#Reduce data:
-	plot.display_data = _reduce(wfrmlist, ext, plot.xres)
+	xext = getxextents_axis(plot) #Read back extents, in transformed coordinates
+	plot.display_data = _reduce(wfrmlist, xext, plot.xres)
 	plot.invalid_ddata = false
 
 	#NOTE: Rescaling before data reduction is somewhat inefficient, but makes

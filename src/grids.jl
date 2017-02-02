@@ -4,16 +4,16 @@
 #==Constants
 ===============================================================================#
 #TODO: make the following user-configurable:
-const GRID_MAJOR_LINE = LineAttributes(
+const GRID_MAJOR_LINE = LineStyle(
 	:dash, Float64(2), RGB24(.7, .7, .7)
 )
-const GRID_MINOR_LINE = LineAttributes(
+const GRID_MINOR_LINE = LineStyle(
 	:dash, Float64(1), RGB24(.7, .7, .7)
 )
-const SMITH_MAJOR_LINE = LineAttributes(
+const SMITH_MAJOR_LINE = LineStyle(
 	:solid, Float64(2), COLOR_BLACK
 )
-const SMITH_MINOR_LINE = LineAttributes(
+const SMITH_MINOR_LINE = LineStyle(
 	:solid, Float64(1), RGB24(.7, .7, .7)
 )
 const TICK_MAJOR_LEN = Float64(5)
@@ -46,12 +46,19 @@ abstract AbstractGridLines
 
 #Identifies where to place ticks/grid lines
 type GridLines <: AbstractGridLines
-	scale::AxisScale #Changes how tick labels are displayed
+	displaymajor::Bool
+	displayminor::Bool
 	major::Vector{DReal}
 	minor::Vector{DReal}
 	rnginfo::RangeDisplayInfo
 end
-GridLines(scale::AxisScale) = GridLines(scale, [], [], NoRangeDisplayInfo())
+GridLines(displaymajor=true, displayminor=true) =
+	GridLines(displaymajor, displayminor, [], [], NoRangeDisplayInfo())
+
+type GridLinesAuto <: AbstractGridLines
+	displaymajor::Bool
+	displayminor::Bool
+end
 
 type UndefinedGridLines <: AbstractGridLines
 	minline::DReal
@@ -60,9 +67,18 @@ end
 
 abstract PlotGrid
 
+#Rectilinear grid (ex: normal cartesian +logarithmic, ...):
+type GridRect <: PlotGrid
+	xlines::AbstractGridLines
+	ylines::AbstractGridLines
+#TODO: Make it possible for user to specify grids/labels as well.
+end
+GridRect(;vmajor=false, vminor=false, hmajor=false, hminor=false) =
+	GridRect(GridLinesAuto(vmajor, vminor), GridLinesAuto(hmajor, hminor))
+
 type GridSmith <: PlotGrid
 	zgrid::Bool #Set to false for Y (admittance)-grid (x -> -x)
-	ref::Float64 #Scaling factor
+	ref::Float64 #Scaling factor (Zref/Yref)
 	majorR::Vector{DReal} #Major constant resistance/admittance circles
 	minorR::Vector{DReal} #Minor constant resistance/admittance circles
 	minorX::Vector{DReal} #Minor constant reactance circles
@@ -70,15 +86,37 @@ type GridSmith <: PlotGrid
 	labelX::Vector{DReal}
 end
 
-#Curvilinear grid (ex: polar plots):
+#TODO: Curvilinear grid (ex: polar plots):
 type GridCurv <: PlotGrid
 end
 
-#Rectilinear grid (ex: normal cartesian +logarithmic, ...):
-type GridRect <: PlotGrid
-	xlines::AbstractGridLines
-	ylines::AbstractGridLines
+
+#==Constructor-like functions
+===============================================================================#
+InputXfrm2D(xs::AxisScale, ys::AxisScale, g::PlotGrid) = InputXfrm2D(xs, ys) #Grid usually does not matter.
+
+#Input data must be split into real/imag components:
+InputXfrm2D(xs::AxisScale, ys::AxisScale, g::GridSmith) = InputXfrm2D(InputXfrm1DSpec{:real}(), InputXfrm1DSpec{:imag}())
+
+function GridSmith(zgrid::Bool, ref::Float64)
+	const labelbase = DReal[0.2, 0.4, 0.6, 2, 4, 10]
+	const minorextra = DReal[0.8, 1.5, 3, 6, 20]
+	#TODO: change with ext??
+	majorR = DReal[0, 1]
+	minorR = vcat(labelbase, minorextra)
+	minorX = vcat(labelbase, minorextra, DReal[1])
+	labelR = vcat(labelbase, DReal[0, 1])
+	labelX = vcat(labelbase, DReal[1, 0.8, 1.5])
+	return GridSmith(zgrid, ref, majorR, minorR, minorX, labelR, labelX)
 end
+
+function GridSmith(t::Symbol, ref::Float64)
+	if !in(t, [:Z, :Y])
+		MethodError(GridSmith, "Unrecognized Smith chart: :$t.")
+	end
+	return GridSmith(:Z == t, ref)
+end
+GridSmith(t::Symbol; ref::Number=1.0) = GridSmith(t, Float64(ref))
 
 
 #==Main algorithm
@@ -118,14 +156,14 @@ end
 #Compute grid line configuration for a linear scale (dB scale is basically linear as well)
 #tgtmajor: Targeted number of major grid lines
 #tgtminor: Targeted number of minor grid lines
-function gridlines(scale::AxisScale, min::DReal, max::DReal; tgtmajor::DReal=3.5, tgtminor::Int=4)
+function gridlines(scale::AxisScale, min::DReal, max::DReal, displaymajor::Bool, displayminor::Bool, tgtmajor::DReal, tgtminor::Int)
 	if !isfinite(min) || !isfinite(max)
 		return UndefinedGridLines(min, max)
 	elseif abs(max - min) == 0 #TODO: specify Δmin?
 		return UndefinedGridLines(min, max)
 	end
 
-	grd = GridLines(scale)
+	grd = GridLines(displaymajor, displayminor)
 	span = max - min
 
 	#Compute major grid lines:
@@ -171,13 +209,13 @@ end
 
 #Compute grid line configuration for a log10 scale
 #Ignore keywords
-function gridlines(scale::AxisScale{:log10}, logmin::DReal, logmax::DReal; kwargs...)
+function gridlines(scale::LogScale{10}, logmin::DReal, logmax::DReal, displaymajor::Bool, displayminor::Bool; kwargs...)
 	if !isfinite(logmin) || !isfinite(logmax)
 		return UndefinedGridLines(logmin, logmax)
 	elseif abs(logmax - logmin) == 0 #TODO: specify Δmin?
 		return UndefinedGridLines(logmin, logmax)
 	end
-	grd = GridLines(scale)
+	grd = GridLines(displaymajor, displayminor)
 
 	major1 = ceil(Int, logmin)
 	majorend = floor(Int, logmax)
@@ -210,40 +248,50 @@ function gridlines(scale::AxisScale{:log10}, logmin::DReal, logmax::DReal; kwarg
 end
 
 #Compute grid line configuration for a ln scale
-function gridlines(scale::AxisScale{:ln}, min::DReal, max::DReal)
+function gridlines(scale::LogScale{:e}, min::DReal, max::DReal, displaymajor::Bool, displayminor::Bool)
 	#TODO: Limit major grid lines to step sizes >= e^1?
-	return GridLines(scale)
+	return GridLines(displaymajor, displayminor)
 end
 
 #Compute grid line configuration for a log2 scale
-function gridlines(scale::AxisScale{:log2}, min::DReal, max::DReal)
+function gridlines(scale::LogScale{2}, min::DReal, max::DReal, displaymajor::Bool, displayminor::Bool)
 	#TODO: Limit major grid lines to step sizes >= 2^1?
-	return GridLines(scale)
+	return GridLines(displaymajor, displayminor)
 end
 
 
 #==High-level interface
 ===============================================================================#
-function gridlines(axes::AxesRect, ext::PExtents2D)
-	#TODO: make tgtmajor/tgtminor programmable
-	xlines = gridlines(axes.xscale, ext.xmin, ext.xmax, tgtmajor=3.5)
-	ylines = gridlines(axes.yscale, ext.ymin, ext.ymax, tgtmajor=8.0, tgtminor=2)
+
+#Evaluate grid lines
+#-------------------------------------------------------------------------------
+function _eval(alines::GridLinesAuto, s::AxisScale, emin::DReal, emax::DReal)
+	return gridlines(s, emin, emax, alines.displaymajor, alines.displayminor)
+end
+function _eval(alines::GridLinesAuto, s::LinScale, emin::DReal, emax::DReal)
+	lines = gridlines(s, emin, emax,
+		alines.displaymajor, alines.displayminor, s.tgtmajor, s.tgtminor
+	)
+	return lines
+end
+
+#Default: use specified grid lines:
+_eval(lines::AbstractGridLines, s::AxisScale, emin::DReal, emax::DReal) = lines
+
+#Default: Nothing to evaluate (use grid as-specified).
+_eval(grid::PlotGrid, xs::AxisScale, ys::AxisScale, ext::PExtents2D) = grid
+
+function _eval(grid::GridRect, xs::AxisScale, ys::AxisScale, ext::PExtents2D)
+	xlines = _eval(grid.xlines, xs, ext.xmin, ext.xmax)
+	ylines = _eval(grid.ylines, ys, ext.ymin, ext.ymax)
 	return GridRect(xlines, ylines)
 end
 
-function gridlines(axes::AxesSmith, ext::PExtents2D)
-	const labelbase = DReal[0.2, 0.4, 0.6, 2, 4, 10]
-	const minorextra = DReal[0.8, 1.5, 3, 6, 20]
-	#TODO: make grid lines user-selectable
-	#TODO: change with ext??
-	majorR = DReal[0, 1]
-	minorR = vcat(labelbase, minorextra)
-	minorX = vcat(labelbase, minorextra, DReal[1])
-	labelR = vcat(labelbase, DReal[0, 1])
-	labelX = vcat(labelbase, DReal[1, 0.8, 1.5])
-
-	zgrid = isa(axes, AxesSmith{:Z})
-	return GridSmith(zgrid, axes.ref, majorR, minorR, minorX, labelR, labelX)
+#Get grid used to extract coordinates, etc on a graph:
+coord_grid(grid::GridRect, xs::AxisScale, ys::AxisScale, ext::PExtents2D) = _eval(grid, xs, ys, ext)
+function coord_grid(grid::GridSmith, xs::AxisScale, ys::AxisScale, ext::PExtents2D)
+	autogrid = GridRect(vmajor=false, vminor=false, hmajor=false, hminor=false)
+	return _eval(autogrid, xs, ys, ext)
 end
 
 #Last line

@@ -110,7 +110,7 @@ end
 
 #_show() Plot2D: Auto-coumpute w/h
 function _show(stream::IO, mime::MIME, plot::Plot2D)
-	bb = plotbounds(plot.layout, plot.axes)
+	bb = plotbounds(plot.layout, grid1(plot))
 	_show(stream, mime, plot, bb.xmax, bb.ymax)
 end
 
@@ -162,7 +162,7 @@ _write(path::String, mime::MIME, mplot::Multiplot) =
 
 #_write() Plot2D: Auto-coumpute w/h
 function _write(path::String, mime::MIME, plot::Plot2D)
-	bb = plotbounds(plot.layout, plot.axes)
+	bb = plotbounds(plot.layout, grid1(plot))
 	_write(path, mime, plot, bb.xmax, bb.ymax)
 end
 

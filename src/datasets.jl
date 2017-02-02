@@ -1,6 +1,7 @@
 #InspectDR: Operation on datasets
 #-------------------------------------------------------------------------------
 
+
 #==Types declarations
 ===============================================================================#
 
@@ -36,7 +37,7 @@ end
 #returns: Vector{Point2D}
 #TODO: clip data beyond extents.
 #WARNING: not clipping might cause display issues when applying the transform
-function _reduce(input::IDataset, ext::PExtents2D, xres_max::Integer)
+function _reduce(input::IDataset, xext::PExtents1D, xres_max::Integer)
 	x = input.x; y = input.y
 	n_ds = length(x) #numer of points of input dataset
 	result = Array(Point2D, n_ds)
@@ -49,8 +50,8 @@ end
 #Optimized for functions of 1 argument (F1-acceleration):
 #    xres_max: Max number of x-points in data window.
 #returns: Vector{Point2D}
-function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
-	const xres = (ext.xmax - ext.xmin)/ xres_max
+function _reduce(input::IDataset{true}, xext::PExtents1D, xres_max::Integer)
+	const xres = (xext.max - xext.min)/ xres_max
 	const min_lookahead = 3 #number of xres windows to potentially collapse
 	const thresh_xres = min_lookahead*xres #maximum x-distance to look ahead for reduction
 	x = input.x; y = input.y
@@ -71,7 +72,7 @@ function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
 
 	#Discard data before visible extents:
 	while i < n_ds
-		if x[i] > ext.xmin; break; end
+		if x[i] > xext.min; break; end
 		i+=1
 	end
 
@@ -82,8 +83,8 @@ function _reduce(input::IDataset{true}, ext::PExtents2D, xres_max::Integer)
 	i+=1
 
 	while i <= n_ds
-		if prevx >= ext.xmax; break; end
-		xthresh = min(prevx+thresh_xres, ext.xmax)
+		if prevx >= xext.max; break; end
+		xthresh = min(prevx+thresh_xres, xext.max)
 		ilahead_start = i+(min_lookahead-1) #If we consolidate, must at least reach here
 		ilahead = min(ilahead_start, n_ds)
 		while ilahead < n_ds

@@ -108,20 +108,10 @@ function getrealimag{T<:Number}(d::Vector{T})
 	return (x, y)
 end
 
-function getrealimag(input::IDataset)
+function map2axis{T<:IDataset}(input::T, x::InputXfrm1DSpec{:real}, y::InputXfrm1DSpec{:imag})
 	(x, y) = getrealimag(input.y)
 	return IDataset{false}(x, y) #Assume new re/im data is not sorted.
 end
-
-function getrealimag(input::IWaveform)
-	ds = getrealimag(input.ds)
-	return IWaveform(input.id, ds, input.line, input.glyph, getextents(ds))
-end
-
-_rescale(inputlist::Vector{IWaveform}, axes::AxesSmith) =
-	map((input)->getrealimag(input), inputlist)
-
-_rescale(pt::Point2D, axes::AxesSmith) = pt
 
 
 #==High-level rendering functions
@@ -164,13 +154,13 @@ Cairo.restore(ctx) #-----
 	nothing
 end
 
-function render_axes(canvas::PCanvas2D, lyt::Layout, grid::GridSmith)
+function render_axes(canvas::PCanvas2D, lyt::Layout, grid::GridSmith, xs::AxisScale, ys::AxisScale, xticklabels::Bool)
 	render_graphframe(canvas, lyt.framedata)
 
-	#Display linear grid:
+	#Display grid:
 	#TODO: make it possible to disable?
-	grid = gridlines(AxesRect(:lin, :lin), canvas.ext)
-	render_ticks(canvas, lyt, grid)
+	cgrid = coord_grid(grid, xs, ys, canvas.ext)
+	render_ticks(canvas, lyt, cgrid, xs, ys, xticklabels)
 end
 
 #Last line

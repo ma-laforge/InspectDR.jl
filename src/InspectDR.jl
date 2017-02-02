@@ -36,11 +36,12 @@ include("defaults.jl")
 include("codegen.jl")
 include("math.jl")
 include("math_graphics.jl")
+include("math_coordinates.jl")
 include("numericfmt.jl")
 include("events.jl")
 include("datasets.jl")
-include("base.jl")
 include("grids.jl")
+include("base.jl")
 include("glyphs.jl")
 include("cairo_ext.jl")
 include("cairo_base.jl")
@@ -74,6 +75,19 @@ DReal vs Float64:
 		data type in internal data structures/algorithms... despite potential
 		inefficiencies).
 
+Transformations between coordinate systems:
+         nlxfrm      lxfrm
+	data/ -----> axis -----> device
+	world                    /view
+
+	where:
+		lxfrm is a linear transformation
+		nlxfrm is potentially a nonlinear transformation
+
+	- Data coordinates hold whichever units is associated with the data (D).
+	- Axis units are transformations of D (ex: D, log(D), dB20(D), ...)
+	- Device units can typically be thought of in pixels.
+
 PExtents2D vs BoundingBox:
 	PExtents2D: Extents of data (data coordinate system).
 	BoundingBox: Extents of graphical element ("device" coordinate system).
@@ -94,7 +108,8 @@ About extents:
 
 About bounds:
 	plotbounds(...): Bounding box of entire plot.
-	graphbounds(...): Bounding box of graph (plot data area).
+	databounds(...): Bounding box of entire data area (multiple graph strips).
+	graphbounds(...): Bounding box of individual graph strip.
 =#
 
 

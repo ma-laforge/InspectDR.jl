@@ -92,9 +92,9 @@ function drawglyph_safe(ctx::CairoContext, wfrm::DWaveform, pt::Point2D)
 	_glyph = Glyph(wfrm.glyph.shape)
 	if nothing == _glyph; return; end
 
-	setlinestyle(ctx, :solid, Float64(wfrm.line.width))
 	linecolor = getglyphcolor(wfrm.glyph, wfrm.line)
-	Cairo.set_source(ctx, linecolor)
+	linestyle = LineStyle(:solid, Float64(wfrm.line.width), linecolor)
+	setlinestyle(ctx, linestyle)
 	fill = getglyphfill(wfrm.glyph)
 	gsize = Float64(wfrm.glyph.size)
 
@@ -108,26 +108,28 @@ end
 
 #Render main plot annotation (titles, axis labels, ...)
 #-------------------------------------------------------------------------------
-function render(canvas::PCanvas2D, a::Annotation, lyt::Layout)
-	const ctx = canvas.ctx
-	const bb = canvas.bb
-	const graph = canvas.graphbb
+function render(ctx::CairoContext, a::Annotation,
+	bb::BoundingBox, databb::BoundingBox, graphbblist::Vector{BoundingBox}, lyt::Layout)
 	const TIMESTAMP_OFFSET = 3
 
-	xcenter = (graph.xmin+graph.xmax)/2
-	ycenter = (graph.ymin+graph.ymax)/2
-
 	#Title
+	xcenter = (bb.xmin+bb.xmax)/2
 	pt = Point2D(xcenter, bb.ymin+lyt.htitle/2)
 	render(ctx, a.title, pt, lyt.fnttitle, align=ALIGN_HCENTER|ALIGN_VCENTER)
 
-	#X-axis
+	#X-axis label
+	xcenter = (databb.xmin+databb.xmax)/2
 	pt = Point2D(xcenter, bb.ymax-lyt.haxlabel/2)
 	render(ctx, a.xlabel, pt, lyt.fntaxlabel, align=ALIGN_HCENTER|ALIGN_VCENTER)
 
-	#Y-axis
-	pt = Point2D(bb.xmin+lyt.waxlabel/2, ycenter)
-	render(ctx, a.ylabel, pt, lyt.fntaxlabel, align=ALIGN_HCENTER|ALIGN_VCENTER, angle=-π/2)
+	#Y-axis labels
+	nstrips = min(length(a.ylabels), length(graphbblist))
+	for i in 1:nstrips
+		graphbb = graphbblist[i]
+		ycenter = (graphbb.ymin+graphbb.ymax)/2
+		pt = Point2D(bb.xmin+lyt.waxlabel/2, ycenter)
+		render(ctx, a.ylabels[i], pt, lyt.fntaxlabel, align=ALIGN_HCENTER|ALIGN_VCENTER, angle=-π/2)
+	end
 
 	#Time stamp
 	if lyt.showtimestamp
@@ -141,7 +143,7 @@ end
 function render_graphframe(canvas::PCanvas2D, aa::AreaAttributes)
 	const ctx = canvas.ctx
 Cairo.save(ctx)
-	setlinestyle(ctx, aa.line)
+	setlinestyle(ctx, LineStyle(aa.line))
 	Cairo.rectangle(ctx, canvas.graphbb)
 	Cairo.stroke(ctx)
 Cairo.restore(ctx)
@@ -150,16 +152,16 @@ end
 
 #==Render grid
 ===============================================================================#
-render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::AbstractGridLines) = nothing
-function render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::GridLines)
-	if lyt.grid.vmajor
+render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, xlines::AbstractGridLines) = nothing
+function render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, xlines::GridLines)
+	if xlines.displaymajor
 		setlinestyle(ctx, GRID_MAJOR_LINE)
 		for xline in xlines.major
 			x = ptmap(xf, Point2D(xline, 0)).x
 			drawline(ctx, Point2D(x, graphbb.ymin), Point2D(x, graphbb.ymax))
 		end
 	end
-	if lyt.grid.vminor
+	if xlines.displayminor
 		setlinestyle(ctx, GRID_MINOR_LINE)
 		for xline in xlines.minor
 			x = ptmap(xf, Point2D(xline, 0)).x
@@ -167,16 +169,16 @@ function render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 		end
 	end
 end
-render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::AbstractGridLines) = nothing
-function render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::GridLines)
-	if lyt.grid.hmajor
+render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, ylines::AbstractGridLines) = nothing
+function render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, ylines::GridLines)
+	if ylines.displaymajor
 		setlinestyle(ctx, GRID_MAJOR_LINE)
 		for yline in ylines.major
 			y = ptmap(xf, Point2D(0, yline)).y
 			drawline(ctx, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
 		end
 	end
-	if lyt.grid.hminor
+	if ylines.displayminor
 		setlinestyle(ctx, GRID_MINOR_LINE)
 		for yline in ylines.minor
 			y = ptmap(xf, Point2D(0, yline)).y
@@ -188,8 +190,8 @@ end
 function render_grid(canvas::PCanvas2D, lyt::Layout, grid::GridRect)
 	const ctx = canvas.ctx
 	Cairo.save(ctx) #-----
-	render_vlines(ctx, canvas.graphbb, canvas.xf, lyt, grid.xlines)
-	render_hlines(ctx, canvas.graphbb, canvas.xf, lyt, grid.ylines)
+	render_vlines(ctx, canvas.graphbb, canvas.xf, grid.xlines)
+	render_hlines(ctx, canvas.graphbb, canvas.xf, grid.ylines)
 	Cairo.restore(ctx) #-----
 end
 
@@ -212,11 +214,11 @@ function render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font
 	render(ctx, tstr, pt, font, align=align)
 end
 
-render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, scale::AxisScale{:ln}) =
+render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, scale::LogScale{:e}) =
 	render_power(ctx, "e", val, pt, font, align)
-render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, scale::AxisScale{:log2}) =
+render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, scale::LogScale{2}) =
 	render_power(ctx, "2", val, pt, font, align)
-render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, scale::AxisScale{:log10}) =
+render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, scale::LogScale{10}) =
 	render_power(ctx, "10", val, pt, font, align)
 
 function render_axisscalelabel(ctx::CairoContext, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, ::AxisScale)
@@ -226,14 +228,16 @@ end
 
 #Render ticks: Well-defined GridLines
 #-------------------------------------------------------------------------------
-function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::GridLines)
+function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::GridLines, xs::AxisScale, ticklabels::Bool)
 	const tframe = DReal(lyt.framedata.line.width) #TODO: Fix LineAttributes to have concrete type
 	fmt = TickLabelFormatting(lyt.xlabelformat, xlines.rnginfo)
 	yframe = graphbb.ymax
 	ylabel = graphbb.ymax + lyt.vlabeloffset
 	for xtick in xlines.major
 		x = ptmap(xf, Point2D(xtick, 0)).x
-		render_ticklabel(ctx, xtick, Point2D(x, ylabel), lyt.fntticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, xlines.scale)
+		if ticklabels
+			render_ticklabel(ctx, xtick, Point2D(x, ylabel), lyt.fntticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, xs)
+		end
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
 	end
 	for xtick in xlines.minor
@@ -242,17 +246,17 @@ function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	end
 	if fmt.splitexp
 		xlabel = graphbb.xmax + tframe
-		render_axisscalelabel(ctx, Point2D(xlabel, yframe), lyt.fntticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, xlines.scale)
+		render_axisscalelabel(ctx, Point2D(xlabel, yframe), lyt.fntticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, xs)
 	end
 end
-function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::GridLines)
+function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::GridLines, ys::AxisScale)
 	const tframe = DReal(lyt.framedata.line.width) #TODO: Fix LineAttributes to have concrete type
 	fmt = TickLabelFormatting(lyt.ylabelformat, ylines.rnginfo)
 	xframe = graphbb.xmin
 	xlabel = graphbb.xmin - lyt.hlabeloffset
 	for ytick in ylines.major
 		y = ptmap(xf, Point2D(0, ytick)).y
-		render_ticklabel(ctx, ytick, Point2D(xlabel, y), lyt.fntticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, ylines.scale)
+		render_ticklabel(ctx, ytick, Point2D(xlabel, y), lyt.fntticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, ys)
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
 	end
 	for ytick in ylines.minor
@@ -261,34 +265,36 @@ function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	end
 	if fmt.splitexp
 		ylabel = graphbb.ymin - tframe
-		render_axisscalelabel(ctx, Point2D(xframe, ylabel), lyt.fntticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, ylines.scale)
+		render_axisscalelabel(ctx, Point2D(xframe, ylabel), lyt.fntticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, ys)
 	end
 end
 
 #Render ticks: UndefinedGridLines
 #-------------------------------------------------------------------------------
-function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::UndefinedGridLines)
+function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::UndefinedGridLines, xs::AxisScale, ticklabels::Bool)
 	fmt = TickLabelFormatting(NoRangeDisplayInfo())
 	yframe = graphbb.ymax
 	ylabel = graphbb.ymax + lyt.vlabeloffset
 	for (x, xlabel) in [(graphbb.xmin, xlines.minline), (graphbb.xmax, xlines.maxline)]
-		render_ticklabel(ctx, xlabel, Point2D(x, ylabel), lyt.fntticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, AxisScale{:lin}())
+		if ticklabels
+			render_ticklabel(ctx, xlabel, Point2D(x, ylabel), lyt.fntticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, LinScale())
+		end
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
 	end
 end
-function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::UndefinedGridLines)
+function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::UndefinedGridLines, ys::AxisScale)
 	fmt = TickLabelFormatting(NoRangeDisplayInfo())
 	xframe = graphbb.xmin
 	xlabel = graphbb.xmin - lyt.hlabeloffset
 	for (y, ylabel) in [(graphbb.ymax, ylines.minline), (graphbb.ymin, ylines.maxline)]
-		render_ticklabel(ctx, ylabel, Point2D(xlabel, y), lyt.fntticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, AxisScale{:lin}())
+		render_ticklabel(ctx, ylabel, Point2D(xlabel, y), lyt.fntticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, LinScale())
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
 	end
 end
 
-function render_ticks(canvas::PCanvas2D, lyt::Layout, grid::GridRect)
-	render_xticks(canvas.ctx, canvas.graphbb, canvas.xf, lyt, grid.xlines)
-	render_yticks(canvas.ctx, canvas.graphbb, canvas.xf, lyt, grid.ylines)
+function render_ticks(canvas::PCanvas2D, lyt::Layout, grid::GridRect, xs::AxisScale, ys::AxisScale, xticklabels::Bool)
+	render_xticks(canvas.ctx, canvas.graphbb, canvas.xf, lyt, grid.xlines, xs, xticklabels)
+	render_yticks(canvas.ctx, canvas.graphbb, canvas.xf, lyt, grid.ylines, ys)
 end
 
 
@@ -297,15 +303,15 @@ end
 
 #Render axis labels, ticks, ...
 #-------------------------------------------------------------------------------
-function render_axes(canvas::PCanvas2D, lyt::Layout, grid::GridRect)
+function render_axes(canvas::PCanvas2D, lyt::Layout, grid::GridRect, xs::AxisScale, ys::AxisScale, xticklabels::Bool)
 	render_graphframe(canvas, lyt.framedata)
-	render_ticks(canvas, lyt, grid)
+	render_ticks(canvas, lyt, grid, xs, ys, xticklabels)
 end
 
 #Render NaNs on plot:
 #-------------------------------------------------------------------------------
 function rendernans(canvas::PCanvas2D, wfrm::IWaveform)
-	const NAN_LINE = LineAttributes(
+	const NAN_LINE = LineStyle(
 		:solid, Float64(4), ARGB32(1, 0, 0, 0.5)
 	)
 	const ctx = canvas.ctx
@@ -342,8 +348,14 @@ function rendernans(canvas::PCanvas2D, wfrm::IWaveform)
 	#TODO: warn hasNaNNaN?
 	return hasNaNNaN
 end
-rendernans(canvas::PCanvas2D, wfrmlist::Vector{IWaveform}) =
-	map((w)->rendernans(canvas, w), wfrmlist)
+function rendernans(canvas::PCanvas2D, wfrmlist::Vector{IWaveform}, strip::Int)
+	for wfrm in wfrmlist
+		if 0 == wfrm.strip || wfrm.strip == strip
+			rendernans(canvas, wfrm)
+		end
+	end
+	return
+end
 
 #Render an actual waveform
 #-------------------------------------------------------------------------------
@@ -354,7 +366,7 @@ function render(canvas::PCanvas2D, wfrm::DWaveform)
 	if length(ds) < 1; return; end
 
 if wfrm.line.style != :none
-	setlinestyle(ctx, wfrm.line)
+	setlinestyle(ctx, LineStyle(wfrm.line))
 	newsegment = true
 	for i in 1:length(ds)
 		pt = ptmap(canvas.xf, ds[i])
@@ -382,9 +394,9 @@ end
 	#TODO: do not draw when outside graph extents.
 
 	#Draw symbols:
-	setlinestyle(ctx, :solid, Float64(wfrm.line.width))
 	linecolor = getglyphcolor(wfrm.glyph, wfrm.line)
-	Cairo.set_source(ctx, linecolor)
+	linestyle = LineStyle(:solid, Float64(wfrm.line.width), linecolor)
+	setlinestyle(ctx, linestyle)
 	fill = getglyphfill(wfrm.glyph)
 	gsize = Float64(wfrm.glyph.size)
 	for i in 1:length(ds)
@@ -394,7 +406,13 @@ end
 
 	return
 end
-render(canvas::PCanvas2D, wfrmlist::Vector{DWaveform}) =
-	map((w)->render(canvas, w), wfrmlist)
+function render(canvas::PCanvas2D, wfrmlist::Vector{DWaveform}, strip::Int)
+	for wfrm in wfrmlist
+		if 0 == wfrm.strip || wfrm.strip == strip
+			render(canvas, wfrm)
+		end
+	end
+	return
+end
 
 #Last line

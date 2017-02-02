@@ -70,17 +70,18 @@ abstract InputState #Identifies current user input state.
 
 type GtkSelection
 	enabled::Bool
+	istrip::Int
 	bb::BoundingBox
 	ext_start::PExtents2D #Exetents @ start of operation
 	#Store ext_start to avoid accumulation of numerical errors.
 end
-GtkSelection() = GtkSelection(false, BoundingBox(0,0,0,0), PExtents2D())
+GtkSelection() = GtkSelection(false, 0, BoundingBox(0,0,0,0), PExtents2D())
 
 type PlotWidget
 	widget::_Gtk.Box #Base widget
 	canvas::_Gtk.Canvas #Actual plot area
 	src::Plot
-	graphbb::BoundingBox
+	graphbblist::Vector{BoundingBox}
 	state::InputState
 
 	#Scrollbars to control x-scale & position:
@@ -93,6 +94,7 @@ type PlotWidget
 	bufsurf::Cairo.CairoSurface
 #	bufbb::BoundingBox
 
+	curstrip::Int #Currently active strip
 	sel::GtkSelection
 
 	#Restrict h/v motion:
@@ -111,6 +113,18 @@ type GtkPlot
 	subplots::Vector{PlotWidget}
 	src::Multiplot #Akward for sync: subplots.src are references to src.subplots.
 	status::_Gtk.Label
+end
+
+
+#==Accessors
+===============================================================================#
+function activestrip(w::PlotWidget)
+	istrip = w.curstrip
+	nstrips = length(w.src.strips)
+	if istrip < 1 || istrip > nstrips
+		istrip = 0
+	end
+	return istrip
 end
 
 
@@ -158,7 +172,8 @@ function render(pwidget::PlotWidget)
 	_reset(ctx)
 	clear(ctx, bb)
 	render(ctx, pwidget.src, bb)
-	pwidget.graphbb = graphbounds(bb, pwidget.src.layout, pwidget.src.axes)
+	databb = databounds(bb, pwidget.src.layout, grid1(pwidget.src))
+	pwidget.graphbblist = graphbounds_list(databb, pwidget.src.layout, length(pwidget.src.strips))
 	Cairo.destroy(ctx)
 end
 

@@ -12,7 +12,7 @@ function legend_renderitem(ctx::CairoContext, wfrm::DWaveform, x::Float64, y::Fl
 	lineend = linestart+linelength
 
 Cairo.save(ctx)
-	setlinestyle(ctx, wfrm.line)
+	setlinestyle(ctx, LineStyle(wfrm.line))
 	drawline(ctx, Point2D(linestart, y), Point2D(lineend, y))
 	drawglyph_safe(ctx, wfrm, Point2D(linestart+linelength/2, y))
 Cairo.restore(ctx)

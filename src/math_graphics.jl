@@ -8,6 +8,21 @@
 typealias DReal Float64
 
 
+#==Constants
+===============================================================================#
+const DInf = convert(DReal, Inf)
+const DNaN = convert(DReal, NaN)
+
+const COLOR_TRANSPARENT = ARGB32(0, 0, 0, 0)
+
+const COLOR_BLACK = RGB24(0, 0, 0)
+const COLOR_WHITE = RGB24(1, 1, 1)
+
+const COLOR_RED = RGB24(1, 0, 0)
+const COLOR_GREEN = RGB24(0, 1, 0)
+const COLOR_BLUE = RGB24(0, 0, 1)
+
+
 #==Data structures.
 ===============================================================================#
 #TODO: Use library version?
@@ -17,7 +32,15 @@ immutable Point2D <: Point
 	y::DReal
 end
 
+#Plot extents along one dimension:
+immutable PExtents1D
+	min::DReal
+	max::DReal
+end
+PExtents1D(;min::Real=DNaN, max::Real=DNaN) = PExtents1D(min, max)
+
 #Could use BoundingBox, but cannot control type (and is technically not a BB).
+#TODO: PExtents2D from PExtents1D?
 immutable PExtents2D
 	xmin::DReal
 	xmax::DReal
@@ -26,6 +49,8 @@ immutable PExtents2D
 end
 PExtents2D(;xmin::Real=DNaN, xmax::Real=DNaN, ymin::Real=DNaN, ymax::Real=DNaN) =
 	PExtents2D(xmin, xmax, ymin, ymax)
+PExtents2D(xext::PExtents1D, yext::PExtents1D) =
+	PExtents2D(xext.min, xext.max, yext.min, yext.max)
 
 #Transform used for Canvas2D/CanvasF1 (only scale/offset - no rotation).
 #xd = (xs + x0) * xu
@@ -38,6 +63,12 @@ immutable Transform2D
 	x0::DReal
 	ys::DReal
 	y0::DReal
+end
+
+immutable LineStyle
+	style::Symbol
+	width::Float64 #Device units (~pixels)
+	color::Colorant
 end
 
 
@@ -59,6 +90,12 @@ function Transform2D(ext::PExtents2D, inputb::BoundingBox)
 end
 
 
+#==Accessors
+===============================================================================#
+xvalues(ext::PExtents2D) = PExtents1D(ext.xmin, ext.xmax)
+yvalues(ext::PExtents2D) = PExtents1D(ext.ymin, ext.ymax)
+
+
 #==Basic operations
 ===============================================================================#
 #Compute vector norm (assumes point refers to a vector):
@@ -71,6 +108,20 @@ Base.:*(s::DReal, pt::Point2D) = Point2D(s*pt.x, s*pt.y)
 Base.:*(s::Real, pt::Point2D) = DReal(s)*pt
 Base.:+(p1::Point2D, p2::Point2D) = Point2D(p1.x+p2.x, p1.y+p2.y)
 
+function union(e1::PExtents1D, e2::PExtents1D)
+	return PExtents1D(
+		min(e1.min, e2.min),
+		max(e1.max, e2.max),
+	)
+end
+function union(elist::Vector{PExtents1D})
+	result = PExtents1D(DNaN, DNaN)
+	for ext in elist
+		result = union(result, ext)
+	end
+	return result
+end
+
 function union(e1::PExtents2D, e2::PExtents2D)
 	return PExtents2D(
 		min(e1.xmin, e2.xmin),
@@ -79,11 +130,24 @@ function union(e1::PExtents2D, e2::PExtents2D)
 		max(e1.ymax, e2.ymax),
 	)
 end
+function union(elist::Vector{PExtents2D})
+	result = PExtents2D(DNaN, DNaN, DNaN, DNaN)
+	for ext in elist
+		result = union(result, ext)
+	end
+	return result
+end
 
 #Overwrite with new extents, if defined
 #-------------------------------------------------------------------------------
+function Base.merge(base::PExtents1D, new::PExtents1D)
+	baseifnan(bv, nv) = isnan(nv)? bv: nv
+	emin = baseifnan(base.min, new.min)
+	emax = baseifnan(base.max, new.max)
+	return PExtents1D(emin, emax)
+end
+
 function Base.merge(base::PExtents2D, new::PExtents2D)
-	#Pick maximum extents 
 	baseifnan(bv, nv) = isnan(nv)? bv: nv
 	xmin = baseifnan(base.xmin, new.xmin)
 	xmax = baseifnan(base.xmax, new.xmax)
@@ -91,6 +155,8 @@ function Base.merge(base::PExtents2D, new::PExtents2D)
 	ymax = baseifnan(base.ymax, new.ymax)
 	return PExtents2D(xmin, xmax, ymin, ymax)
 end
+
+Base.isfinite(ext::PExtents1D) = isfinite(ext.min) && isfinite(ext.max)
 
 Base.isfinite(ext::PExtents2D) =
 	isfinite(ext.xmin) && isfinite(ext.xmax) &&
@@ -132,21 +198,5 @@ function interpolate(p1::Point2D, p2::Point2D, x::DReal)
 	m = (p2.y-p1.y) / (p2.x-p1.x)
 	return m*(x-p1.x)+p1.y
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #Last line

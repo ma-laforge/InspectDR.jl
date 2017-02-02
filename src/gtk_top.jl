@@ -78,10 +78,11 @@ function plothover_coordformatting(lstyle::TickLabelStyle, lines::GridLines)
 	return fmt
 end
 
-function plothover_coordstr(axes::AxesRect, ext::PExtents2D, xlstyle::TickLabelStyle, ylstyle::TickLabelStyle, x::DReal, y::DReal)
-	x = datamap_rev(x, axes.xscale)
-	y = datamap_rev(y, axes.yscale)
-	grid = gridlines(axes, ext)
+function plothover_coordstr(xs::AxisScale, ys::AxisScale, grid::PlotGrid, ext::PExtents2D, xlstyle::TickLabelStyle, ylstyle::TickLabelStyle, x::DReal, y::DReal)
+	x = axis2read(x, InputXfrm1DSpec(xs))
+	y = axis2read(y, InputXfrm1DSpec(ys))
+	#TODO: keep coord formatting around instead of re-_eval-uating:
+	grid = coord_grid(grid, xs, ys, ext)
 	fmt = plothover_coordformatting(xlstyle, grid.xlines)
 	xstr = formatted(x, fmt)
 	fmt = plothover_coordformatting(ylstyle, grid.ylines)
@@ -89,16 +90,30 @@ function plothover_coordstr(axes::AxesRect, ext::PExtents2D, xlstyle::TickLabelS
 	return "(x, y) = ($xstr, $ystr)"
 end
 
-#Show rectangular coordinates for Smith (not transformed, for the moment):
-plothover_coordstr(axes::AxesSmith, ext::PExtents2D, xlstyle::TickLabelStyle, ylstyle::TickLabelStyle, x::DReal, y::DReal) =
-	plothover_coordstr(AxesRect(:lin, :lin), ext, xlstyle, ylstyle, x, y)
+function handleevent_plothover(gplot::GtkPlot, pwidget::PlotWidget, x::Float64, y::Float64)
+	const plot = pwidget.src
+	const lyt = plot.layout
+	istrip = 0
+	for i = 1:length(plot.strips)
+		if isinside(pwidget.graphbblist[i], x, y)
+			istrip = i
+			break
+		end
+	end
 
-function handleevent_plothover(gplot::GtkPlot, pwidget::PlotWidget, x::DReal, y::DReal)
-	plot = pwidget.src
-	lyt = plot.layout
-	ext = getextents_xfrm(plot)
-	statstr = plothover_coordstr(plot.axes, ext, lyt.xlabelformat, lyt.ylabelformat, x, y)
+	if istrip > 0
+		ext = getextents_axis(plot, istrip)
+		xf = Transform2D(ext, pwidget.graphbblist[istrip])
+		pt = ptmap_rev(xf, Point2D(x, y))
+		strip = plot.strips[istrip]
+		statstr = plothover_coordstr(plot.xscale, strip.yscale, strip.grid, ext, lyt.xlabelformat, lyt.ylabelformat, pt.x, pt.y)
+	else
+#		statstr = plothover_coordstr(plot.xscale, LinScale(), strip.grid, ext, lyt.xlabelformat, lyt.ylabelformat, DNaN, DNaN)
+		statstr = "(x, y) = ( , )"
+	end
+
 	setproperty!(gplot.status, :label, statstr)
+	nothing
 end
 
 
@@ -148,10 +163,10 @@ function PlotWidget(plot::Plot)
 	#TODO: or can we resize in some intelligent way??
 	#bufsurf = Cairo.CairoRGBSurface(1920,1200) #Appears slow for average monitor size???
 #	bufsurf = Gtk.cairo_surface_for(canvas) #create similar - does not work here
-	pwidget = PlotWidget(vbox, canvas, plot,
-		BoundingBox(0,1,0,1), ISNormal(),
+	curstrip = 1 #TODO: Is this what is desired?
+	pwidget = PlotWidget(vbox, canvas, plot, [], ISNormal(),
 		w_xscale, xscale, w_xpos, xpos,
-		bufsurf, GtkSelection(), true, true,
+		bufsurf, curstrip, GtkSelection(), true, true,
 		#Event handlers:
 		nothing
 	)

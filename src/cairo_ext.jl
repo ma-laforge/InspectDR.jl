@@ -61,7 +61,7 @@ function setclip(ctx::CairoContext, bb::BoundingBox)
 end
 
 #Set linestyle/linewidth.
-function setlinestyle(ctx::CairoContext, style::Symbol, linewidth::Float64)
+function _setlinestyle(ctx::CairoContext, style::Symbol, linewidth::Float64)
 
 	dashes = Float64[] #default (:solid)
 	offset = 0
@@ -82,9 +82,9 @@ function setlinestyle(ctx::CairoContext, style::Symbol, linewidth::Float64)
 	Cairo.set_dash(ctx, dashes.*linewidth, offset)
 end
 
-function setlinestyle(ctx::CairoContext, a::LineAttributes)
-	Cairo.set_source(ctx, a.color)
-	setlinestyle(ctx, a.style, Float64(a.width))
+function setlinestyle(ctx::CairoContext, s::LineStyle)
+	Cairo.set_source(ctx, s.color)
+	_setlinestyle(ctx, s.style, s.width)
 end
 
 #Conditionnaly render fill (preserve path for stroke)
@@ -111,7 +111,7 @@ function drawrectangle(ctx::CairoContext, bb::BoundingBox, aa::AreaAttributes)
 	Cairo.set_source(ctx, aa.fillcolor)
 	Cairo.rectangle(ctx, bb)
 	Cairo.fill_preserve(ctx)
-	setlinestyle(ctx, aa.line)
+	setlinestyle(ctx, LineStyle(aa.line))
 	Cairo.stroke(ctx)
 end
 

@@ -21,13 +21,13 @@ const ALIGN_MAP = Dict{Symbol, CAlignment}(
 
 #==Rendering text annotation
 ===============================================================================#
-function render(canvas::PCanvas2D, a::TextAnnotation, axes::Axes)
+function render(canvas::PCanvas2D, a::TextAnnotation, ixf::InputXfrm2D)
 	const ctx = canvas.ctx
 	const graphbb = canvas.graphbb
 	align = get(ALIGN_MAP, a.align, ALIGN_BOTTOM | ALIGN_LEFT)
 	angle = deg2rad(a.angle)
 
-	pt = _rescale(a.pt, axes)
+	pt = map2axis(a.pt, ixf)
 	pt = ptmap(canvas.xf, pt)
 	x = pt.x; y = pt.y
 	if isnan(x); x = graphbb.xmin; end
@@ -38,22 +38,28 @@ function render(canvas::PCanvas2D, a::TextAnnotation, axes::Axes)
 	return
 end
 
-render(canvas::PCanvas2D, alist::Vector{TextAnnotation}, axes::Axes) =
-	map((a)->render(canvas, a, axes::Axes), alist)
+function render(canvas::PCanvas2D, alist::Vector{TextAnnotation}, ixf::InputXfrm2D, strip::Int)
+	for a in alist
+		if 0 == a.strip || a.strip == strip
+			render(canvas, a, ixf)
+		end
+	end
+	return
+end
 
 
 #==Rendering markers
 ===============================================================================#
 
-function render(canvas::PCanvas2D, mkr::HVMarker, axes::Axes)
+function render(canvas::PCanvas2D, mkr::HVMarker, ixf::InputXfrm2D)
 	const ctx = canvas.ctx
 	const graphbb = canvas.graphbb
 	if :none == mkr.line.style
 		return
 	end
 
-	setlinestyle(ctx, mkr.line)
-	pt = _rescale(Point2D(mkr.pos, mkr.pos), axes)
+	setlinestyle(ctx, LineStyle(mkr.line))
+	pt = map2axis(Point2D(mkr.pos, mkr.pos), ixf)
 	pt = ptmap(canvas.xf, pt)
 
 	if mkr.vmarker
@@ -65,17 +71,24 @@ function render(canvas::PCanvas2D, mkr::HVMarker, axes::Axes)
 	return
 end
 
-render(canvas::PCanvas2D, mkrlist::Vector{HVMarker}, axes::Axes) =
-	map((mkr)->render(canvas, mkr, axes::Axes), mkrlist)
+
+function render(canvas::PCanvas2D, mkrlist::Vector{HVMarker}, ixf::InputXfrm2D, strip::Int)
+	for mkr in mkrlist
+		if 0 == mkr.strip || mkr.strip == strip
+			render(canvas, mkr, ixf)
+		end
+	end
+	return
+end
 
 
 #==Rendering polyline for annotation
 ===============================================================================#
-function render(canvas::PCanvas2D, a::PolylineAnnotation, axes::Axes)
+function render(canvas::PCanvas2D, a::PolylineAnnotation, ixf::InputXfrm2D)
 	const ctx = canvas.ctx
 
 	x = a.x; y = a.y
-	setlinestyle(ctx, a.line)
+	setlinestyle(ctx, LineStyle(a.line))
 	pt = ptmap(canvas.xf, Point2D(x[1], y[1]))
 	Cairo.move_to(ctx, pt.x, pt.y)
 	for i in 2:length(x)
@@ -89,12 +102,19 @@ function render(canvas::PCanvas2D, a::PolylineAnnotation, axes::Axes)
 	Cairo.stroke(ctx)
 
 #	function xf(x, y)
-#		pt = ptmap(canvas.xf, _rescale(Point2D(x,y), axes))
+#		pt = ptmap(canvas.xf, map2axis(Point2D(x,y), ixf))
 #		return (x, y)
 #	end
 	return
 end
 
-render(canvas::PCanvas2D, alist::Vector{PolylineAnnotation}, axes::Axes) =
-	map((a)->render(canvas, a, axes::Axes), alist)
+function render(canvas::PCanvas2D, alist::Vector{PolylineAnnotation}, ixf::InputXfrm2D, strip::Int)
+	for a in alist
+		if 0 == a.strip || a.strip == strip
+			render(canvas, a, ixf)
+		end
+	end
+	return
+end
+
 #Last line

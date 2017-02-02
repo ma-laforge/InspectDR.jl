@@ -53,13 +53,8 @@ userinput_donothing(pwidget::PlotWidget) = nothing
 
 #==Wrapper functions
 ===============================================================================#
-function raiseevent_plothover(pwidget::PlotWidget, event::Gtk.GdkEventMotion)
-	ext = getextents_xfrm(pwidget.src)
-	xf = Transform2D(ext, pwidget.graphbb)
-	pt = ptmap_rev(xf, Point2D(event.x, event.y))
-	raiseevent(pwidget.eh_plothover, pwidget, DReal(pt.x), DReal(pt.y))
-	nothing
-end
+raiseevent_plothover(pwidget::PlotWidget, event::Gtk.GdkEventMotion) =
+	raiseevent(pwidget.eh_plothover, pwidget, event.x, event.y)
 
 
 #==Default event handlers
