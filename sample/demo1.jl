@@ -33,7 +33,7 @@ t_lres = collect(0:(tmax/10):tmax)
 
 #==Generate plot
 ===============================================================================#
-plot = InspectDR.Plot2D(title="Sample Plot (λ)")
+plot = InspectDR.transientplot(:lin, title="Sample Plot (λ)")
 plot.layout = InspectDR.Layout(fontname="monospace", fontscale=1.5)
 plot.layout.legend.enabled = true
 plot.layout.legend.width = 150
@@ -51,16 +51,10 @@ wfrm = add(plot, t, y-1, id="sin(2πt)-1")
 wfrm = add(plot, t_lres, -2+4*(t_lres./tmax), id="-2+4t/tmax")
 	wfrm.line = line(color=blue, width=3, style=:dash)
 	wfrm.glyph = glyph(shape=:*, size=10)
-#= Supported shapes:
-	:square, :diamond,
-	:uarrow, :darrow, :larrow, :rarrow, #usually triangles
-	:cross, :+, :diagcross, :x,
-	:circle, :o, :star, :*,
-=#
 
 a = plot.annotation
-a.xlabel = "Time (s)"
-a.ylabels = ["Signal Voltage (V)"]
+	a.xlabel = "Time (s)"
+	a.ylabels = ["Signal Voltage (V)"]
 
 #Show if uses f1 acceleration:
 for wfrm in plot.data

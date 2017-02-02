@@ -23,10 +23,11 @@ x = collect(1:length(y))
 #==Generate plot
 ===============================================================================#
 plot = InspectDR.Plot2D(title="Random Data Stressor")
+strip = plot.strips[1]
 plot.xres = 30 #coarse resolution
 #Δ = 1.323443/length(y)
-#plot.ext_full = InspectDR.PExtents2D(Δ, x[end]-2*Δ, NaN, NaN)
-plot.ext_full = InspectDR.PExtents2D(10, 2100, NaN, NaN)
+#plot.xext_full = InspectDR.PExtents1D(Δ, x[end]-2*Δ)
+plot.xext_full = InspectDR.PExtents1D(10, 2100)
 #plot.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
 
 style = :dashdot #solid/dashdot/...
@@ -37,7 +38,7 @@ wfrm = add(plot, x, y, id="rand")
 
 a = plot.annotation
 a.xlabel = "Time (s)"
-a.ylabel = "Signal Voltage (V)"
+a.ylabels = ["Signal Voltage (V)"]
 
 gplot = display(InspectDR.GtkDisplay(), plot)
 

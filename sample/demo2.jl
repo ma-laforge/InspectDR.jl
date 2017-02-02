@@ -61,28 +61,22 @@ mplot.ncolumns = 2
 
 smithext = InspectDR.PExtents1D(min=-1.2,max=1.2) #Padded a bit
 
-plot_linf = InspectDR.Plot2D()
+plot_linf = InspectDR.Plot2D(:lin, :dB20)
 	graph_linf = plot_linf.strips[1]
-	plot_linf.xscale = InspectDR.AxisScale(:lin)
-	graph_linf.yscale = InspectDR.AxisScale(:dB20)
 	graph_linf.yext_full = InspectDR.PExtents1D(max=5)
 #	plot_linf.layout.legend.enabled=true
-plot_logf = InspectDR.Plot2D()
+plot_logf = InspectDR.Plot2D(:log10, :dB20)
 	graph_logf = plot_logf.strips[1]
-	plot_logf.xscale = InspectDR.AxisScale(:log10)
-	graph_logf.yscale = InspectDR.AxisScale(:dB20)
 	plot_logf.xext_full = InspectDR.PExtents1D(min=10e6) #Avoid issues with log scale
 	graph_logf.yext_full = InspectDR.PExtents1D(max=5)
 	graph_logf.grid = InspectDR.GridRect(vmajor=true, vminor=true, hmajor=true)
-plot_ysmith = InspectDR.Plot2D()
+plot_ysmith = InspectDR.smithchart(:Y, title="Y-Smith Chart")
 	graph_ysmith = plot_ysmith.strips[1]
-	graph_ysmith.grid = InspectDR.GridSmith(:Y)
 	plot_ysmith.xext_full = smithext
 	graph_ysmith.yext_full = smithext
 	plot_ysmith.layout.legend.enabled=true
-plot_zsmith = InspectDR.Plot2D()
+plot_zsmith = InspectDR.smithchart(:Z, ref=50, title="Z-Smith Chart")
 	graph_zsmith = plot_zsmith.strips[1]
-	graph_zsmith.grid = InspectDR.GridSmith(:Z, ref=50)
 	plot_zsmith.xext_full = smithext
 	graph_zsmith.yext_full = smithext
 	plot_zsmith.layout.legend.enabled=true
@@ -93,16 +87,6 @@ for plot in [plot_linf, plot_logf]
 	a.xlabel = "Frequency (Hz)"
 	a.ylabels = ["Magnitude (dB)"]
 end
-
-a = plot_ysmith.annotation
-	a.title = "Y-Smith Chart"
-	a.xlabel = "Real(Γ)"
-	a.ylabels = ["Imaginary(Γ)"]
-
-a = plot_zsmith.annotation
-	a.title = "Z-Smith Chart"
-	a.xlabel = "Real(Γ)"
-	a.ylabels = ["Imaginary(Γ)"]
 
 #Select which plots to actually display:
 plotlist = [plot_linf, plot_logf, plot_ysmith, plot_zsmith]

@@ -52,7 +52,7 @@ plot.xres=1000 #Force resolution
 a = plot.annotation
 a.title = "Sample Plot (λ)"
 a.xlabel = "Time (s)"
-a.ylabel = "Signal Voltage (V)"
+a.ylabels = ["Signal Voltage (V)"]
 
 gplot = display(InspectDR.GtkDisplay(), plot)
 

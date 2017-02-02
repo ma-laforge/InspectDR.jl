@@ -28,7 +28,7 @@ function render(canvas::PCanvas2D, a::TextAnnotation, ixf::InputXfrm2D)
 	angle = deg2rad(a.angle)
 
 	pt = map2axis(a.pt, ixf)
-	pt = ptmap(canvas.xf, pt)
+	pt = map2dev(canvas.xf, pt)
 	x = pt.x; y = pt.y
 	if isnan(x); x = graphbb.xmin; end
 	if isnan(y); y = graphbb.ymax; end
@@ -60,7 +60,7 @@ function render(canvas::PCanvas2D, mkr::HVMarker, ixf::InputXfrm2D)
 
 	setlinestyle(ctx, LineStyle(mkr.line))
 	pt = map2axis(Point2D(mkr.pos, mkr.pos), ixf)
-	pt = ptmap(canvas.xf, pt)
+	pt = map2dev(canvas.xf, pt)
 
 	if mkr.vmarker
 		drawline(ctx, Point2D(pt.x, graphbb.ymin), Point2D(pt.x, graphbb.ymax))
@@ -89,10 +89,10 @@ function render(canvas::PCanvas2D, a::PolylineAnnotation, ixf::InputXfrm2D)
 
 	x = a.x; y = a.y
 	setlinestyle(ctx, LineStyle(a.line))
-	pt = ptmap(canvas.xf, Point2D(x[1], y[1]))
+	pt = map2dev(canvas.xf, Point2D(x[1], y[1]))
 	Cairo.move_to(ctx, pt.x, pt.y)
 	for i in 2:length(x)
-		pt = ptmap(canvas.xf, Point2D(x[i], y[i]))
+		pt = map2dev(canvas.xf, Point2D(x[i], y[i]))
 		Cairo.line_to(ctx, pt.x, pt.y)
 	end
 	if a.closepath
@@ -102,7 +102,7 @@ function render(canvas::PCanvas2D, a::PolylineAnnotation, ixf::InputXfrm2D)
 	Cairo.stroke(ctx)
 
 #	function xf(x, y)
-#		pt = ptmap(canvas.xf, map2axis(Point2D(x,y), ixf))
+#		pt = map2dev(canvas.xf, map2axis(Point2D(x,y), ixf))
 #		return (x, y)
 #	end
 	return

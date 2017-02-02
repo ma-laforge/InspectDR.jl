@@ -104,8 +104,8 @@ function zoom(pwidget::PlotWidget, bb::BoundingBox, istrip::Int)
 
 	ext = getextents_axis(pwidget.src, istrip)
 	xf = Transform2D(ext, pwidget.graphbblist[istrip])
-	p1 = ptmap_rev(xf, p1)
-	p2 = ptmap_rev(xf, p2)
+	p1 = map2axis(xf, p1)
+	p2 = map2axis(xf, p2)
 
 	if pwidget.hallowed
 		setxextents_axis(pwidget.src, PExtents1D(min(p1.x, p2.x), max(p1.x, p2.x)))
@@ -153,7 +153,7 @@ function zoom(pwidget::PlotWidget, x::Float64, y::Float64, ratio::Float64, istri
 	pt = Point2D(x, y)
 	ext = getextents_axis(pwidget.src, istrip)
 	xf = Transform2D(ext, pwidget.graphbblist[istrip])
-	pt = ptmap_rev(xf, pt)
+	pt = map2axis(xf, pt)
 	zoom(pwidget, ext, pt, ratio, istrip)
 end
 zoom_out(pwidget::PlotWidget, x::Float64, y::Float64, stepratio::Float64=ZOOM_STEPRATIO) =
@@ -250,7 +250,7 @@ pan_down(pwidget::PlotWidget) = pan_yratio(pwidget, -PAN_STEPRATIO)
 function mousepan_delta(pwidget::PlotWidget, ext::PExtents2D, Δx::Float64, Δy::Float64, istrip::Int)
 	#Convert to plot coordinates:
 	xf = Transform2D(ext, pwidget.graphbblist[istrip])
-	Δvec = vecmap_rev(xf, Point2D(-Δx, -Δy))
+	Δvec = map2axis_vec(xf, Point2D(-Δx, -Δy))
 
 	setextents_axis(pwidget.src, ext, istrip) #Restore original extents before overwriting
 

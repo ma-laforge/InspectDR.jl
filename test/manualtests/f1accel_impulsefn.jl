@@ -26,19 +26,21 @@ y[div(length(t), 2)] = 1
 #==Generate plot
 ===============================================================================#
 plot = InspectDR.Plot2D(title="Sample Plot (λ)")
-plot.ext_full = InspectDR.PExtents2D(0, NaN, -.2, 1.2)
+strip = plot.strips[1]
+plot.xext_full = InspectDR.PExtents1D(0, NaN)
+strip.yext_full = InspectDR.PExtents1D(-.2, 1.2)
 plot.xres = 100 #coarse resolution
 #plot.layout.grid = grid(vmajor=true, vminor=true, hmajor=true)
 
 style = :dashdot #solid/dashdot/...
 wfrm = add(plot, t, y, id="y")
 	wfrm.line = line(style=:none)
-#	wfrm.line = line(style=:solid)
+	wfrm.line = line(style=:solid)
 	wfrm.glyph = glyph(shape=:o, size=10, color=blue)
 
 a = plot.annotation
 a.xlabel = "Time (s)"
-a.ylabel = "Signal Voltage (V)"
+a.ylabels = ["Signal Voltage (V)"]
 
 gplot = display(InspectDR.GtkDisplay(), plot)
 

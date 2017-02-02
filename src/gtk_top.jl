@@ -93,18 +93,12 @@ end
 function handleevent_plothover(gplot::GtkPlot, pwidget::PlotWidget, x::Float64, y::Float64)
 	const plot = pwidget.src
 	const lyt = plot.layout
-	istrip = 0
-	for i = 1:length(plot.strips)
-		if isinside(pwidget.graphbblist[i], x, y)
-			istrip = i
-			break
-		end
-	end
+	istrip = hittest(pwidget, x, y)
 
 	if istrip > 0
 		ext = getextents_axis(plot, istrip)
 		xf = Transform2D(ext, pwidget.graphbblist[istrip])
-		pt = ptmap_rev(xf, Point2D(x, y))
+		pt = map2axis(xf, Point2D(x, y))
 		strip = plot.strips[istrip]
 		statstr = plothover_coordstr(plot.xscale, strip.yscale, strip.grid, ext, lyt.xlabelformat, lyt.ylabelformat, pt.x, pt.y)
 	else

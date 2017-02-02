@@ -22,60 +22,37 @@ blue = RGB24(0, 0, 1)
 ===============================================================================#
 mplot = InspectDR.Multiplot(title="Empty/Undefined Plots")
 mplot.ncolumns = 2
-xlabel = "Time (s)"
-ylabel = "Signal Voltage (V)"
+xlabel = "X-Axis (X-Unit)"
+ylabel = "Y-Axis (Y-Unit)"
+kwargs = (:xlabel=>xlabel, :ylabels=>[ylabel])
 
 #Subplot 1
 #-------------------------------------------------------------------------------
-plot = add(mplot, InspectDR.Plot2D)
-a = plot.annotation
-	a.title = "xmax = ∞"
-	a.xlabel = xlabel
-	a.ylabels = [ylabel]
+plot = add(mplot, InspectDR.Plot2D(:lin, :lin, title="xmax = ∞"; kwargs...))
 wfrm = add(plot, Float64[0, Inf], Float64[0, 1])
 
 #Subplot 2
 #-------------------------------------------------------------------------------
-plot = add(mplot, InspectDR.Plot2D)
-a = plot.annotation
-	a.title = "xmin = NaN"
-	a.xlabel = xlabel
-	a.ylabels = [ylabel]
+plot = add(mplot, InspectDR.Plot2D(:lin, :lin, title="xmin = NaN"; kwargs...))
 wfrm = add(plot, Float64[NaN, 1], Float64[0, 1])
 
 #Subplot 3
 #-------------------------------------------------------------------------------
-plot = add(mplot, InspectDR.Plot2D)
-a = plot.annotation
-	a.title = "ymin = -∞"
-	a.xlabel = xlabel
-	a.ylabels = [ylabel]
+plot = add(mplot, InspectDR.Plot2D(:lin, :lin, title="ymin = -∞"; kwargs...))
 wfrm = add(plot, Float64[0, 1], Float64[-Inf, 0])
 
 #Subplot 4
 #-------------------------------------------------------------------------------
-plot = add(mplot, InspectDR.Plot2D)
-a = plot.annotation
-	a.title = "ymax = NaN"
-	a.xlabel = xlabel
-	a.ylabels = [ylabel]
+plot = add(mplot, InspectDR.Plot2D(:lin, :lin, title="ymax = NaN"; kwargs...))
 wfrm = add(plot, Float64[0, 1], Float64[1, NaN])
 
 #Subplot 5
 #-------------------------------------------------------------------------------
-plot = add(mplot, InspectDR.Plot2D)
-a = plot.annotation
-	a.title = "No Data"
-	a.xlabel = xlabel
-	a.ylabels = [ylabel]
+plot = add(mplot, InspectDR.Plot2D(:lin, :lin, title="No Data"; kwargs...))
 
 #Subplot 6
 #-------------------------------------------------------------------------------
-plot = add(mplot, InspectDR.Plot2D)
-a = plot.annotation
-	a.title = "xmin = xmax"
-	a.xlabel = xlabel
-	a.ylabels = [ylabel]
+plot = add(mplot, InspectDR.Plot2D(:lin, :lin, title="xmin = xmax"; kwargs...))
 wfrm = add(plot, Float64[2, 2], Float64[0, 1])
 
 #Display

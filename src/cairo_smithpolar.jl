@@ -47,7 +47,7 @@ render_xcircles(ctx::CairoContext, clist::Vector{DReal}) =
 function render_rcirclelabel(ctx::CairoContext, xf::Transform2D, pt::Point2D, xflip::Bool, lbl::String)
 	xscale = xflip? -1: 1
 	xalign = xflip? ALIGN_LEFT: ALIGN_RIGHT
-	pt = ptmap(xf, Point2D(xscale*pt.x, pt.y))
+	pt = map2dev(xf, Point2D(xscale*pt.x, pt.y))
 	render(ctx, lbl, Point2D(pt.x-xscale*SMITHLABEL_OFFSET, pt.y+SMITHLABEL_OFFSET),
 		align=ALIGN_TOP|xalign
 	)
@@ -73,9 +73,9 @@ function render_xcirclelabel(ctx::CairoContext, xf::Transform2D, pt::Point2D, xf
 
 	#Compute text position, including offset:
 	pt = Point2D(xscale*pt.x, pt.y)
-	vpos = vecmap(xf, pt) #Directional vector of label position
+	vpos = map2dev_vec(xf, pt) #Directional vector of label position
 	voffset = (SMITHLABEL_OFFSET/vecnorm(vpos))*vpos
-	pt = ptmap(xf, pt)+voffset
+	pt = map2dev(xf, pt)+voffset
 	render(ctx, lbl, pt, angle=Θ, align=ALIGN_BOTTOM|ALIGN_HCENTER)
 end
 function render_xcirclelabel(ctx::CairoContext, xf::Transform2D, xflip::Bool, refscale::Real, c::DReal)
@@ -141,7 +141,7 @@ Cairo.save(ctx) #-----
 
 	#Draw X=0 line:
 	setlinestyle(ctx, SMITH_MINOR_LINE)
-	y = ptmap(canvas.xf, Point2D(0, 0)).y
+	y = map2dev(canvas.xf, Point2D(0, 0)).y
 	drawline(ctx::CairoContext, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
 
 	#Draw labels:

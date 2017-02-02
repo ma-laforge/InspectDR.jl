@@ -174,6 +174,9 @@ function render(pwidget::PlotWidget)
 	render(ctx, pwidget.src, bb)
 	databb = databounds(bb, pwidget.src.layout, grid1(pwidget.src))
 	pwidget.graphbblist = graphbounds_list(databb, pwidget.src.layout, length(pwidget.src.strips))
+	nstrips = length(pwidget.graphbblist)
+	pwidget.curstrip = max(pwidget.curstrip, 1) #Focus on 1st strip - if no strip has focus
+	pwidget.curstrip = min(pwidget.curstrip, nstrips) #Make sure focus is not beyond nstrips
 	Cairo.destroy(ctx)
 end
 

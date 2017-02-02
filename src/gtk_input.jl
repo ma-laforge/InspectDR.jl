@@ -50,6 +50,26 @@ function userinput_setstate_normal(pwidget::PlotWidget)
 end
 userinput_donothing(pwidget::PlotWidget) = nothing
 
+#Returns 0 or strip index:
+function hittest(pwidget::PlotWidget, x::Float64, y::Float64)
+	const plot = pwidget.src
+	for i = 1:length(plot.strips)
+		if isinside(pwidget.graphbblist[i], x, y)
+			return i
+		end
+	end
+	return 0
+end
+
+#Set focus on active strip under x,y coordinates:
+function focus_strip(pwidget::PlotWidget, x::Float64, y::Float64)
+	istrip = hittest(pwidget, x, y)
+	if istrip > 0
+		pwidget.curstrip = istrip
+	end
+	nothing
+end
+
 
 #==Wrapper functions
 ===============================================================================#
@@ -123,6 +143,9 @@ end
 ===============================================================================#
 function handleevent_mousepress(::ISNormal, pwidget::PlotWidget, event::Gtk.GdkEventButton)
 #	@show event.state, event.button, event.event_type
+	focus_strip(pwidget, event.x, event.y)
+	focus(pwidget.widget) #In case not in focus
+
 	if 3==event.button
 		boxzoom_setstart(pwidget, event.x, event.y)
 		pwidget.state = ISSelectingArea()
@@ -132,8 +155,6 @@ function handleevent_mousepress(::ISNormal, pwidget::PlotWidget, event::Gtk.GdkE
 			pwidget.state = ISPanningData()
 		end
 	end
-
-	focus(pwidget.widget) #In case not in focus
 end
 
 

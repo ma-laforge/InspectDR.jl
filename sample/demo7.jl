@@ -68,28 +68,16 @@ pmargin = 180+phase0
 
 #==Generate plot
 ===============================================================================#
-mplot = InspectDR.Multiplot(title="Bode Plot")
+mplot = InspectDR.Multiplot(title="Bode Template Test")
 mplot.hplot*=.6 #Bode plot looks better with wider aspect ratio
 
-plot = add(mplot, InspectDR.Plot2D)
-	push!(plot.strips, InspectDR.GraphStrip())
+plot = add(mplot, InspectDR.bodeplot())
 	strip_mag, strip_phase = plot.strips
-
-	a = plot.annotation
-		a.xlabel = "Frequency (Hz)"
-		a.ylabels = ["Magnitude (dB)", "Phase (°)"]
 
 	#Define extents & scales:
 	plot.xext_full = InspectDR.PExtents1D(min=fmin_disp) #Avoid issues with log scale
-	plot.xscale = InspectDR.AxisScale(:log10)
-	strip_mag.yscale = InspectDR.AxisScale(:dB20)
 	strip_mag.yext_full = InspectDR.PExtents1D(min=-10)
 	strip_phase.yext_full = InspectDR.PExtents1D(min=-180)
-
-	#Control grid:
-	for strip in plot.strips
-		strip.grid = InspectDR.GridRect(vmajor=true, vminor=true, hmajor=false)
-	end
 
 	#Add waveforms:
 	wfrm = add(plot, f, X, strip=1)

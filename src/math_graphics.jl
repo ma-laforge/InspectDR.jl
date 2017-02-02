@@ -166,27 +166,27 @@ Base.isfinite(ext::PExtents2D) =
 #==Mapping/interpolation functions
 ===============================================================================#
 
-#Apply transform that maps a data point to the canvas
-#-------------------------------------------------------------------------------
-function ptmap(xf::Transform2D, pt::Point2D)
+#Map axis -> device coordinates:
+function map2dev(xf::Transform2D, pt::Point2D)
 	x = (pt.x + xf.x0)*xf.xs
 	y = (pt.y + xf.y0)*xf.ys
 	return Point2D(x, y)
 end
-function ptmap_rev(xf::Transform2D, pt::Point2D)
+#Map device -> axis coordinates (reverse mapping):
+function map2axis(xf::Transform2D, pt::Point2D)
 	x = pt.x/xf.xs - xf.x0
 	y = pt.y/xf.ys - xf.y0
 	return Point2D(x, y)
 end
 
-#Apply transform that maps a vector to the canvas (device) coordinates
-#-------------------------------------------------------------------------------
-function vecmap(xf::Transform2D, pt::Point2D)
+#Map vectors between axis -> device coordinate systems:
+function map2dev_vec(xf::Transform2D, pt::Point2D)
 	x = pt.x*xf.xs
 	y = pt.y*xf.ys
 	return Point2D(x, y)
 end
-function vecmap_rev(xf::Transform2D, pt::Point2D)
+#Map vectors between device -> axis coordinate systems (reverse mapping):
+function map2axis_vec(xf::Transform2D, pt::Point2D)
 	x = pt.x/xf.xs
 	y = pt.y/xf.ys
 	return Point2D(x, y)

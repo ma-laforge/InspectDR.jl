@@ -113,7 +113,8 @@ function render(ctx::CairoContext, a::Annotation,
 	const TIMESTAMP_OFFSET = 3
 
 	#Title
-	xcenter = (bb.xmin+bb.xmax)/2
+#	xcenter = (bb.xmin+bb.xmax)/2 #Entire plot BB.
+	xcenter = (databb.xmin+databb.xmax)/2 #Data-area BB only.
 	pt = Point2D(xcenter, bb.ymin+lyt.htitle/2)
 	render(ctx, a.title, pt, lyt.fnttitle, align=ALIGN_HCENTER|ALIGN_VCENTER)
 
@@ -157,14 +158,14 @@ function render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	if xlines.displaymajor
 		setlinestyle(ctx, GRID_MAJOR_LINE)
 		for xline in xlines.major
-			x = ptmap(xf, Point2D(xline, 0)).x
+			x = map2dev(xf, Point2D(xline, 0)).x
 			drawline(ctx, Point2D(x, graphbb.ymin), Point2D(x, graphbb.ymax))
 		end
 	end
 	if xlines.displayminor
 		setlinestyle(ctx, GRID_MINOR_LINE)
 		for xline in xlines.minor
-			x = ptmap(xf, Point2D(xline, 0)).x
+			x = map2dev(xf, Point2D(xline, 0)).x
 			drawline(ctx, Point2D(x, graphbb.ymin), Point2D(x, graphbb.ymax))
 		end
 	end
@@ -174,14 +175,14 @@ function render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	if ylines.displaymajor
 		setlinestyle(ctx, GRID_MAJOR_LINE)
 		for yline in ylines.major
-			y = ptmap(xf, Point2D(0, yline)).y
+			y = map2dev(xf, Point2D(0, yline)).y
 			drawline(ctx, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
 		end
 	end
 	if ylines.displayminor
 		setlinestyle(ctx, GRID_MINOR_LINE)
 		for yline in ylines.minor
-			y = ptmap(xf, Point2D(0, yline)).y
+			y = map2dev(xf, Point2D(0, yline)).y
 			drawline(ctx, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
 		end
 	end
@@ -234,14 +235,14 @@ function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	yframe = graphbb.ymax
 	ylabel = graphbb.ymax + lyt.vlabeloffset
 	for xtick in xlines.major
-		x = ptmap(xf, Point2D(xtick, 0)).x
+		x = map2dev(xf, Point2D(xtick, 0)).x
 		if ticklabels
 			render_ticklabel(ctx, xtick, Point2D(x, ylabel), lyt.fntticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, xs)
 		end
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
 	end
 	for xtick in xlines.minor
-		x = ptmap(xf, Point2D(xtick, 0)).x
+		x = map2dev(xf, Point2D(xtick, 0)).x
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MINOR_LEN))
 	end
 	if fmt.splitexp
@@ -255,12 +256,12 @@ function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	xframe = graphbb.xmin
 	xlabel = graphbb.xmin - lyt.hlabeloffset
 	for ytick in ylines.major
-		y = ptmap(xf, Point2D(0, ytick)).y
+		y = map2dev(xf, Point2D(0, ytick)).y
 		render_ticklabel(ctx, ytick, Point2D(xlabel, y), lyt.fntticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, ys)
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
 	end
 	for ytick in ylines.minor
-		y = ptmap(xf, Point2D(0, ytick)).y
+		y = map2dev(xf, Point2D(0, ytick)).y
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MINOR_LEN, y))
 	end
 	if fmt.splitexp
@@ -333,12 +334,12 @@ function rendernans(canvas::PCanvas2D, wfrm::IWaveform)
 		if xnan && ynan
 			hasNaNNaN = true #nothing practical to display
 		elseif xnan
-			pt = ptmap(canvas.xf, pt)
+			pt = map2dev(canvas.xf, pt)
 			Cairo.move_to(ctx, graphbb.xmin, pt.y)
 			Cairo.line_to(ctx, graphbb.xmax, pt.y)
 			Cairo.stroke(ctx)
 		elseif ynan
-			pt = ptmap(canvas.xf, pt)
+			pt = map2dev(canvas.xf, pt)
 			Cairo.move_to(ctx, pt.x, graphbb.ymin)
 			Cairo.line_to(ctx, pt.x, graphbb.ymax)
 			Cairo.stroke(ctx)
@@ -369,7 +370,7 @@ if wfrm.line.style != :none
 	setlinestyle(ctx, LineStyle(wfrm.line))
 	newsegment = true
 	for i in 1:length(ds)
-		pt = ptmap(canvas.xf, ds[i])
+		pt = map2dev(canvas.xf, ds[i])
 		xnan = isnan(pt.x); ynan = isnan(pt.y)
 
 		#TODO: log NaNs?  Display NaNs?
@@ -400,7 +401,7 @@ end
 	fill = getglyphfill(wfrm.glyph)
 	gsize = Float64(wfrm.glyph.size)
 	for i in 1:length(ds)
-		pt = ptmap(canvas.xf, ds[i])
+		pt = map2dev(canvas.xf, ds[i])
 		drawglyph(ctx, _glyph, pt, gsize, fill)
 	end
 

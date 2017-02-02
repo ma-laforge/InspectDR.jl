@@ -42,7 +42,7 @@ Defaults() =
 
 #==Data
 ===============================================================================#
-function __init__()
+function initialize_defaults()
 	global const defaults = Defaults()
 	local userdefaults
 

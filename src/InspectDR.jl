@@ -50,6 +50,8 @@ include("cairo_smithpolar.jl")
 include("cairo_legends.jl")
 include("cairo_top.jl")
 include("cairo_io.jl")
+include("templates.jl")
+include("compat.jl")
 
 if GtkAvailable
 include("gtk_base.jl")
@@ -58,6 +60,8 @@ include("gtk_zoom.jl")
 include("gtk_top.jl")
 keybindings_setdefaults(keybindings)
 end
+
+include("show.jl")
 
 #include("precompile.jl")
 
@@ -116,8 +120,7 @@ About bounds:
 #==Exported interface
 ===============================================================================#
 add = _add #Danger: high risk of collision (common name)
-export add, line, glyph, grid
-export axes
+export add, line, glyph
 export vmarker, hmarker, atext
 
 #==Unexported interface
@@ -161,5 +164,10 @@ for the following MIMEs:
 		MIME"image/eps"
 		MIME"application/pdf"
 =#
+
+function __init__()
+	initialize_defaults()
+	checkcompat_plots()
+end
 
 end #module

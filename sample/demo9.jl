@@ -25,30 +25,24 @@ y = sin(2pi*(x./T))
 #Invalidate some data points:
 #NOTE: Cannot use F1-acceleration when x has NaN values
 x[200] = y[200] = NaN #Causes break
-x[400] = NaN
-y[500] = NaN
+x[460] = NaN
+x[505] = NaN
+y[580] = NaN
 
 for i in 800:900
 	y[i] = NaN
 end
-
 
 #==Generate plot
 ===============================================================================#
 mplot = InspectDR.Multiplot(title="Waveforms with NaN")
 mplot.ncolumns = 1
 
-plot = add(mplot, InspectDR.Plot2D())
-strip = plot.strips[1]
-	plot.xscale = InspectDR.AxisScale(:lin)
-	strip.yscale = InspectDR.AxisScale(:lin)
 
-	plot.displayNaN = true
-	a = plot.annotation
-		a.title = "Transient Data"
-		a.xlabel = "Time (s)"
-		a.ylabels = ["Voltage (V)"]
-
+plot = add(mplot, InspectDR.transientplot(:lin, title="Transient Data",
+	xlabel="Time (s)", ylabels=["Voltage (V)"])
+)
+	plot.displayNaN = true #Enable hilighting of NaN values (slower)
 	wfrm = add(plot, x, y)
 	wfrm.line = line(color=blue, width=3)
 
