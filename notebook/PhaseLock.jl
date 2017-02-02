@@ -5,6 +5,7 @@ end
 
 module PhaseLock
 
+import Graphics.BoundingBox
 import BodePlots
 
 using InspectDR
@@ -99,36 +100,41 @@ step_resp(s::Sys2, t::Vector) = 1-step_err(s, t)
 ===============================================================================#
 function newplot()
 	const w = 500; const h = w/1.6 #Select plot width/height
+	const yext_step = InspectDR.PExtents1D(0, 1.6)
 
 	mplot = InspectDR.Multiplot(title="PLL Characteristics")
+	Δh = mplot.htitle
 	mplot.ncolumns = 2
 	#Bode plot looks better with wider aspect ratio:
 	mplot.wplot = w; mplot.hplot = h/2
 
-	plot_mag = add(mplot, InspectDR.Plot2D)
 	plot_step = add(mplot, InspectDR.Plot2D)
-	plot_phase = add(mplot, InspectDR.Plot2D)
+	plot_bode = add(mplot, BodePlots.new(InspectDR.Plot))
 	plot_stepnorm = add(mplot, InspectDR.Plot2D)
 
-	#Bode plot:
-	BodePlots.init(plot_mag, plot_phase)
+	#Control where plots render:
+	plot_step.plotbb = BoundingBox(0, w, Δh, Δh+h/2)
+	plot_stepnorm.plotbb = BoundingBox(0, w, Δh+h/2, Δh+h)
+	plot_bode.plotbb = BoundingBox(w, 2w, Δh, Δh+h)
 
 	#Add title to bode plot:
-	a = plot_mag.annotation; lyt = plot_mag.layout
-		lyt.htitle = plot_step.layout.htitle #Restore space for subtitle
+	a = plot_bode.annotation
 		a.title = "Open-Loop Characteristics"
+	plot_bode.strips[1].yext_full = InspectDR.PExtents1D(-40, 100)
 
 	#Step-response plot:
-	a = plot_step.annotation; lyt = plot_step.layout
+	a = plot_step.annotation
 		a.title = "Step Response"
 		a.xlabel = "Time (s)"
-		a.ylabel = "Amplitude"
+		a.ylabels = ["Amplitude"]
+	plot_step.strips[1].yext_full = yext_step
 #		plot_step.layout.grid = grid(vmajor=true, vminor=true, hmajor=false)
 
 	a = plot_stepnorm.annotation; lyt = plot_stepnorm.layout
 		a.title = ""; lyt.htitle = 8 #subtitle/space
 		a.xlabel = "ωn*t (rad)"
-		a.ylabel = "Amplitude"
+		a.ylabels = ["Amplitude"]
+	plot_stepnorm.strips[1].yext_full = yext_step
 	
 	return mplot
 end
@@ -139,16 +145,20 @@ function update_step(plot::InspectDR.Plot2D, t::Vector, y::Vector)
 	const ldata = line(color=blue, width=3, style=:solid)
 
 	plot.data = [] #Clear old data
-	plot.ext_full = InspectDR.PExtents2D() #Reset full extents
+
+	#Reset extents:
+	plot.xext = InspectDR.PExtents1D()
+	plot.strips[1].yext = InspectDR.PExtents1D()
+
 	wfrm = add(plot, t, mag(y))
-	wfrm.line = ldata
-	plot.ext = InspectDR.PExtents2D(NaN, NaN, 0, 1.6)
+		wfrm.line = ldata
+
 	return plot
 end
 
 #Update annotation on Bode plot (enabled=false to clear annotation):
 #-------------------------------------------------------------------------------
-function update_bodeannot(plot_mag::Plot2D, plot_phase::Plot2D, G::Xf1, ωn)
+function update_bodeannot(plot_bode::Plot2D, G::Xf1, ωn)
 	const lmarker = line(style=:dash, width=2.5)
 	const lmarker_light = line(style=:solid, width=2.5, color=RGB24(.4,.4,.4))
 	const fp = G.ωp/(2pi)
@@ -162,19 +172,18 @@ function update_bodeannot(plot_mag::Plot2D, plot_phase::Plot2D, G::Xf1, ωn)
 	afont = InspectDR.Font(12) #Font for annotation
 
 	#Add annotation to Magnitude plot:
-#	add(plot_mag, atext("0dB", y=1, xoffset=0.5, yoffset=2/100, font=afont, align=:bc))
-	add(plot_mag, hmarker(1, lmarker_light))
+#	add(plot_bode, atext("0dB", y=1, xoffset=0.5, yoffset=2/100, font=afont, align=:bc, strip=1))
+	add(plot_bode, hmarker(1, lmarker_light, strip=1))
 
 	polelist = [("fp", fp), ("fz", fz), ("fn", fn), ("f0", f0)]
 	#Hack if f0>0: TODO: Fix bug where annotating text @ 0 on log plot causes glitch. 
 	for (id, f) in polelist
 		if isfinite(f) && f > 0
 			fstr = id * "=" * SI(f) * "Hz"
-			add(plot_mag, atext(fstr, x=f, xoffset=-1/100, yoffset=.5, font=afont, angle=-90, align=:bc))
+			add(plot_bode, atext(fstr, x=f, xoffset=-1/100, yoffset=.5, font=afont, angle=-90, align=:bc, strip=1))
 
 			#Add vertical markers to both plots:
-			add(plot_mag, vmarker(f, lmarker))
-			add(plot_phase, vmarker(f, lmarker))
+			add(plot_bode, vmarker(f, lmarker, strip=0))
 		end
 	end
 
@@ -182,8 +191,8 @@ function update_bodeannot(plot_mag::Plot2D, plot_phase::Plot2D, G::Xf1, ωn)
 	if isfinite(phase0)
 		pmargin = 180+phase0
 		fstr = "PM=" * @sprintf("%.1f°", pmargin)
-		add(plot_phase, atext(fstr, y=(phase0-180)/2, xoffset=0.5, font=afont, align=:cc))
-		add(plot_phase, hmarker(phase0, lmarker))
+		add(plot_bode, atext(fstr, y=(phase0-180)/2, xoffset=0.5, font=afont, align=:cc, strip=2))
+		add(plot_bode, hmarker(phase0, lmarker, strip=2))
 	end
 
 	return
@@ -195,21 +204,21 @@ end
 #ωnperiods: in # of ωn periods
 function update(mplot::InspectDR.Multiplot, fmin, fmax, tmax, ωnperiods, G::Xf1, annot=true)
 	const npts = 500 #for plots
-	const plot_mag = mplot.subplots[1]
-	const plot_phase = mplot.subplots[3]
-	const plot_step = mplot.subplots[2]
-	const plot_stepnorm = mplot.subplots[4]
+	const plot_step = mplot.subplots[1]
+	const plot_bode = mplot.subplots[2]
+	const plot_stepnorm = mplot.subplots[3]
 	const sys = Sys2(G) #Closed-loop response
 
 	f = logspace(log10(fmin), log10(fmax), npts)
 	y = xf_ol(2pi*f, G)
-	BodePlots.update(plot_mag, plot_phase, f, y)
-	plot_mag.ext = InspectDR.PExtents2D(NaN, NaN, -40, 100)
-	plot_mag.markers = [] #Clear old markers
-	plot_mag.atext = [] #Clear old annotation
-	plot_phase.markers = [] #Clear old markers
-	plot_phase.atext = [] #Clear old annotation
-	if annot; update_bodeannot(plot_mag, plot_phase, G, sys.ωn); end
+	BodePlots.update(plot_bode, f, y)
+
+	#Reset extents/annotation:
+	plot_bode.xext = InspectDR.PExtents1D()
+	plot_bode.strips[1].yext = InspectDR.PExtents1D()
+	plot_bode.markers = [] #Clear old markers
+	plot_bode.atext = [] #Clear old annotation
+	if annot; update_bodeannot(plot_bode, G, sys.ωn); end
 
 	#Absolute step:
 	tstep = tmax/npts

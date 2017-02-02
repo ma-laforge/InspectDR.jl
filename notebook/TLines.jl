@@ -60,6 +60,7 @@ end
 ===============================================================================#
 function newplot()
 	const w = 500; const h = w/1.6 #Select plot width/height
+	const smithext = InspectDR.PExtents1D(min=-1.2,max=1.2) #Padded a bit
 
 	mplot = InspectDR.Multiplot(title="Loaded Transmission Line")
 	mplot.ncolumns = 2
@@ -67,26 +68,20 @@ function newplot()
 #	mplot.wplot = w; mplot.hplot = h/2
 	#... But not Smith chart.
 
-	plot_mag = add(mplot, InspectDR.Plot2D)
-	plot_smith = add(mplot, InspectDR.Plot2D)
-	plot_phase = add(mplot, InspectDR.Plot2D)
-	htitle = plot_mag.layout.htitle #Restore later
+	plot_bode = add(mplot, BodePlots.new(InspectDR.Plot))
+	strip_mag, strip_phase = plot_bode.strips
+		strip_mag.yext_full = InspectDR.PExtents1D(-20, 0)
+		strip_phase.yext_full = InspectDR.PExtents1D(-200, 200)
+		plot_bode.annotation.title = "Reflection Coefficient (Γ)"
 
-	#Bode plot:
-	BodePlots.init(plot_mag, plot_phase)
 
-	#Add title to bode plot:
-	a = plot_mag.annotation; lyt = plot_mag.layout
-		lyt.htitle = htitle #Restore space for subtitle
-		a.title = "Reflection Coefficient (Γ)"
-
-	#Smith chart:
-	plot_smith.axes = InspectDR.axes(:smith, :Z, ref=50)
-	a = plot_smith.annotation
-		a.title = "Z-Smith Chart"
-		a.xlabel = "Real(Γ)"
-		a.ylabel = "Imaginary(Γ)"
-	plot_smith.ext_full = InspectDR.PExtents2D(xmin=-1.2,xmax=1.2,ymin=-1.2,ymax=1.2)
+	plot_smith = add(mplot, InspectDR.smithchart(:Z, ref=50))
+	strip = plot_smith.strips[1]
+		plot_smith.xext_full = smithext; strip.yext_full = smithext
+		a = plot_smith.annotation
+			a.title = "Z-Smith Chart"
+			a.xlabel = "Real(Γ)"
+			a.ylabels = ["Imaginary(Γ)"]
 
 	return mplot
 end
@@ -97,9 +92,8 @@ end
 function update(mplot::InspectDR.Multiplot, fmin, fmax, ltype::Symbol, R, L, C, ℓ, ZC, αdB)
 	const npts_bode = 500
 	const ldata = line(color=blue, width=3, style=:solid)
-	const plot_mag = mplot.subplots[1]
+	const plot_bode = mplot.subplots[1]
 	const plot_smith = mplot.subplots[2]
-	const plot_phase = mplot.subplots[3]
 	const αDC = (20/log(10)) * αdB #Nepers/m
 
 	#Add some frequency dependence to α (makes plot more interesting):
@@ -115,13 +109,13 @@ function update(mplot::InspectDR.Multiplot, fmin, fmax, ltype::Symbol, R, L, C, 
 	f = logspace(log10(fmin), log10(fmax), npts_bode)
 	jω = j*2pi*f
 	y = Γ(Zline(ZC, γline(f, α=fdepα(f, αDC)), ZL=Zload(jω,R,L,C), ℓ=ℓ))
-	BodePlots.update(plot_mag, plot_phase, f, y)
-	plot_mag.ext = InspectDR.PExtents2D(NaN, NaN, -20, 0)
-	plot_phase.ext = InspectDR.PExtents2D(NaN, NaN, -200, 200)
+	BodePlots.update(plot_bode, f, y)
+	strip_mag, strip_phase = plot_bode.strips
+		strip_mag.yext = InspectDR.PExtents1D() #Reset
+		strip_phase.yext = InspectDR.PExtents1D() #Reset
 
 	#Generate Smith chart:
 	plot_smith.data = [] #Clear old data
-#	plot_smith.ext_full = InspectDR.PExtents2D() #Reset full extents
 	β = imag(γline(fmax))
 	Θ = β * ℓ; nrev = Θ/pi #revs around the chart
 	npts = round(Int, 20*nrev) #Ensure sufficient # of points
@@ -132,10 +126,8 @@ function update(mplot::InspectDR.Multiplot, fmin, fmax, ltype::Symbol, R, L, C, 
 	wfrm.line = ldata
 
 	#Clear old annotation/markers:
-	for p in [plot_mag, plot_phase]
-		p.markers = []
-		p.atext = []
-	end
+	plot_bode.markers = []
+	plot_bode.atext = []
 
 	return mplot
 end

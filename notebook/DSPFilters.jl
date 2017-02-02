@@ -33,19 +33,18 @@ function newplot()
 	const w = 500
 	mplot = InspectDR.Multiplot(title="Filter Response")
 	#Mag/phase plots look better with wider aspect ratio:
-	mplot.wplot = w; mplot.hplot = w/2.3
+#	mplot.wplot = w; mplot.hplot = w/2.3 #Not needed with multi-y strips
 	mplot.ncolumns = 1
 
-	plot_mag = add(mplot, InspectDR.Plot2D)
-	plot_phase = add(mplot, InspectDR.Plot2D)
-
 	#Initialize as Bode plot:
-	BodePlots.init(plot_mag, plot_phase)
+	plot_bode = add(mplot, BodePlots.new(InspectDR.Plot))
+	strip_mag, strip_phase = plot_bode.strips
+		strip_mag.yext_full = InspectDR.PExtents1D(-90, 10)
+		strip_phase.yext_full = InspectDR.PExtents1D(-200, 200)
+		plot_bode.annotation.title = ""
 
 	#Use linear frequency instead of actual Bode plot:
-	plot_mag.axes = InspectDR.axes(:lin, :dB20)
-	plot_phase.axes = InspectDR.axes(:lin, :lin)
-
+	plot_bode.xscale = InspectDR.AxisScale(:lin)
 
 	return mplot
 end
@@ -58,8 +57,7 @@ function update(mplot::InspectDR.Multiplot, fmax, filttypeid::Symbol, filtimplid
 	const npts = 500
 	const ldata = line(color=blue, width=3, style=:solid)
 	const lspec = line(color=red, width=1, style=:solid) #Spectrum
-	const plot_mag = mplot.subplots[1]
-	const plot_phase = mplot.subplots[2]
+	const plot_bode = mplot.subplots[1]
 	const rlow = 1/100; const rhigh = 1-rlow
 	limfreqr(ratio) = clamp(ratio, rlow, rhigh)
 
@@ -98,10 +96,11 @@ function update(mplot::InspectDR.Multiplot, fmax, filttypeid::Symbol, filtimplid
 	fz = collect(linspace(0, pi, npts))
 	tf_graph = freqz(_filt, fz)
 	f = fz*(fmax/pi)
-	BodePlots.update(plot_mag, plot_phase, f, tf_graph)
-	plot_mag.ext = InspectDR.PExtents2D(NaN, NaN, -90, 10)
-	plot_phase.ext = InspectDR.PExtents2D(NaN, NaN, -200, 200)
-
+	BodePlots.update(plot_bode, f, tf_graph)
+	plot_bode.xext = InspectDR.PExtents1D() #Reset
+	strip_mag, strip_phase = plot_bode.strips
+		strip_mag.yext = InspectDR.PExtents1D() #Reset
+		strip_phase.yext = InspectDR.PExtents1D() #Reset
 
 	#Overlay spectrum using random data:
 	xin = rand(100000)
@@ -109,11 +108,11 @@ function update(mplot::InspectDR.Multiplot, fmax, filttypeid::Symbol, filtimplid
 	spec = rfft(xout)/sqrt(length(xin)/2)
 	fz = collect(linspace(0, pi, length(spec)))
 	f = fz*(fmax/pi)
-	wfrm = add(plot_mag, f, spec)
+	wfrm = add(plot_bode, f, spec, strip=1)
 	wfrm.line = lspec
 
 	#Hack to plot spectrum *before* (under) frequency graph:
-	plot_mag.data = reverse(plot_mag.data)
+	plot_bode.data = reverse(plot_bode.data)
 
 	return mplot
 end

@@ -47,76 +47,61 @@ f_3dB(f, G, f_z, f_p1, f_p2) =
 #==Main functions
 ===============================================================================#
 
-#Initialize Bode subplots:
-#-------------------------------------------------------------------------------
-function init(plot_mag::Plot2D, plot_phase::Plot2D)
-	plot_mag.axes = InspectDR.axes(:log10, :dB20)
-	a = plot_mag.annotation; lyt = plot_mag.layout
-	a.title = ""; lyt.htitle = 8 #No subtitle/space
-	a.xlabel = ""; lyt.haxlabel = 8 #No axis label/space
-	a.ylabel = "Magnitude (dB)"
-
-	plot_phase.axes = InspectDR.axes(:log10, :lin)
-	a = plot_phase.annotation; lyt = plot_phase.layout
-	a.title = ""; lyt.htitle = 8 #subtitle/space
-	a.xlabel = "Frequency (Hz)"; a.ylabel = "Phase (°)"
-
-	for splot in [plot_mag, plot_phase]
-		splot.layout.grid = grid(vmajor=true, vminor=true, hmajor=false)
-	end
-	
-	return
-end
-
 #Create new Bode plot:
 #-------------------------------------------------------------------------------
+function new(::Type{InspectDR.Plot})
+	plot = InspectDR.bodeplot()
+		strip_mag, strip_phase = plot.strips
+
+	#Define extents & scales:
+	strip_mag.yext_full = InspectDR.PExtents1D(-10, 25)
+	strip_phase.yext_full = InspectDR.PExtents1D(-180, 0)
+
+	return plot
+end
+
 function new()
 	const w = 500; const h = w/1.6 #Select plot width/height
 
-	mplot = InspectDR.Multiplot(title="Bode Plot")
+	mplot = InspectDR.Multiplot()
 	mplot.ncolumns = 1
 	#Bode plot looks better with wider aspect ratio:
-	mplot.wplot = w; mplot.hplot = h/2
+	mplot.wplot = w; mplot.hplot = h
 
-	plot_mag = add(mplot, InspectDR.Plot2D)
-	plot_phase = add(mplot, InspectDR.Plot2D)
-
-	init(plot_mag, plot_phase)
-
+	add(mplot, new(InspectDR.Plot))
 	return mplot
 end
 
+
 #Modify previously-generated Bode plot (base algorithm):
 #-------------------------------------------------------------------------------
-function update(plot_mag::Plot2D, plot_phase::Plot2D, f::Vector, y::Vector)
+function update(plot::Plot2D, f::Vector, y::Vector)
 	const ldata = line(color=blue, width=3, style=:solid)
+	strip_mag, strip_phase = plot.strips
 
-	plot_mag.data = [] #Clear old data
-	plot_mag.ext_full = InspectDR.PExtents2D() #Reset full extents
-	wfrm = add(plot_mag, f, mag(y))
-	wfrm.line = ldata
-	plot_mag.ext = InspectDR.PExtents2D(NaN, NaN, -10, 25)
+	plot.data = [] #Clear old data
 
-	plot_phase.data = [] #Clear old data
-	plot_phase.ext_full = InspectDR.PExtents2D() #Reset full extents
-	wfrm = add(plot_phase, f, phase(y))
-	wfrm.line = ldata
-	plot_phase.ext = InspectDR.PExtents2D(NaN, NaN, -180, 0)
+	#Reset extents:
+	plot.xext = InspectDR.PExtents1D()
+	strip_mag.yext = InspectDR.PExtents1D()
+	strip_phase.yext = InspectDR.PExtents1D()
+
+	wfrm = add(plot, f, mag(y), strip=1)
+		wfrm.line = ldata
+	wfrm = add(plot, f, phase(y), strip=2)
+		wfrm.line = ldata
 
 	return
 end
 
 #Update annotation on Bode plot (enabled=false to clear annotation):
 #-------------------------------------------------------------------------------
-function update_annotation(plot_mag::Plot2D, plot_phase::Plot2D, f0, fBW, phase0, enabled=true)
+function update_annotation(plot::Plot2D, f0, fBW, phase0, enabled=true)
 	const lmarker = line(style=:dash, width=2.5)
 	const lmarker_light = line(style=:dash, width=2.5, color=RGB24(.4,.4,.4))
 
-	plot_mag.markers = [] #Clear old markers
-	plot_mag.atext = [] #Clear old annotation
-
-	plot_phase.markers = [] #Clear old markers
-	plot_phase.atext = [] #Clear old annotation
+	plot.markers = [] #Clear old markers
+	plot.atext = [] #Clear old annotation
 
 	if !enabled; return; end
 
@@ -124,32 +109,30 @@ function update_annotation(plot_mag::Plot2D, plot_phase::Plot2D, f0, fBW, phase0
 	afont = InspectDR.Font(12) #Font for annotation
 
 	#Add vertical markers to both plots:
-	for splot in [plot_mag, plot_phase]
-		isfinite(f0)? add(splot, vmarker(f0, lmarker)): nothing
-		isfinite(fBW)? add(splot, vmarker(fBW, lmarker)): nothing
-	end
+	isfinite(f0)? add(plot, vmarker(f0, lmarker, strip=0)): nothing
+	isfinite(fBW)? add(plot, vmarker(fBW, lmarker, strip=0)): nothing
 
 	#Add annotation to Magnitude plot:
-	add(plot_mag, atext("0dB", y=1, xoffset=0.5, yoffset=2/100, font=afont, align=:bc))
-	add(plot_mag, hmarker(1, lmarker_light))
+	add(plot, atext("0dB", y=1, xoffset=0.5, yoffset=2/100, font=afont, align=:bc, strip=1))
+	add(plot, hmarker(1, lmarker_light, strip=1))
 
 	if isfinite(fBW)
 		fstr = "f3dB=" * SI(fBW) * "Hz"
-		add(plot_mag, atext(fstr, x=fBW, xoffset=-1/100, yoffset=.5, font=afont, angle=-90, align=:bc))
+		add(plot, atext(fstr, x=fBW, xoffset=-1/100, yoffset=.5, font=afont, angle=-90, align=:bc, strip=1))
 	end
 
 	#Hack if f0>0: TODO: Fix bug where annotating @ 0 on log plot causes glitch. 
 	if isfinite(f0) && f0 > 0
 		fstr = "f0=" * SI(f0) * "Hz"
-		add(plot_mag, atext(fstr, x=f0, xoffset=-1/100, yoffset=.5, font=afont, angle=-90, align=:bc))
+		add(plot, atext(fstr, x=f0, xoffset=-1/100, yoffset=.5, font=afont, angle=-90, align=:bc, strip=1))
 	end
 
 	#Add annotation to Phase plot:
 	if isfinite(phase0)
 		pmargin = 180+phase0
 		fstr = "PM=" * @sprintf("%.1f°", pmargin)
-		add(plot_phase, atext(fstr, y=(phase0-180)/2, xoffset=0.5, font=afont, align=:cc))
-		add(plot_phase, hmarker(phase0, lmarker))
+		add(plot, atext(fstr, y=(phase0-180)/2, xoffset=0.5, font=afont, align=:cc, strip=2))
+		add(plot, hmarker(phase0, lmarker, strip=2))
 	end
 
 	return
@@ -158,17 +141,17 @@ end
 #Modify previously-generated Bode plot:
 #-------------------------------------------------------------------------------
 #(fmin, fmax, f_p1: in Hz)
-function update(plot_mag::Plot2D, plot_phase::Plot2D, fmin, fmax, G, f_z, f_p1, f_p2, annot=true)
+function update(plot::Plot2D, fmin, fmax, G, f_z, f_p1, f_p2, annot=true)
 	const npts = 100
 
 	f = logspace(log10(fmin), log10(fmax), npts)
 	y = xf_o2(f, G, f_z, f_p1, f_p2)
-	update(plot_mag, plot_phase, f, y)
+	update(plot, f, y)
 
 	f0 = f_0(f, G, f_z, f_p1, f_p2) #Unity gain frequency
 	fBW = f_3dB(f, G, f_z, f_p1, f_p2)
 	phase0 = phase(xf_o2(f0, G, f_z, f_p1, f_p2)) #Unity gain phase
-	update_annotation(plot_mag, plot_phase, f0, fBW, phase0, annot)
+	update_annotation(plot, f0, fBW, phase0, annot)
 
 	return
 end
@@ -177,10 +160,9 @@ end
 #-------------------------------------------------------------------------------
 #(fmin, fmax, f_p1: in Hz)
 function update(mplot::InspectDR.Multiplot, fmin, fmax, GdB, f_z, f_p1, f_p2, annot=true)
-	const plot_mag = mplot.subplots[1]
-	const plot_phase = mplot.subplots[2]
+	const plot = mplot.subplots[1]
 	const G = 10.0^(GdB/20)
-	update(plot_mag, plot_phase, fmin, fmax, G, f_z, f_p1, f_p2, annot)
+	update(plot, fmin, fmax, G, f_z, f_p1, f_p2, annot)
 	return mplot
 end
 
