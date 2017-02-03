@@ -6,7 +6,7 @@
 function render(canvas::PCanvas2D, plot::Plot2D, xticklabels::Bool, istrip::Int)
 	const strip = plot.strips[istrip]
 	if plot.layout.legend.enabled
-		legend_render(canvas, plot)
+		legend_render(canvas, plot, istrip)
 	end
 
 	#Draw data area & grid lines

@@ -20,7 +20,7 @@ Cairo.restore(ctx)
 	render(ctx, wfrm.id, Point2D(x, y), align=ALIGN_VCENTER|ALIGN_LEFT)
 end
 
-function legend_render(canvas::PCanvas2D, plot::Plot2D)
+function legend_render(canvas::PCanvas2D, plot::Plot2D, istrip::Int)
 	const ctx = canvas.ctx
 	const lstyle = plot.layout.legend
 
@@ -40,6 +40,7 @@ function legend_render(canvas::PCanvas2D, plot::Plot2D)
 
 	y = canvas.graphbb.ymin + h/2
 	for d in plot.display_data
+		if d.strip != istrip; continue; end
 		if "" == d.id; continue; end
 		legend_renderitem(ctx, d, xleft, y, lstyle.linelength, linegap)
 		y += ypitch
