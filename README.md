@@ -4,8 +4,8 @@
 
 **Generated With Other Modules:**
 
- - [:satellite: SignalProcessing.jl](https://github.com/ma-laforge/FileRepo/tree/master/SignalProcessing/sampleplots/README.md) (Using EasyPlotInspect.jl; See [CData.jl](https://github.com/ma-laforge/CData.jl) for details.)
-
+ - [:chart_with_upwards_trend: JuliaPlots/Plots.jl output](https://github.com/ma-laforge/FileRepo/blob/master/InspectDR/sampleplots_Plots/README.md).
+ - [:satellite: SignalProcessing.jl output](https://github.com/ma-laforge/FileRepo/tree/master/SignalProcessing/sampleplots/README.md) (Using EasyPlotInspect.jl; See [CData.jl](https://github.com/ma-laforge/CData.jl) for details).
 
 # InspectDR.jl: Fast, Interactive Plots
 
