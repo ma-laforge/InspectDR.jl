@@ -53,14 +53,6 @@ Examples of of such plots (where x-values are not guaranteed to be sorted) inclu
  - Lissajous plots
  - Smith/polar (S-Parameter) charts
 
-#### Smith Charts
-
-InpsectDR can generate Smith charts by specifying axes as `:smith`:
-
-```
-plot.axes = InspectDR.axes(:smith)
-```
-
 <a name="Bindings"></a>
 #### Mouse/Keybindings
 
@@ -118,7 +110,7 @@ wfrm = add(plot1, x, y, id="Waveform label")
 
 **WARNING:** Only `Vector` data can be added (`AbstractVector`/`Range` not currently supported).
 
-#### Displaying plots
+#### Displaying Plots
 
 InspectDR provides the `GtkDisplay` object derived from `Base.Multimedia.Display`.  `GtkDisplay` is used in combination with `Base.display()`, to spawn a new instance of a GTK-based GUI.
 
@@ -132,18 +124,33 @@ Similarly, to display `mplot::Multiplot` object, one calls:
 display(InspectDR.GtkDisplay(), mplot)
 ```
 
-### Axis Scales
+### Plot Templates/Axis Scales
 
-The X/Y scales of a `Plot2D` object can independently be selected to be one of the following:
+To support stacked graphs with independent y-axes (tied to the same x-axis), specifying axis scales is a bit tricky:
+
+ - `InspectDR.Plot2D.xscale` controls the x-axis scale.
+ - `InspectDR.Plot2D.strips[STRIP_INDEX].yscale` controls the y-axis scale.
+
+To streamline control over plot axes/grids/labels/..., it is highly recommended to use the following **plot templates**:
+
+ 1. `Plot2D(xscale, yscalelist; kwargs...)`: Generic 2D plot template.
+  - `Plot2D(:lin, :log, title="title", xlabel="X", ylabels=["log(Y)"])`: Construct plot with a linear X-axis & log10 Y-axis.
+  - `Plot2D(:log10, [:dB20, :lin, :lin], title="title", xlabel="X", ylabels=["Y1 (dB)", "Y2", "Y3"])`: Construct plot with a log10 X-axis, and 2 Y-strips: the top-most with a dB20 Y-scale, and the next two with linear Y-scale.
+ 2. `bodeplot(; kwargs...)`: Template for generating Bode plots.
+  - `bodeplot()`: Default `kwargs` already set: `xlabel="Frequency (Hz)"`, ylabels=["Magnitude (dB)", "Phase (°)]"`.
+ 3. `transientplot(yscalelist; kwargs...)`: Template for plotting transient data.
+  - `transientplot([:lin, :lin, :lin], title="title", ylabels=["Voltage", "Voltage", "Current"])`: `xlabel` already set to `"Time (s)"`, by default.
+
+ 4. `smithchart(TYPE; ref, kwargs...)`: Template for plotting onto a Smith Chart.
+  - `smithchart(:Z, ref=50)`: Impedance (`Z`) Smith Chart with a 50&Omega; reference. Default `kwargs` already set: `xlabel="Real(Γ)"`, `ylabels=["Imaginary(Γ)"]"`.
+  - `smithchart(:Y, ref=75)`: Admittance (`Y`) Smith Chart with a 75&Omega; reference.
+
+NOTE: X/Y-axis scales are specified using one of the following `::Symbols`:
 
  - `:lin`
  - `:log10`, `:log` (= `:log10`)
+ - `:ln`, `:log2`: Grid lines might need improvement here.
  - `:dB20`, `:dB10`
-
-In order to display `plot::Plot2D` using semilog-x scales, one would set:
-```
-plot.axes = InspectDR.axes(:log10, :lin).
-```
 
 ### Layout/Plot Style
 
