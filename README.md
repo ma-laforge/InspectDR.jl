@@ -27,6 +27,24 @@ Users are encouraged to open an issue if it is unclear how to utilize a particul
 
 ### Features/Highlights
 
+The following highlights a few interesting features of InspectDR:
+
+ - Publication-quality output.
+ - Included as a "backend" of [JuliaPlots/Plots.jl](https://github.com/JuliaPlots/Plots.jl).
+ - Relatively short load times / time to first plot.
+ - Designed with larger datasets in mind:
+  - Responsive even with moderate (>200k points) datasets.
+  - Confirmed to handle 2GB datsets with reasonable speed on older desktop running Windows 7 (drag+pan of data area highly discouraged).
+ - Support for Smith charts (admittance & impedance).
+ - Support for various types of annotation:
+  - User-programmable text, polyline, vertical & horizontal bars.
+  - Drag & drop &Delta;-markers (Measures/displays &Delta;x, &Delta;y & slope).
+ - Interactive mouse/keybindings.
+  - Fast & simple way to pan/zoom into data.
+  - In line with other similar tools.
+
+See following subsections for more information.
+
 #### Responsive
 
 Quick to first plot, and easy to navigate data using supported [mouse/keybindings](#Bindings)
@@ -56,10 +74,10 @@ Examples of of such plots (where x-values are not guaranteed to be sorted) inclu
 <a name="Bindings"></a>
 #### Mouse/Keybindings
 
-InspectDR.jl supports keybindings to improve/accelerate user control.  The following table lists supported bindings:
+InspectDR.jl supports keybindings to improve/accelerate user control.  The following tables lists supported bindings:
 
-| Function | Key |
-| -------: | :---: |
+| Pan/Zoom Function | Mouse/Key |
+| ----------------: | :-------: |
 | Zoom out to full extents | `CTRL` + `f` |
 | Zoom out horizontally to full extents | `CTRL` + `h` |
 | Zoom out vertically to full extents | `CTRL` + `v` |
@@ -71,6 +89,14 @@ InspectDR.jl supports keybindings to improve/accelerate user control.  The follo
 | Pan left / pan right | &lArr; / &rArr; |
 | Pan left / pan right | `SHIFT` + `mousewheel`|
 | Pan anywhere | (`SHIFT` + `left-click`) + `mousemove` |
+
+| Annotate Function | Mouse/Key |
+| ----------------: | :-------: |
+| Add reference marker | `r` |
+| Add &Delta;-marker (rel. to last reference) | `d` |
+| Add &Delta;-marker & set as reference | `D` |
+| Move marker | `left-click` + `mousemove` control point|
+| Delete marker | `DEL` (when moving marker) |
 
 #### Mouse Pan/Zoom Locks
 There are also keybindings to lock directionnality during mouse pan / zoom operations:
@@ -126,7 +152,7 @@ display(InspectDR.GtkDisplay(), mplot)
 
 ### Plot Templates/Axis Scales
 
-To support stacked graphs with independent y-axes (tied to the same x-axis), specifying axis scales is a bit tricky:
+In order to support stacked graphs with independent y-axes (tied to the same x-axis), specifying axis scales is a bit involved:
 
  - `InspectDR.Plot2D.xscale` controls the x-axis scale.
  - `InspectDR.Plot2D.strips[STRIP_INDEX].yscale` controls the y-axis scale.
