@@ -172,8 +172,8 @@ function update_bodeannot(plot_bode::Plot2D, G::Xf1, ωn)
 	afont = InspectDR.Font(12) #Font for annotation
 
 	#Add annotation to Magnitude plot:
-#	add(plot_bode, atext("0dB", y=1, xoffset_rel=0.5, yoffset=3, font=afont, align=:bc, strip=1))
-	add(plot_bode, hmarker(1, lmarker_light, strip=1))
+#	add(plot_bode, atext("0dB", y=0, xoffset_rel=0.5, yoffset=3, font=afont, align=:bc, strip=1))
+	add(plot_bode, hmarker(0, lmarker_light, strip=1))
 
 	polelist = [("fp", fp), ("fz", fz), ("fn", fn), ("f0", f0)]
 	#Hack if f0>0: TODO: Fix bug where annotating text @ 0 on log plot causes glitch. 

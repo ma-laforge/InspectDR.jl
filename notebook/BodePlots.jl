@@ -112,8 +112,8 @@ function update_annotation(plot::Plot2D, f0, fBW, phase0, enabled=true)
 	isfinite(fBW)? add(plot, vmarker(fBW, lmarker, strip=0)): nothing
 
 	#Add annotation to Magnitude plot:
-	add(plot, atext("0dB", y=1, xoffset_rel=0.5, yoffset=3, font=afont, align=:bc, strip=1))
-	add(plot, hmarker(1, lmarker_light, strip=1))
+	add(plot, atext("0dB", y=0, xoffset_rel=0.5, yoffset=3, font=afont, align=:bc, strip=1))
+	add(plot, hmarker(0, lmarker_light, strip=1))
 
 	if isfinite(fBW)
 		fstr = "f3dB=" * SI(fBW) * "Hz"
