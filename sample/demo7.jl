@@ -94,15 +94,15 @@ add(plot, vmarker(fBW, markerline, strip=0))
 
 #Add annotation to Magnitude plot:
 fstr = "f3dB=" * @sprintf("%.1f MHz", fBW/1e6)
-	add(plot, atext(fstr, x=fBW, xoffset=-1/100, yoffset=.5, font=afont, angle=-90, align=:bc, strip=1))
+	add(plot, atext(fstr, x=fBW, xoffset=-3, yoffset_rel=.5, font=afont, angle=-90, align=:bc, strip=1))
 fstr = "f0=" * @sprintf("%.1f MHz", f0/1e6)
-	add(plot, atext(fstr, x=f0, xoffset=-1/100, yoffset=.5, font=afont, angle=-90, align=:bc, strip=1))
-add(plot, atext("0dB", y=1, xoffset=0.5, yoffset=2/100, font=afont, align=:bc, strip=1))
-add(plot, hmarker(1, markerline_light, strip=1))
+	add(plot, atext(fstr, x=f0, xoffset=-3, yoffset_rel=.5, font=afont, angle=-90, align=:bc, strip=1))
+add(plot, atext("0dB", y=0, xoffset_rel=0.5, yoffset=3, font=afont, align=:bc, strip=1))
+add(plot, hmarker(0, markerline_light, strip=1))
 
 #Add annotation to Phase plot:
 fstr = "PM=" * @sprintf("%.1f°", pmargin)
-	add(plot, atext(fstr, y=(phase0-180)/2, xoffset=0.5, font=afont, align=:cc, strip=2))
+	add(plot, atext(fstr, y=(phase0-180)/2, xoffset_rel=0.5, font=afont, align=:cc, strip=2))
 add(plot, hmarker(phase0, markerline, strip=2))
 
 
