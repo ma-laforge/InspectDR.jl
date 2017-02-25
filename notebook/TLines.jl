@@ -126,8 +126,7 @@ function update(mplot::InspectDR.Multiplot, fmin, fmax, ltype::Symbol, R, L, C, 
 	wfrm.line = ldata
 
 	#Clear old annotation/markers:
-	plot_bode.markers = []
-	plot_bode.atext = []
+	plot_bode.userannot = []
 
 	return mplot
 end

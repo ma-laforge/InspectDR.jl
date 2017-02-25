@@ -100,8 +100,7 @@ function update_annotation(plot::Plot2D, f0, fBW, phase0, enabled=true)
 	const lmarker = line(style=:dash, width=2.5)
 	const lmarker_light = line(style=:dash, width=2.5, color=RGB24(.4,.4,.4))
 
-	plot.markers = [] #Clear old markers
-	plot.atext = [] #Clear old annotation
+	plot.userannot = [] #Clear old markers/text annotation
 
 	if !enabled; return; end
 
@@ -113,25 +112,25 @@ function update_annotation(plot::Plot2D, f0, fBW, phase0, enabled=true)
 	isfinite(fBW)? add(plot, vmarker(fBW, lmarker, strip=0)): nothing
 
 	#Add annotation to Magnitude plot:
-	add(plot, atext("0dB", y=1, xoffset=0.5, yoffset=2/100, font=afont, align=:bc, strip=1))
+	add(plot, atext("0dB", y=1, xoffset_rel=0.5, yoffset=3, font=afont, align=:bc, strip=1))
 	add(plot, hmarker(1, lmarker_light, strip=1))
 
 	if isfinite(fBW)
 		fstr = "f3dB=" * SI(fBW) * "Hz"
-		add(plot, atext(fstr, x=fBW, xoffset=-1/100, yoffset=.5, font=afont, angle=-90, align=:bc, strip=1))
+		add(plot, atext(fstr, x=fBW, xoffset=-3, yoffset_rel=0.5, font=afont, angle=-90, align=:bc, strip=1))
 	end
 
 	#Hack if f0>0: TODO: Fix bug where annotating @ 0 on log plot causes glitch. 
 	if isfinite(f0) && f0 > 0
 		fstr = "f0=" * SI(f0) * "Hz"
-		add(plot, atext(fstr, x=f0, xoffset=-1/100, yoffset=.5, font=afont, angle=-90, align=:bc, strip=1))
+		add(plot, atext(fstr, x=f0, xoffset=-3, yoffset_rel=0.5, font=afont, angle=-90, align=:bc, strip=1))
 	end
 
 	#Add annotation to Phase plot:
 	if isfinite(phase0)
 		pmargin = 180+phase0
 		fstr = "PM=" * @sprintf("%.1f°", pmargin)
-		add(plot, atext(fstr, y=(phase0-180)/2, xoffset=0.5, font=afont, align=:cc, strip=2))
+		add(plot, atext(fstr, y=(phase0-180)/2, xoffset_rel=0.5, font=afont, align=:cc, strip=2))
 		add(plot, hmarker(phase0, lmarker, strip=2))
 	end
 

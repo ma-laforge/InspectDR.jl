@@ -172,7 +172,7 @@ function update_bodeannot(plot_bode::Plot2D, G::Xf1, ωn)
 	afont = InspectDR.Font(12) #Font for annotation
 
 	#Add annotation to Magnitude plot:
-#	add(plot_bode, atext("0dB", y=1, xoffset=0.5, yoffset=2/100, font=afont, align=:bc, strip=1))
+#	add(plot_bode, atext("0dB", y=1, xoffset_rel=0.5, yoffset=3, font=afont, align=:bc, strip=1))
 	add(plot_bode, hmarker(1, lmarker_light, strip=1))
 
 	polelist = [("fp", fp), ("fz", fz), ("fn", fn), ("f0", f0)]
@@ -180,7 +180,7 @@ function update_bodeannot(plot_bode::Plot2D, G::Xf1, ωn)
 	for (id, f) in polelist
 		if isfinite(f) && f > 0
 			fstr = id * "=" * SI(f) * "Hz"
-			add(plot_bode, atext(fstr, x=f, xoffset=-1/100, yoffset=.5, font=afont, angle=-90, align=:bc, strip=1))
+			add(plot_bode, atext(fstr, x=f, xoffset=-3, yoffset_rel=0.5, font=afont, angle=-90, align=:bc, strip=1))
 
 			#Add vertical markers to both plots:
 			add(plot_bode, vmarker(f, lmarker, strip=0))
@@ -191,7 +191,7 @@ function update_bodeannot(plot_bode::Plot2D, G::Xf1, ωn)
 	if isfinite(phase0)
 		pmargin = 180+phase0
 		fstr = "PM=" * @sprintf("%.1f°", pmargin)
-		add(plot_bode, atext(fstr, y=(phase0-180)/2, xoffset=0.5, font=afont, align=:cc, strip=2))
+		add(plot_bode, atext(fstr, y=(phase0-180)/2, xoffset_rel=0.5, font=afont, align=:cc, strip=2))
 		add(plot_bode, hmarker(phase0, lmarker, strip=2))
 	end
 
@@ -216,8 +216,7 @@ function update(mplot::InspectDR.Multiplot, fmin, fmax, tmax, ωnperiods, G::Xf1
 	#Reset extents/annotation:
 	plot_bode.xext = InspectDR.PExtents1D()
 	plot_bode.strips[1].yext = InspectDR.PExtents1D()
-	plot_bode.markers = [] #Clear old markers
-	plot_bode.atext = [] #Clear old annotation
+	plot_bode.userannot = [] #Clear old markers/text annotation
 	if annot; update_bodeannot(plot_bode, G, sys.ωn); end
 
 	#Absolute step:
