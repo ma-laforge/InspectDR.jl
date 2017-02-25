@@ -1,11 +1,6 @@
 #math_coordinates.jl: 
 #-------------------------------------------------------------------------------
 
-#=
-map2axis
-map2data
-map2dev
-=#
 
 #==Types
 ===============================================================================#
@@ -88,6 +83,15 @@ end
 InputXfrm2D(x::InputXfrm1D, y::InputXfrm1D) = InputXfrm2D(x.spec, y.spec)
 InputXfrm2D(xs::AxisScale, ys::AxisScale) = InputXfrm2D(InputXfrm1DSpec(xs), InputXfrm1DSpec(ys))
 
+#Offsettable 2D position:
+#TODO: Should reloffset exist as is?
+#      Alt: v.x/y is *either* "read" or "relative" (use relx::Bool, rely::Bool)
+type Pos2DOffset
+	v::Point2D #Position ("Read"able coordinates) - set NaN to use offsets only
+	reloffset::Vector2D #Relative offset (Normalized to [0,1] graph bounds)
+	offset::Vector2D #Absolute offset (device units)
+end
+
 
 #==Mapping/interpolation functions
 ===============================================================================#
@@ -103,7 +107,7 @@ map2axis{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:log10}) =
 	(x::T)->(x<0? DNaN: log10(DReal(x)))
 #TODO: find a way to show negative values for log10?
 
-#Map axis coordinates to user-readable version:
+#Map axis coord --> user-readable coord (Typically reverse of map2axis):
 axis2read{T<:Number}(::Type{T}, ::InputXfrm1DSpec) = (x::T)->DReal(x) #NOTE: lin/dB values remain as-is - for readability
 axis2read{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:ln}) = (x::T)->(exp(x))
 axis2read{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:log2}) = (x::T)->(2.0^x)
@@ -111,12 +115,28 @@ axis2read{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:log10}) = (x::T)->(10.0^x)
 
 axis2read{T<:Number}(v::T, s::InputXfrm1DSpec) = axis2read(T,s)(v) #One-off conversion
 
+#Map user-readable coord --> axis coord (Typically same as map2axis):
+read2axis{T<:Number}(::Type{T}, ixf::InputXfrm1DSpec) = map2axis(T, ixf)
+#Exception: "Readable" coordinates match axis coordinates when in dB:
+read2axis{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:dB10}) = (x::DReal)->x
+read2axis{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:dB20}) = (x::DReal)->x
+
+read2axis{T<:Number}(v::T, s::InputXfrm1DSpec) = read2axis(T,s)(v) #One-off conversion
+
 
 #Map Point2D:
 #-------------------------------------------------------------------------------
-map2axis(pt::Point2D, x::InputXfrm1DSpec, y::InputXfrm1DSpec) =
-	Point2D(map2axis(DReal, x)(pt.x), map2axis(DReal, y)(pt.y))
-map2axis(pt::Point2D, xf::InputXfrm2D) = map2axis(pt, xf.x, xf.y)
+#TODO: define one-off conversion for map2axis to simplify following?:
+map2axis(pt::Point2D, xixf::InputXfrm1DSpec, yixf::InputXfrm1DSpec) =
+	Point2D(map2axis(DReal, xixf)(pt.x), map2axis(DReal, yixf)(pt.y))
+map2axis(pt::Point2D, ixf::InputXfrm2D) = map2axis(pt, ixf.x, ixf.y)
+axis2read(pt::Point2D, xixf::InputXfrm1DSpec, yixf::InputXfrm1DSpec) =
+	Point2D(axis2read(pt.x, xixf), axis2read(pt.y, yixf))
+axis2read(pt::Point2D, ixf::InputXfrm2D) = axis2read(pt, ixf.x, ixf.y)
+read2axis(pt::Point2D, xixf::InputXfrm1DSpec, yixf::InputXfrm1DSpec) =
+	Point2D(read2axis(pt.x, xixf), read2axis(pt.y, yixf))
+read2axis(pt::Point2D, ixf::InputXfrm2D) = read2axis(pt, ixf.x, ixf.y)
+
 
 #Map entire data vector:
 #-------------------------------------------------------------------------------
@@ -136,15 +156,9 @@ map2axis{T<:Number}(d::Vector{T}, ::InputXfrm1DSpec{:lin}) = d #Optimization: Li
 
 #Extents mapping functions, depending on axis type:
 #-------------------------------------------------------------------------------
-_extread2axis(t::InputXfrm1DSpec) = map2axis(DReal, t)
-#User specifies desired extents in dBs (already axis coordinates):
-_extread2axis(t::InputXfrm1DSpec{:dB10}) = (x::DReal)->x
-_extread2axis(t::InputXfrm1DSpec{:dB20}) = (x::DReal)->x
-
+#Shortcut - hardwire type used in extents:
+_extread2axis(t::InputXfrm1DSpec) = read2axis(DReal, t)
 _extaxis2read(t::InputXfrm1DSpec) = axis2read(DReal, t)
-#Extents in dB remain in dBs - for readability:
-_extaxis2read(t::InputXfrm1DSpec{:dB10}) = (x::DReal)->x
-_extaxis2read(t::InputXfrm1DSpec{:dB20}) = (x::DReal)->x
 
 function read2axis(ext::PExtents1D, xf::InputXfrm1D)
 	emap = _extread2axis(xf.spec)
@@ -170,6 +184,19 @@ function axis2read(ext::PExtents2D, xf::InputXfrm2D)
 		xmap(ext.xmin), xmap(ext.xmax),
 		ymap(ext.ymin), ymap(ext.ymax)
 	)
+end
+
+#Pos2DOffset mapping functions:
+#-------------------------------------------------------------------------------
+function map2dev(pos::Pos2DOffset, xf::Transform2D, ixf::InputXfrm2D, graphbb::BoundingBox)
+	pt = read2axis(pos.v, ixf)
+	pt = map2dev(xf, pt)
+	x = pt.x; y = pt.y
+	if isnan(x); x = graphbb.xmin; end
+	if isnan(y); y = graphbb.ymax; end
+	x += pos.reloffset.x * width(graphbb) + pos.offset.x
+	y -= pos.reloffset.y * height(graphbb) + pos.offset.y
+	return Point2D(x, y)
 end
 
 #Last line

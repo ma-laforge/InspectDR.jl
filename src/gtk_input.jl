@@ -1,29 +1,11 @@
 #InspectDR: Event handlers for user input of Gtk layer
 #-------------------------------------------------------------------------------
 
-import Gtk: GConstants.GdkModifierType, Gtk.GConstants.GdkScrollDirection
-
-
-#==Constants
-===============================================================================#
-const MODIFIER_ALT = GdkModifierType.GDK_MOD1_MASK #Is this bad? How do I query?
-const MODIFIER_CTRL = GdkModifierType.GDK_CONTROL_MASK
-const MODIFIER_SHIFT = GdkModifierType.GDK_SHIFT_MASK
-
-#Other modifiers are ignored... ex: numlock (Mod2)
-const MODIFIERS_SUPPORTED = MODIFIER_ALT|MODIFIER_CTRL|MODIFIER_SHIFT
-
-#Symbols not currently supported by Gtk package:
-const GdkKeySyms_Plus = 0xffab
-const GdkKeySyms_Minus = 0xffad
-
-
 #==Types
 ===============================================================================#
 typealias KeyMap Dict{Int, Function}
 
 #User input states
-immutable ISNormal <: InputState; end
 immutable ISSelectingArea <: InputState; end
 immutable ISPanningData <: InputState; end #Typically with mouse
 
@@ -43,22 +25,24 @@ const keybindings = KeyBindings()
 
 #==Helper functions
 ===============================================================================#
-modifiers_pressed(eventstate, modmask) = (modmask == (MODIFIERS_SUPPORTED & eventstate))
-
 function userinput_setstate_normal(pwidget::PlotWidget)
 	pwidget.state = ISNormal()
 end
 userinput_donothing(pwidget::PlotWidget) = nothing
 
-#Returns 0 or strip index:
-function hittest(pwidget::PlotWidget, x::Float64, y::Float64)
-	const plot = pwidget.src
-	for i = 1:length(plot.strips)
-		if isinside(pwidget.graphbblist[i], x, y)
-			return i
+#Handle mousepress if a CtrlElement was clicked:
+function handleevent_mousepress(pwidget::PlotWidget, ::Type{CtrlElement}, x::Float64, y::Float64)
+	istrip = hittest(pwidget, x, y)
+
+	if istrip > 0
+		if handleevent_mousepress(pwidget, pwidget.markers, istrip, x, y)
+			return true
 		end
+
+		#TODO: test for other control points here....
 	end
-	return 0
+
+	return false
 end
 
 #Set focus on active strip under x,y coordinates:
@@ -71,12 +55,6 @@ function focus_strip(pwidget::PlotWidget, x::Float64, y::Float64)
 end
 
 
-#==Wrapper functions
-===============================================================================#
-raiseevent_plothover(pwidget::PlotWidget, event::Gtk.GdkEventMotion) =
-	raiseevent(pwidget.eh_plothover, pwidget, event.x, event.y)
-
-
 #==Default event handlers
 ===============================================================================#
 handleevent_mousepress(::InputState, pwidget::PlotWidget, event::Gtk.GdkEventButton) =
@@ -84,7 +62,7 @@ handleevent_mousepress(::InputState, pwidget::PlotWidget, event::Gtk.GdkEventBut
 handleevent_mouserelease(::InputState, pwidget::PlotWidget, event::Gtk.GdkEventButton) =
 	nothing
 function handleevent_mousemove(::InputState, pwidget::PlotWidget, event::Gtk.GdkEventMotion)
-	raiseevent_plothover(pwidget, event)
+	handleevent_plothover(pwidget, event)
 	nothing
 end
 
@@ -153,6 +131,8 @@ function handleevent_mousepress(::ISNormal, pwidget::PlotWidget, event::Gtk.GdkE
 		if modifiers_pressed(event.state, MODIFIER_SHIFT)
 			mousepan_setstart(pwidget, event.x, event.y)
 			pwidget.state = ISPanningData()
+		elseif !modifiers_pressed(event.state, MODIFIERS_SUPPORTED) #Un-modified
+			handleevent_mousepress(pwidget, CtrlElement, event.x, event.y)
 		end
 	end
 end
@@ -179,7 +159,7 @@ function handleevent_mouserelease(::ISSelectingArea, pwidget::PlotWidget, event:
 	end
 end
 function handleevent_mousemove(::ISSelectingArea, pwidget::PlotWidget, event::Gtk.GdkEventMotion)
-	raiseevent_plothover(pwidget, event)
+	handleevent_plothover(pwidget, event)
 	boxzoom_setend(pwidget, event.x, event.y)
 end
 
@@ -205,7 +185,7 @@ function handleevent_mouserelease(::ISPanningData, pwidget::PlotWidget, event::G
 	end
 end
 function handleevent_mousemove(::ISPanningData, pwidget::PlotWidget, event::Gtk.GdkEventMotion)
-	raiseevent_plothover(pwidget, event)
+	handleevent_plothover(pwidget, event)
 	mousepan_move(pwidget, event.x, event.y)
 end
 
@@ -221,8 +201,12 @@ function keybindings_setdefaults(bnd::KeyBindings)
 		GdkKeySyms.Right => pan_right,
 		GdkKeySyms_Plus => zoom_in,
 		GdkKeySyms_Minus => zoom_out,
+
+		Int('r') => addrefmarker,
+		Int('d') => addΔmarker,
 	)
 	bnd.shiftmod = KeyMap(
+		Int('D') => addΔmarkerref,
 	)
 	bnd.ctrlmod = KeyMap(
 		Int('f') => zoom_full,

@@ -65,9 +65,27 @@ end
 
 #==Main types
 ===============================================================================#
-
 abstract InputState #Identifies current user input state.
 
+abstract CtrlElement #Controllable element
+#=Implement:
+TODO: explain interface
+=#
+
+type CtrlMarker <: CtrlElement
+	prop::HVMarker #Properties
+	ref::NullOr{CtrlMarker} #Reference marker
+end
+
+#Grouping of controllable markers (used to get ::Plot object to render)
+type CtrlMarkerGroup <: PlotAnnotation
+	graphinfo::Graph2DInfo #Info needed to render markers
+	elem::Vector{CtrlMarker}
+	fntcoord::Font
+	fntdelta::Font
+end
+
+#TODO: move to ISSelectingArea <: InputState??
 type GtkSelection
 	enabled::Bool
 	istrip::Int
@@ -77,11 +95,17 @@ type GtkSelection
 end
 GtkSelection() = GtkSelection(false, 0, BoundingBox(0,0,0,0), PExtents2D())
 
+type GtkMouseOver
+	istrip::Int
+	pos::NullOr{Point2D}
+end
+GtkMouseOver() = GtkMouseOver(0, nothing)
+
 type PlotWidget
 	widget::_Gtk.Box #Base widget
 	canvas::_Gtk.Canvas #Actual plot area
 	src::Plot
-	graphbblist::Vector{BoundingBox}
+	graphinfo::Graph2DInfo
 	state::InputState
 
 	#Scrollbars to control x-scale & position:
@@ -95,13 +119,18 @@ type PlotWidget
 #	bufbb::BoundingBox
 
 	curstrip::Int #Currently active strip
-	sel::GtkSelection
+	mouseover::GtkMouseOver #Where is mouse
+	sel::GtkSelection #Used to describe selection box
+
+	#Control elements:
+	markers::CtrlMarkerGroup
+	refmarker::NullOr{CtrlMarker} #Used as ref
 
 	#Restrict h/v motion:
 	hallowed::Bool
 	vallowed::Bool
 
-	#Event handlers:
+	#External event handlers:
 	eh_plothover::NullOr{HandlerInfo}
 end
 
@@ -156,6 +185,7 @@ end
 #Render PlotWidget widget to buffer:
 #-------------------------------------------------------------------------------
 function render(pwidget::PlotWidget)
+	const plot = pwidget.src
 	#Create new buffer large enough to match canvas:
 	#TODO: Is crating surfaces expensive?  This solution might be bad.
 	if invalidbuffersize(pwidget)
@@ -171,12 +201,12 @@ function render(pwidget::PlotWidget)
 
 	_reset(ctx)
 	clear(ctx, bb)
-	render(ctx, pwidget.src, bb)
-	databb = databounds(bb, pwidget.src.layout, grid1(pwidget.src))
-	pwidget.graphbblist = graphbounds_list(databb, pwidget.src.layout, length(pwidget.src.strips))
-	nstrips = length(pwidget.graphbblist)
+	pwidget.graphinfo = Graph2DInfo(plot, bb)
+	pwidget.markers.graphinfo = pwidget.graphinfo
+	nstrips = length(pwidget.graphinfo.strips)
 	pwidget.curstrip = max(pwidget.curstrip, 1) #Focus on 1st strip - if no strip has focus
 	pwidget.curstrip = min(pwidget.curstrip, nstrips) #Make sure focus is not beyond nstrips
+	render(ctx, plot, bb)
 	Cairo.destroy(ctx)
 end
 

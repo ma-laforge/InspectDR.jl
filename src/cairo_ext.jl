@@ -37,6 +37,11 @@ const PANGO_ELLIPSIZE_END = 3
 #==Basic rendering
 ===============================================================================#
 
+#Low-level function to draw circles:
+function cairo_circle(ctx::CairoContext, x::Float64, y::Float64, radius::Float64)
+	Cairo.arc(ctx, x, y, radius, 0, 2pi)
+end
+
 #Reset context to known state:
 function _reset(ctx::CairoContext)
 	#TODO: reset transforms???
@@ -119,7 +124,15 @@ end
 #==Rendering text
 ===============================================================================#
 
-#Compute  text offsets in order to achieve a particular alignment
+#Extract text width from result of Cairo.text_extents:
+_textwidth(t_ext::Array{Float64}) = t_ext[3]
+_textheight(t_ext::Array{Float64}) = t_ext[4]
+function textextents_wh(ctx::Cairo.CairoContext, str::AbstractString)
+	t_ext = Cairo.text_extents(ctx, str)
+	return (_textwidth(t_ext), _textheight(t_ext))
+end
+
+#Compute text offsets in order to achieve a particular alignment
 function textoffset(t_ext::Array{Float64}, align::CAlignment)
 #=
 typedef struct {

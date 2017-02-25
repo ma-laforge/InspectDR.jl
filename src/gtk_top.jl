@@ -70,6 +70,7 @@ end
 ===============================================================================#
 #plothover event: show plot coordinates under mouse.
 #-------------------------------------------------------------------------------
+#TODO: deprecate???
 plothover_coordformatting(lstyle::TickLabelStyle, lines::AbstractGridLines) =
 	number_fmt() #Just use default
 function plothover_coordformatting(lstyle::TickLabelStyle, lines::GridLines)
@@ -78,11 +79,8 @@ function plothover_coordformatting(lstyle::TickLabelStyle, lines::GridLines)
 	return fmt
 end
 
-function plothover_coordstr(xs::AxisScale, ys::AxisScale, grid::PlotGrid, ext::PExtents2D, xlstyle::TickLabelStyle, ylstyle::TickLabelStyle, x::DReal, y::DReal)
-	x = axis2read(x, InputXfrm1DSpec(xs))
-	y = axis2read(y, InputXfrm1DSpec(ys))
-	#TODO: keep coord formatting around instead of re-_eval-uating:
-	grid = coord_grid(grid, xs, ys, ext)
+function plothover_coordstr(grid::GridRect, xlstyle::TickLabelStyle, ylstyle::TickLabelStyle, x::DReal, y::DReal)
+	#TODO: keep coord formatting around instead of re-evaluating?
 	fmt = plothover_coordformatting(xlstyle, grid.xlines)
 	xstr = formatted(x, fmt)
 	fmt = plothover_coordformatting(ylstyle, grid.ylines)
@@ -93,16 +91,17 @@ end
 function handleevent_plothover(gplot::GtkPlot, pwidget::PlotWidget, x::Float64, y::Float64)
 	const plot = pwidget.src
 	const lyt = plot.layout
-	istrip = hittest(pwidget, x, y)
 
-	if istrip > 0
-		ext = getextents_axis(plot, istrip)
-		xf = Transform2D(ext, pwidget.graphbblist[istrip])
-		pt = map2axis(xf, Point2D(x, y))
+	istrip = pwidget.mouseover.istrip
+	pos = pwidget.mouseover.pos
+	if istrip > 0 && pos != nothing
 		strip = plot.strips[istrip]
-		statstr = plothover_coordstr(plot.xscale, strip.yscale, strip.grid, ext, lyt.xlabelformat, lyt.ylabelformat, pt.x, pt.y)
+		ext = getextents_axis(plot, istrip)
+		#TODO: keep _eval-ed grid around instead of re-_eval-uating? (coord_grid uses _eval):
+		grid = coord_grid(strip.grid, plot.xscale, strip.yscale, ext)
+		x, y = pos.x, pos.y #Use transformed coordinates instead.
+		statstr = plothover_coordstr(grid, lyt.xlabelformat, lyt.ylabelformat, x, y)
 	else
-#		statstr = plothover_coordstr(plot.xscale, LinScale(), strip.grid, ext, lyt.xlabelformat, lyt.ylabelformat, DNaN, DNaN)
 		statstr = "(x, y) = ( , )"
 	end
 
@@ -158,12 +157,22 @@ function PlotWidget(plot::Plot)
 	#bufsurf = Cairo.CairoRGBSurface(1920,1200) #Appears slow for average monitor size???
 #	bufsurf = Gtk.cairo_surface_for(canvas) #create similar - does not work here
 	curstrip = 1 #TODO: Is this what is desired?
-	pwidget = PlotWidget(vbox, canvas, plot, [], ISNormal(),
+
+	graphinfo = Graph2DInfo(plot)
+	mgrp = CtrlMarkerGroup(graphinfo, [],
+		Font(defaults.fontname, 10),
+		Font(defaults.fontname, 12)
+	)
+	pwidget = PlotWidget(vbox, canvas, plot, graphinfo, ISNormal(),
 		w_xscale, xscale, w_xpos, xpos,
-		bufsurf, curstrip, GtkSelection(), true, true,
+		bufsurf, curstrip, GtkMouseOver(), GtkSelection(),
+		mgrp, nothing, true, true,
 		#Event handlers:
 		nothing
 	)
+
+	#Take control of parentannot:
+	plot.parentannot = [pwidget.markers]
 
 	#Register callback functions:
 	signal_connect(cb_scalechanged, xscale, "value-changed", Void, (), false, pwidget)

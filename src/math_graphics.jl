@@ -32,6 +32,14 @@ immutable Point2D <: Point
 	y::DReal
 end
 
+abstract DirectionalVector
+immutable Vector2D <: DirectionalVector
+	x::DReal
+	y::DReal
+end
+Vector2D(p::Point2D) = Vector2D(p.x, p.y)
+Point2D(p::Vector2D) = Point2D(p.x, p.y)
+
 #Plot extents along one dimension:
 immutable PExtents1D
 	min::DReal

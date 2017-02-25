@@ -42,6 +42,7 @@ include("events.jl")
 include("datasets.jl")
 include("grids.jl")
 include("base.jl")
+include("graph2d.jl")
 include("glyphs.jl")
 include("cairo_ext.jl")
 include("cairo_base.jl")
@@ -55,8 +56,10 @@ include("compat.jl")
 
 if GtkAvailable
 include("gtk_base.jl")
-include("gtk_input.jl")
+include("gtk_events.jl")
 include("gtk_zoom.jl")
+include("gtk_markers.jl")
+include("gtk_input.jl")
 include("gtk_top.jl")
 keybindings_setdefaults(keybindings)
 end
@@ -91,6 +94,13 @@ Transformations between coordinate systems:
 	- Data coordinates hold whichever units is associated with the data (D).
 	- Axis units are transformations of D (ex: D, log(D), dB20(D), ...)
 	- Device units can typically be thought of in pixels.
+
+Auxiliary transformations:
+	     nlxfrm
+	axis -----> readable
+                (read)
+	Readable coordinates are basically axis coordinates in a readable form.
+	Ex (for log10-X scale): X{axis}=2.5 --> X{read}=10^2.5
 
 PExtents2D vs BoundingBox:
 	PExtents2D: Extents of data (data coordinate system).

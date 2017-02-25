@@ -27,9 +27,9 @@ Cairo.save(canvas.ctx)
 
 	#Plot secondary annotation:
 	ixf = InputXfrm2D(plot.xscale, strip.yscale)
-	render(canvas, plot.markers, ixf, istrip)
-	render(canvas, plot.atext, ixf, istrip)
-	render(canvas, plot.apline, ixf, istrip)
+	render(canvas, plot.userannot, ixf, istrip)	
+	render(canvas, plot.parentannot, ixf, istrip)	
+
 Cairo.restore(canvas.ctx)
 
 	#Re-render axis over data:

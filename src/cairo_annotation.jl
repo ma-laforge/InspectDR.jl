@@ -22,28 +22,10 @@ const ALIGN_MAP = Dict{Symbol, CAlignment}(
 #==Rendering text annotation
 ===============================================================================#
 function render(canvas::PCanvas2D, a::TextAnnotation, ixf::InputXfrm2D)
-	const ctx = canvas.ctx
-	const graphbb = canvas.graphbb
 	align = get(ALIGN_MAP, a.align, ALIGN_BOTTOM | ALIGN_LEFT)
 	angle = deg2rad(a.angle)
-
-	pt = map2axis(a.pt, ixf)
-	pt = map2dev(canvas.xf, pt)
-	x = pt.x; y = pt.y
-	if isnan(x); x = graphbb.xmin; end
-	if isnan(y); y = graphbb.ymax; end
-	x += a.xoffset * width(graphbb)
-	y -= a.yoffset * height(graphbb)
-	render(ctx, a.text, Point2D(x,y), a.font, angle=angle, align=align)
-	return
-end
-
-function render(canvas::PCanvas2D, alist::Vector{TextAnnotation}, ixf::InputXfrm2D, strip::Int)
-	for a in alist
-		if 0 == a.strip || a.strip == strip
-			render(canvas, a, ixf)
-		end
-	end
+	pt = map2dev(a.pos, canvas.xf, ixf, canvas.graphbb)
+	render(canvas.ctx, a.text, pt, a.font, angle=angle, align=align)
 	return
 end
 
@@ -59,25 +41,16 @@ function render(canvas::PCanvas2D, mkr::HVMarker, ixf::InputXfrm2D)
 	end
 
 	setlinestyle(ctx, LineStyle(mkr.line))
-	pt = map2axis(Point2D(mkr.pos, mkr.pos), ixf)
+	pt = read2axis(mkr.pos, ixf)
 	pt = map2dev(canvas.xf, pt)
 
 	if mkr.vmarker
 		drawline(ctx, Point2D(pt.x, graphbb.ymin), Point2D(pt.x, graphbb.ymax))
-	else #hmarker
+	end
+	if mkr.hmarker
 		drawline(ctx, Point2D(graphbb.xmin, pt.y), Point2D(graphbb.xmax, pt.y))
 	end
 
-	return
-end
-
-
-function render(canvas::PCanvas2D, mkrlist::Vector{HVMarker}, ixf::InputXfrm2D, strip::Int)
-	for mkr in mkrlist
-		if 0 == mkr.strip || mkr.strip == strip
-			render(canvas, mkr, ixf)
-		end
-	end
 	return
 end
 
@@ -108,11 +81,22 @@ function render(canvas::PCanvas2D, a::PolylineAnnotation, ixf::InputXfrm2D)
 	return
 end
 
-function render(canvas::PCanvas2D, alist::Vector{PolylineAnnotation}, ixf::InputXfrm2D, strip::Int)
+
+#==Generic rendering algorithm for annotations
+===============================================================================#
+#TODO: warn undefined???
+render(canvas::PCanvas2D, a::PlotAnnotation, ixf::InputXfrm2D) = nothing
+
+function render(canvas::PCanvas2D, a::PlotAnnotation, ixf::InputXfrm2D, strip::Int)
+	if 0 == a.strip || a.strip == strip
+		render(canvas, a, ixf)
+	end
+	return
+end
+
+function render{T<:PlotAnnotation}(canvas::PCanvas2D, alist::Vector{T}, ixf::InputXfrm2D, strip::Int)
 	for a in alist
-		if 0 == a.strip || a.strip == strip
-			render(canvas, a, ixf)
-		end
+		render(canvas, a, ixf, strip)
 	end
 	return
 end

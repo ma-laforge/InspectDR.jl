@@ -19,6 +19,20 @@ end
 PCanvas2D(ctx, bb, graphbb, ext) =
 	PCanvas2D(ctx, bb, graphbb, ext, Transform2D(ext, graphbb))
 
+#=
+#TODO: use instead of PCanvas2D???
+#TODO: Add axis scale info, etc???
+#Canvas for 2D Graph:
+type GCanvas2D
+	ctx::CairoContext
+	graphbb::BoundingBox
+	ext::PExtents2D #Extents of graph portion
+	xf::Transform2D #Transform used to render data
+end
+GCanvas2D(ctx, graphbb, ext) =
+	GCanvas2D(ctx, graphbb, ext, Transform2D(ext, graphbb))
+=#
+
 
 #==Basic rendering
 ===============================================================================#
@@ -82,7 +96,7 @@ function drawglyph(ctx::CairoContext, g::GlyphLineSegments, pt::Point2D, size::D
 	return
 end
 function drawglyph(ctx::CairoContext, g::GlyphCircle, pt::Point2D, size::DReal, fill)
-	Cairo.arc(ctx, pt.x, pt.y, g.radius*size, 0, 2pi)
+	cairo_circle(ctx, pt.x, pt.y, g.radius*size)
 	renderfill(ctx, fill)
 	Cairo.stroke(ctx)
 end

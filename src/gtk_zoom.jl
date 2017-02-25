@@ -33,7 +33,7 @@ end
 
 function selectionbox_draw(ctx::CairoContext, w::PlotWidget)
 	if !w.sel.enabled; return; end
-	graphbb = w.graphbblist[activestrip(w)]
+	graphbb = w.graphinfo.strips[activestrip(w)].graphbb
 	selectionbox_draw(ctx, w.sel.bb, graphbb, w.hallowed, w.vallowed)
 end
 
@@ -103,7 +103,7 @@ function zoom(pwidget::PlotWidget, bb::BoundingBox, istrip::Int)
 	p2 = Point2D(bb.xmax, bb.ymax)
 
 	ext = getextents_axis(pwidget.src, istrip)
-	xf = Transform2D(ext, pwidget.graphbblist[istrip])
+	xf = Transform2D(ext, pwidget.graphinfo.strips[istrip].graphbb)
 	p1 = map2axis(xf, p1)
 	p2 = map2axis(xf, p2)
 
@@ -152,7 +152,7 @@ zoom_in(pwidget::PlotWidget, stepratio::Float64=ZOOM_STEPRATIO) =
 function zoom(pwidget::PlotWidget, x::Float64, y::Float64, ratio::Float64, istrip::Int)
 	pt = Point2D(x, y)
 	ext = getextents_axis(pwidget.src, istrip)
-	xf = Transform2D(ext, pwidget.graphbblist[istrip])
+	xf = Transform2D(ext, pwidget.graphinfo.strips[istrip].graphbb)
 	pt = map2axis(xf, pt)
 	zoom(pwidget, ext, pt, ratio, istrip)
 end
@@ -249,7 +249,7 @@ pan_down(pwidget::PlotWidget) = pan_yratio(pwidget, -PAN_STEPRATIO)
 #Δy/Δy: in device coordinates
 function mousepan_delta(pwidget::PlotWidget, ext::PExtents2D, Δx::Float64, Δy::Float64, istrip::Int)
 	#Convert to plot coordinates:
-	xf = Transform2D(ext, pwidget.graphbblist[istrip])
+	xf = Transform2D(ext, pwidget.graphinfo.strips[istrip].graphbb)
 	Δvec = map2axis_vec(xf, Point2D(-Δx, -Δy))
 
 	setextents_axis(pwidget.src, ext, istrip) #Restore original extents before overwriting

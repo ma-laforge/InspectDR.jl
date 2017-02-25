@@ -10,6 +10,7 @@
 ===============================================================================#
 abstract Plot
 abstract PlotCanvas #TODO: Does not appear useful
+abstract PlotAnnotation
 
 
 #==Plot-level structures
@@ -158,31 +159,40 @@ Layout(;fontname::String=defaults.fontname, fontscale=defaults.fontscale) =
 	defaults.showtimestamp
 )
 
-type TextAnnotation
+#AnnotationGroup: Allows for hierarchical groupings of PlotAnnotation:
+type AnnotationGroup{T<:PlotAnnotation} <: PlotAnnotation
+	elem::Vector{T}
+end
+
+type TextAnnotation <: PlotAnnotation
 	text::String
-	pt::Point2D #Data coordinates - set NaN to use offsets only
-	xoffset::DReal #Normalized to [0,1] plot bounds
-	yoffset::DReal #Normalized to [0,1] plot bounds
+	pos::Pos2DOffset
 	font::Font
 	angle::DReal #Degrees
 	align::Symbol #tl, tc, tr, cl, cc, cr, bl, bc, br
 	strip::UInt8
 end
 #Don't use "text"... high probability of collisions when exported...
-atext(text::String; x::Real=DNaN, y::Real=DNaN, xoffset=0, yoffset=0,
+atext(text::String; x=DNaN, y=DNaN,
+	xoffset_rel=0, yoffset_rel=0, xoffset=0, yoffset=0,
 	font=Font(10), angle=0, align=:bl, strip=1) =
-	TextAnnotation(text, Point2D(x,y), xoffset, yoffset, font, angle, align, strip)
+	TextAnnotation(text,
+		Pos2DOffset(Point2D(x,y), Vector2D(xoffset_rel, yoffset_rel), Vector2D(xoffset, yoffset)),
+		font, angle, align, strip
+	)
 
-type HVMarker
-	vmarker::Bool #false: hmarker
-	pos::DReal
+type HVMarker <: PlotAnnotation
+	vmarker::Bool
+	hmarker::Bool
+	pos::Point2D
 	line::LineAttributes
 	strip::UInt8
 end
-vmarker(pos, line=InspectDR.line(); strip=0) = HVMarker(true, pos, line, strip)
-hmarker(pos, line=InspectDR.line(); strip=1) = HVMarker(false, pos, line, strip)
+vmarker(pos, line=InspectDR.line(); strip=0) = HVMarker(true, false, Point2D(pos, DNaN), line, strip)
+hmarker(pos, line=InspectDR.line(); strip=1) = HVMarker(false, true, Point2D(DNaN, pos), line, strip)
+hvmarker(pos, line=InspectDR.line(); strip=1) = HVMarker(true, true, pos, line, strip)
 
-type PolylineAnnotation
+type PolylineAnnotation <: PlotAnnotation
 	#TODO: preferable to use Point2D?
 	x::Vector{DReal}
 	y::Vector{DReal}
@@ -221,9 +231,12 @@ type Plot2D <: Plot
 
 	strips::Vector{GraphStrip}
 	data::Vector{IWaveform}
-	markers::Vector{HVMarker}
-	atext::Vector{TextAnnotation}
-	apline::Vector{PolylineAnnotation}
+
+	#Annotation controlled directly by user (using _add interface):
+	userannot::Vector{PlotAnnotation}
+
+	#Annotation controlled by parent object
+	parentannot::Vector{PlotAnnotation}
 
 	#Display data cache:
 	invalid_ddata::Bool #Is cache of display data invalid?
@@ -239,7 +252,7 @@ end
 Plot2D(;title="") = Plot2D(AxisScale(:lin, tgtmajor=3.5, tgtminor=4),
 	Layout(), Annotation(title=title),
 	PExtents1D(), PExtents1D(), PExtents1D(),
-	nothing, [GraphStrip()], [], [], [], [], true, [], false, 1000
+	nothing, [GraphStrip()], [], [], [], true, [], false, 1000
 )
 
 type Multiplot
@@ -348,14 +361,9 @@ function _add(plot::Plot2D, x::Vector, y::Vector; id::String="", dataf1=true, st
 	return ds
 end
 
-function _add(plot::Plot2D, marker::HVMarker)
-	push!(plot.markers, marker)
-	return marker
-end
-
-function _add(plot::Plot2D, a::TextAnnotation)
-	push!(plot.atext, a)
-	return a
+function _add(plot::Plot2D, annot::PlotAnnotation)
+	push!(plot.userannot, annot)
+	return annot
 end
 
 
