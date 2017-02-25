@@ -1,0 +1,264 @@
+#InspectDR: Marker control for plot widgets
+#-------------------------------------------------------------------------------
+
+
+#==Types
+===============================================================================#
+const MARKER_COLORANT = ARGB32(0, 0, 0, 0.5)
+const MARKER_LINE = LineAttributes(:solid, 2.5, MARKER_COLORANT)
+const CTRLPOINT_RADIUS = Float64(4)
+const CTRLPOINT_ATTR = AreaAttributes(
+	line=LineAttributes(:solid, 2.5, MARKER_COLORANT), fillcolor=COLOR_TRANSPARENT
+)
+
+
+#==Types
+===============================================================================#
+immutable ISMovingMarker <: InputState
+	istrip::Int
+	initpos::Point2D
+	marker::CtrlMarker #Ref to marker
+end
+
+
+#==Constructor-like functions
+===============================================================================#
+function CtrlMarker(x::Real, y::Real, strip::Int, ref=nothing)
+	mkr = hvmarker(Point2D(x, y), MARKER_LINE, strip=strip)
+	return CtrlMarker(mkr, ref)
+end
+
+
+#==Rendering functions
+===============================================================================#
+#TODO: move somewhere else?
+function render_ctrlpoint(canvas::PCanvas2D, pt::Point2D, ixf::InputXfrm2D)
+	const ctx = canvas.ctx
+	pt = read2axis(pt, ixf)
+	pt = map2dev(canvas.xf, pt)
+	setlinestyle(ctx, LineStyle(CTRLPOINT_ATTR.line))
+	#TODO: Deprecate workaround if behaviour is changed.
+	#NOTE: Will draw line if we don't "move to" 0rad point on arc before drawing:
+	#      why is this?  is this a bug? why does this not show up elsewhere?
+	Cairo.move_to(ctx, pt.x+CTRLPOINT_RADIUS, pt.y) #Workaround
+	cairo_circle(ctx, pt.x, pt.y, CTRLPOINT_RADIUS)
+	renderfill(ctx, CTRLPOINT_ATTR.fillcolor)
+	Cairo.stroke(ctx)
+	return
+end
+
+function render_markercoord(canvas::PCanvas2D, pt::Point2D, font::Font,
+	xfmt::NumericFormatting, yfmt::NumericFormatting, ixf::InputXfrm2D, strip::Int)
+	xstr = formatted(pt.x, xfmt)
+	ystr = formatted(pt.y, yfmt)
+	str = "$xstr, $ystr"
+	a = atext(str, x=pt.x, y=pt.y, xoffset=3, yoffset=-3,
+		font=font, align=:tl, strip=strip)
+	render(canvas, a, ixf)
+	return
+end
+
+function render_Δinfo(canvas::PCanvas2D, p1::Point2D, p2::Point2D, font::Font,
+	xfmt::NumericFormatting, yfmt::NumericFormatting, ixf::InputXfrm2D, strip::Int)
+	const align = ALIGN_TOP | ALIGN_LEFT
+	const mfmt = number_fmt(ndigits=4, decfloating=true)
+	const boxattr = AreaAttributes(
+		line(style=:solid, width=1.5, color=COLOR_BLACK), COLOR_WHITE
+	)
+	const ctx = canvas.ctx
+	Δx = p2.x - p1.x; Δy = p2.y - p1.y
+	m = Δy/Δx
+	Δxstr = formatted(Δx, xfmt); Δxstr = "Δx=$Δxstr"
+	Δystr = formatted(Δy, yfmt); Δystr = "Δy=$Δystr"
+	mstr = formatted(m, mfmt); mstr = "Δy/Δx=$mstr"
+
+	setfont(ctx, font)
+	w, h = textextents_wh(ctx, mstr)
+	Δh = h*.1 #Vertical gap
+	wx, hx = textextents_wh(ctx, Δxstr)
+	wy, hy = textextents_wh(ctx, Δxstr)
+	w = max(w, wx, wy)
+	h += hx + hy + 2*Δh
+
+	#Figure out where to display:
+	p1a = read2axis(p1, ixf); 	p2a = read2axis(p2, ixf)
+	pdraw = Point2D((p1a.x + p2a.x)/2, (p1a.y + p2a.y)/2)
+		pdraw = map2dev(canvas.xf, pdraw)
+	x = pdraw.x; y = pdraw.y
+	x -= w/2; y -= h/2
+	pad = Δh
+	rect = BoundingBox(x-pad, x+w+pad, y-pad, y+h+pad)
+	drawrectangle(ctx, rect, boxattr)
+	render(ctx, Δxstr, Point2D(x, y), font, align=align)
+	y += hx + Δh
+	render(ctx, Δystr, Point2D(x, y), font, align=align)
+	y += hy + Δh
+	render(ctx, mstr, Point2D(x, y), font, align=align)
+	return
+end
+
+function render(canvas::PCanvas2D, mg::CtrlMarkerGroup, ixf::InputXfrm2D, strip::Int)
+	#In case rendered *before* graphinfo was updated
+	#ex: saving image before GtkPlot displayed (graphinfo updated),
+	#    but after GtkPlot created (CtlMarkerGroup added)
+	const nstrips = length(mg.graphinfo.strips)
+	if strip < 1 || strip > nstrips; return; end
+
+	const xfmt = hoverfmt(mg.graphinfo.xfmt)
+	const yfmt = hoverfmt(mg.graphinfo.strips[strip].yfmt)
+	for elem in mg.elem
+		mstrip = elem.prop.strip
+		if 0 == mstrip || mstrip == strip
+			render(canvas, elem.prop, ixf) #Render crosshairs
+			render_markercoord(canvas, elem.prop.pos, mg.fntcoord, xfmt, yfmt, ixf, strip)
+		end
+	end
+
+	#Render Δinfo on top:
+	for elem in mg.elem
+		mstrip = elem.prop.strip
+		if 0 == mstrip || mstrip == strip
+			mref = elem.ref
+			if mref != nothing
+				render_Δinfo(canvas, mref.prop.pos, elem.prop.pos, mg.fntdelta, xfmt, yfmt, ixf, strip)
+			end
+		end
+	end
+
+	#Render control points on top:
+	for elem in mg.elem
+		mstrip = elem.prop.strip
+		if 0 == mstrip || mstrip == strip
+			render_ctrlpoint(canvas, elem.prop.pos, ixf)
+		end
+	end
+	return
+end
+
+
+#==Helper functions
+===============================================================================#
+function hittest(marker::CtrlMarker, xf::Transform2D, ixf::InputXfrm2D, x::Float64, y::Float64)
+	const Δhit = Float64(CTRLPOINT_RADIUS+CTRLPOINT_ATTR.line.width/2)
+
+	pt = read2axis(marker.prop.pos, ixf)
+	pt = map2dev(xf, pt)
+	Δx = abs(x-pt.x); Δy = abs(y-pt.y)
+	Δ = sqrt(Δx*Δx + Δy*Δy)
+	return (Δ <= Δhit) #Hit successful if clicked on marker.
+end
+
+
+#==Action functions for bindkeys
+===============================================================================#
+function createmarker(pwidget::PlotWidget, ref=nothing)
+	istrip = pwidget.mouseover.istrip
+	pos = pwidget.mouseover.pos
+	mkr = nothing
+	if istrip > 0 && pos != nothing
+		x, y = pos.x, pos.y
+		mkr = CtrlMarker(x, y, istrip, ref)
+	end
+	return mkr
+end
+
+function addrefmarker(pwidget::PlotWidget)
+	mkr = createmarker(pwidget)
+	if mkr != nothing
+		push!(pwidget.markers.elem, mkr)
+		pwidget.refmarker = mkr
+		refresh(pwidget)
+	end
+	return mkr
+end
+
+function addΔmarker(pwidget::PlotWidget, makeref::Bool=false)
+	if pwidget.refmarker != nothing
+		mkr = createmarker(pwidget, pwidget.refmarker)
+		if mkr != nothing
+			push!(pwidget.markers.elem, mkr)
+			if makeref
+				pwidget.refmarker = mkr
+			end
+			refresh(pwidget)
+		end
+	end
+	return mkr
+end
+
+#Add a delta marker - and make it the new reference:
+addΔmarkerref(pwidget::PlotWidget) = addΔmarker(pwidget, true)
+
+
+#==Other actions
+===============================================================================#
+function cancelmove(s::ISMovingMarker, pwidget::PlotWidget)
+	s.marker.prop.pos = s.initpos
+	pwidget.state = ISNormal()
+	render(pwidget)
+	Gtk.draw(pwidget.canvas)
+	return
+end
+function deletemarker(mkr::CtrlMarker, pwidget::PlotWidget)
+	markers = pwidget.markers.elem
+	n = length(markers)
+	for i in 1:n
+		if mkr == markers[i]
+			deleteat!(markers, i)
+			break
+		end
+	end
+	render(pwidget)
+	Gtk.draw(pwidget.canvas)
+	return
+end
+
+
+#==Event handlers for selecting markers
+===============================================================================#
+#Handle mousepress if a CtrlMarker was clicked:
+function handleevent_mousepress(pwidget::PlotWidget, markers::CtrlMarkerGroup,
+	istrip::Int, x::Float64, y::Float64)
+	xf = Transform2D(pwidget.graphinfo, istrip)
+	ixf = InputXfrm2D(pwidget.graphinfo, istrip)
+
+	for i in 1:length(markers.elem)
+		elem = markers.elem[i]
+		if hittest(elem, xf, ixf, x, y)
+			initpos = elem.prop.pos
+			pwidget.state = ISMovingMarker(istrip, initpos, elem)
+			return true
+		end
+	end
+	return false
+end
+
+
+#==Event handlers for state: ISMovingMarker
+===============================================================================#
+function handleevent_keypress(s::ISMovingMarker, pwidget::PlotWidget, event::Gtk.GdkEventKey)
+	if GdkKeySyms.Escape == event.keyval #Cancel move
+		cancelmove(s, pwidget)
+	elseif GdkKeySyms.Delete == event.keyval
+		cancelmove(s, pwidget)
+		deletemarker(s.marker, pwidget)
+	end
+end
+function handleevent_mouserelease(::ISMovingMarker, pwidget::PlotWidget, event::Gtk.GdkEventButton)
+	if 1==event.button #Done moving
+		pwidget.state = ISNormal()
+	end
+end
+function handleevent_mousemove(s::ISMovingMarker, pwidget::PlotWidget, event::Gtk.GdkEventMotion)
+	handleevent_plothover(pwidget, event, s.istrip)
+
+	xf = Transform2D(pwidget.graphinfo, s.istrip)
+	ixf = InputXfrm2D(pwidget.graphinfo, s.istrip)
+	pt = map2axis(xf, Point2D(event.x, event.y))
+	pt = axis2read(pt, ixf)
+	s.marker.prop.pos = pt
+	render(pwidget)
+	Gtk.draw(pwidget.canvas)
+end
+
+#Last line
