@@ -87,6 +87,7 @@ end
 #TODO: warn undefined???
 render(canvas::PCanvas2D, a::PlotAnnotation, ixf::InputXfrm2D) = nothing
 
+#Basic render function for PlotAnnotation types:
 function render(canvas::PCanvas2D, a::PlotAnnotation, ixf::InputXfrm2D, strip::Int)
 	if 0 == a.strip || a.strip == strip
 		render(canvas, a, ixf)
@@ -94,9 +95,20 @@ function render(canvas::PCanvas2D, a::PlotAnnotation, ixf::InputXfrm2D, strip::I
 	return
 end
 
-function render{T<:PlotAnnotation}(canvas::PCanvas2D, alist::Vector{T}, ixf::InputXfrm2D, strip::Int)
+#Wrapper: Advanced rendering for PlotAnnotation types (for those requiring Graph2DInfo):
+#TODO: -Simplify API/pass simpler object than Graph2DInfo (strip-specific)???
+#      -Maybe replace PCanvas2D with something more appropriate???
+#      -Maybe rename Graph2DInfo for Plot2DInfo, and provide a strip-specific Graph2DInfo???
+function render(canvas::PCanvas2D, a::PlotAnnotation, ixf::InputXfrm2D, gi::Graph2DInfo, strip::Int)
+	if 0 == a.strip || a.strip == strip
+		render(canvas, a, ixf) #Default behaviour: use "basic render" - ignoring Graph2DInfo
+	end
+	return
+end
+
+function render{T<:PlotAnnotation}(canvas::PCanvas2D, alist::Vector{T}, ixf::InputXfrm2D, gi::Graph2DInfo, strip::Int)
 	for a in alist
-		render(canvas, a, ixf, strip)
+		render(canvas, a, ixf, gi, strip)
 	end
 	return
 end

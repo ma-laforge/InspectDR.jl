@@ -186,6 +186,10 @@ function render(ctx::CairoContext, t::String, pt::Point2D,
 	t_ext = Cairo.text_extents(ctx, t)
 	(xoff, yoff) = textoffset(t_ext, align)
 
+	if !isfinite(pt.x) || !isfinite(pt.y)
+		return #Seems to muck up context when accidentally drawing @ NaN.
+	end
+
 	Cairo.save(ctx) #-----
 
 	Cairo.translate(ctx, pt.x, pt.y)
@@ -197,6 +201,7 @@ function render(ctx::CairoContext, t::String, pt::Point2D,
 	Cairo.show_text(ctx, t)
 
 	Cairo.restore(ctx) #-----
+	return
 end
 render(ctx::CairoContext, t::String, pt::Point2D;
 	align::CAlignment=ALIGN_BOTTOM|ALIGN_LEFT, angle::Real=0) =

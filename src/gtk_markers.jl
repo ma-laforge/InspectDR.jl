@@ -97,15 +97,15 @@ function render_Δinfo(canvas::PCanvas2D, p1::Point2D, p2::Point2D, font::Font,
 	return
 end
 
-function render(canvas::PCanvas2D, mg::CtrlMarkerGroup, ixf::InputXfrm2D, strip::Int)
+function render(canvas::PCanvas2D, mg::CtrlMarkerGroup, ixf::InputXfrm2D, graphinfo::Graph2DInfo, strip::Int)
 	#In case rendered *before* graphinfo was updated
 	#ex: saving image before GtkPlot displayed (graphinfo updated),
 	#    but after GtkPlot created (CtlMarkerGroup added)
-	const nstrips = length(mg.graphinfo.strips)
+	const nstrips = length(graphinfo.strips)
 	if strip < 1 || strip > nstrips; return; end
 
-	const xfmt = hoverfmt(mg.graphinfo.xfmt)
-	const yfmt = hoverfmt(mg.graphinfo.strips[strip].yfmt)
+	const xfmt = hoverfmt(graphinfo.xfmt)
+	const yfmt = hoverfmt(graphinfo.strips[strip].yfmt)
 	for elem in mg.elem
 		mstrip = elem.prop.strip
 		if 0 == mstrip || mstrip == strip
@@ -173,6 +173,7 @@ function addrefmarker(pwidget::PlotWidget)
 end
 
 function addΔmarker(pwidget::PlotWidget, makeref::Bool=false)
+	mkr = nothing
 	if pwidget.refmarker != nothing
 		mkr = createmarker(pwidget, pwidget.refmarker)
 		if mkr != nothing

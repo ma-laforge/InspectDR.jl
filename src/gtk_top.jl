@@ -159,14 +159,10 @@ function PlotWidget(plot::Plot)
 	curstrip = 1 #TODO: Is this what is desired?
 
 	graphinfo = Graph2DInfo(plot)
-	mgrp = CtrlMarkerGroup(graphinfo, [],
-		Font(defaults.fontname, 10),
-		Font(defaults.fontname, 12)
-	)
 	pwidget = PlotWidget(vbox, canvas, plot, graphinfo, ISNormal(),
 		w_xscale, xscale, w_xpos, xpos,
 		bufsurf, curstrip, GtkMouseOver(), GtkSelection(),
-		mgrp, nothing, true, true,
+		CtrlMarkerGroup(), nothing, true, true,
 		#Event handlers:
 		nothing
 	)

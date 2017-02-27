@@ -26,6 +26,9 @@ type Graph2DInfo
 	xixf::InputXfrm1DSpec #Input transform for x-values
 	strips::Vector{StripInfo}
 end
+Graph2DInfo() = Graph2DInfo(
+	TickLabelFormatting(NoRangeDisplayInfo()), InputXfrm1DSpec(:lin), []
+)
 
 
 #==Constructor-like functions

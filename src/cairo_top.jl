@@ -3,7 +3,7 @@
 
 #Render entire plot
 #-------------------------------------------------------------------------------
-function render(canvas::PCanvas2D, plot::Plot2D, xticklabels::Bool, istrip::Int)
+function render(canvas::PCanvas2D, plot::Plot2D, xticklabels::Bool, graphinfo::Graph2DInfo, istrip::Int)
 	const strip = plot.strips[istrip]
 	if plot.layout.legend.enabled
 		legend_render(canvas, plot, istrip)
@@ -27,8 +27,8 @@ Cairo.save(canvas.ctx)
 
 	#Plot secondary annotation:
 	ixf = InputXfrm2D(plot.xscale, strip.yscale)
-	render(canvas, plot.userannot, ixf, istrip)	
-	render(canvas, plot.parentannot, ixf, istrip)	
+	render(canvas, plot.userannot, ixf, graphinfo, istrip)
+	render(canvas, plot.parentannot, ixf, graphinfo, istrip)
 
 Cairo.restore(canvas.ctx)
 
@@ -54,6 +54,7 @@ Cairo.restore(ctx)
 	render(ctx, plot.annotation, bb, databb, graphbblist, lyt)
 
 	update_ddata(plot) #Also computes new extents
+	graphinfo = Graph2DInfo(plot, bb)
 
 	nstrips = length(plot.strips)
 	for i in 1:nstrips
@@ -62,10 +63,10 @@ Cairo.restore(ctx)
 		#TODO: Render all non-data elements *before* plotting once drawing is multi-threaded.
 
 		render_xticklabels = (i == nstrips) #Only bottom-most graph
-		render(canvas, plot, render_xticklabels, i)
+		render(canvas, plot, render_xticklabels, graphinfo, i)
 	end
 
-	return
+	return graphinfo #So parent/caller can position objects/format data
 end
 
 #Last line

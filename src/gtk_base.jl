@@ -79,11 +79,13 @@ end
 
 #Grouping of controllable markers (used to get ::Plot object to render)
 type CtrlMarkerGroup <: PlotAnnotation
-	graphinfo::Graph2DInfo #Info needed to render markers
 	elem::Vector{CtrlMarker}
 	fntcoord::Font
 	fntdelta::Font
 end
+CtrlMarkerGroup() = CtrlMarkerGroup([],
+	Font(defaults.fontname, 10), Font(defaults.fontname, 12)
+)
 
 #TODO: move to ISSelectingArea <: InputState??
 type GtkSelection
@@ -201,13 +203,12 @@ function render(pwidget::PlotWidget)
 
 	_reset(ctx)
 	clear(ctx, bb)
-	pwidget.graphinfo = Graph2DInfo(plot, bb)
-	pwidget.markers.graphinfo = pwidget.graphinfo
+	pwidget.graphinfo = render(ctx, plot, bb)
+	Cairo.destroy(ctx)
 	nstrips = length(pwidget.graphinfo.strips)
 	pwidget.curstrip = max(pwidget.curstrip, 1) #Focus on 1st strip - if no strip has focus
 	pwidget.curstrip = min(pwidget.curstrip, nstrips) #Make sure focus is not beyond nstrips
-	render(ctx, plot, bb)
-	Cairo.destroy(ctx)
+	return
 end
 
 
