@@ -5,10 +5,6 @@
 ===============================================================================#
 typealias KeyMap Dict{Int, Function}
 
-#User input states
-immutable ISSelectingArea <: InputState; end
-immutable ISPanningData <: InputState; end #Typically with mouse
-
 type KeyBindings
 	nomod::KeyMap
 	shiftmod::KeyMap
@@ -125,68 +121,14 @@ function handleevent_mousepress(::ISNormal, pwidget::PlotWidget, event::Gtk.GdkE
 	focus(pwidget.widget) #In case not in focus
 
 	if 3==event.button
-		boxzoom_setstart(pwidget, event.x, event.y)
-		pwidget.state = ISSelectingArea()
+		boxzoom_setstart(pwidget, event.x, event.y) #Changes state
 	elseif 1==event.button
 		if modifiers_pressed(event.state, MODIFIER_SHIFT)
-			mousepan_setstart(pwidget, event.x, event.y)
-			pwidget.state = ISPanningData()
+			mousepan_setstart(pwidget, event.x, event.y) #Changes state
 		elseif !modifiers_pressed(event.state, MODIFIERS_SUPPORTED) #Un-modified
 			handleevent_mousepress(pwidget, CtrlElement, event.x, event.y)
 		end
 	end
-end
-
-
-#==State: Selecting plot area
-===============================================================================#
-function handleevent_keypress(::ISSelectingArea, pwidget::PlotWidget, event::Gtk.GdkEventKey)
-	if GdkKeySyms.Escape == event.keyval
-		boxzoom_cancel(pwidget)
-		pwidget.state = ISNormal()
-	elseif Int('h') == event.keyval
-		locdir_h(pwidget)
-	elseif Int('v') == event.keyval
-		locdir_v(pwidget)
-	elseif Int('b') == event.keyval
-		locdir_any(pwidget)
-	end
-end
-function handleevent_mouserelease(::ISSelectingArea, pwidget::PlotWidget, event::Gtk.GdkEventButton)
-	if 3==event.button
-		boxzoom_complete(pwidget, event.x, event.y)
-		pwidget.state = ISNormal()
-	end
-end
-function handleevent_mousemove(::ISSelectingArea, pwidget::PlotWidget, event::Gtk.GdkEventMotion)
-	handleevent_plothover(pwidget, event)
-	boxzoom_setend(pwidget, event.x, event.y)
-end
-
-
-#==State: Mouse pan
-===============================================================================#
-function handleevent_keypress(::ISPanningData, pwidget::PlotWidget, event::Gtk.GdkEventKey)
-	if GdkKeySyms.Escape == event.keyval
-		mousepan_cancel(pwidget)
-		pwidget.state = ISNormal()
-	elseif Int('h') == event.keyval || Int('H') == event.keyval
-		locdir_h(pwidget)
-	elseif Int('v') == event.keyval || Int('V') == event.keyval
-		locdir_v(pwidget)
-	elseif Int('b') == event.keyval || Int('B') == event.keyval
-		locdir_any(pwidget)
-	end
-end
-function handleevent_mouserelease(::ISPanningData, pwidget::PlotWidget, event::Gtk.GdkEventButton)
-	if 1==event.button
-		mousepan_complete(pwidget, event.x, event.y)
-		pwidget.state = ISNormal()
-	end
-end
-function handleevent_mousemove(::ISPanningData, pwidget::PlotWidget, event::Gtk.GdkEventMotion)
-	handleevent_plothover(pwidget, event)
-	mousepan_move(pwidget, event.x, event.y)
 end
 
 

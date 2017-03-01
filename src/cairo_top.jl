@@ -27,8 +27,8 @@ Cairo.save(canvas.ctx)
 
 	#Plot secondary annotation:
 	ixf = InputXfrm2D(plot.xscale, strip.yscale)
-	render(canvas, plot.userannot, ixf, graphinfo, istrip)
-	render(canvas, plot.parentannot, ixf, graphinfo, istrip)
+	render(canvas, plot.userannot, graphinfo, istrip)
+	render(canvas, plot.parentannot, graphinfo, istrip)
 
 Cairo.restore(canvas.ctx)
 
@@ -54,7 +54,7 @@ Cairo.restore(ctx)
 	render(ctx, plot.annotation, bb, databb, graphbblist, lyt)
 
 	update_ddata(plot) #Also computes new extents
-	graphinfo = Graph2DInfo(plot, bb)
+	plotinfo = Plot2DInfo(plot, bb)
 
 	nstrips = length(plot.strips)
 	for i in 1:nstrips
@@ -63,10 +63,11 @@ Cairo.restore(ctx)
 		#TODO: Render all non-data elements *before* plotting once drawing is multi-threaded.
 
 		render_xticklabels = (i == nstrips) #Only bottom-most graph
+		graphinfo = Graph2DInfo(plotinfo, i)
 		render(canvas, plot, render_xticklabels, graphinfo, i)
 	end
 
-	return graphinfo #So parent/caller can position objects/format data
+	return plotinfo #So parent/caller can position objects/format data
 end
 
 #Last line

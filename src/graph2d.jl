@@ -14,26 +14,52 @@ type StripInfo
 	xf::Transform2D #Transform used to render data
 	#TODO: axis scaling, ...?
 end
-StripInfo() = StripInfo([], [], [])
-
 
 #"Evaluated" information about all graphs on a plot:
 #(Cache for bounds, current extents, text formatting, transforms, etc)
-type Graph2DInfo
+type Plot2DInfo
 #TODO: store BoundingBox for entire plot??
 #TODO: store extents???
 	xfmt::TickLabelFormatting #x tick label formatting
 	xixf::InputXfrm1DSpec #Input transform for x-values
 	strips::Vector{StripInfo}
 end
-Graph2DInfo() = Graph2DInfo(
+Plot2DInfo() = Plot2DInfo(
 	TickLabelFormatting(NoRangeDisplayInfo()), InputXfrm1DSpec(:lin), []
 )
+
+#Graph-specific version of Plot2DInfo/StripInfo
+type Graph2DInfo
+	graphbb::BoundingBox #Location of graph (device units)
+
+	xfmt::TickLabelFormatting #x tick label formatting
+	yfmt::TickLabelFormatting #y tick label formatting
+
+	ixf::InputXfrm2D #Input transform for y-values
+	xf::Transform2D #Transform used to render data
+end
+
+
+#==Accessors
+===============================================================================#
+Transform2D(pinfo::Plot2DInfo, istrip::Int) = pinfo.strips[istrip].xf
+InputXfrm2D(pinfo::Plot2DInfo, istrip::Int) =
+	InputXfrm2D(pinfo.xixf, pinfo.strips[istrip].yixf)
+
 
 
 #==Constructor-like functions
 ===============================================================================#
-function Graph2DInfo(plot::Plot2D)
+function Graph2DInfo(pinfo::Plot2DInfo, istrip::Int)
+	graphbb = pinfo.strips[istrip].graphbb
+	xfmt = pinfo.xfmt
+	yfmt = pinfo.strips[istrip].yfmt
+	ixf = InputXfrm2D(pinfo, istrip)
+	xf = Transform2D(pinfo, istrip)
+	return Graph2DInfo(graphbb, xfmt, yfmt, ixf, xf)
+end
+
+function Plot2DInfo(plot::Plot2D)
 	xfmt = TickLabelFormatting(NoRangeDisplayInfo())
 	if length(plot.strips) > 0
 		istrip = 1
@@ -45,13 +71,13 @@ function Graph2DInfo(plot::Plot2D)
 			xfmt = TickLabelFormatting(plot.layout.xlabelformat, grid.xlines.rnginfo)
 		end
 	end
-	return Graph2DInfo(xfmt, InputXfrm1DSpec(plot.xscale), [])
+	return Plot2DInfo(xfmt, InputXfrm1DSpec(plot.xscale), [])
 end
 
 #bb: bounding box of entire plot
-function Graph2DInfo(plot::Plot2D, bb::BoundingBox)
+function Plot2DInfo(plot::Plot2D, bb::BoundingBox)
 	const dfltfmt = TickLabelFormatting(NoRangeDisplayInfo())
-	result = Graph2DInfo(plot)
+	result = Plot2DInfo(plot)
 	databb = databounds(bb, plot.layout, grid1(plot))
 	nstrips = length(plot.strips)
 	graphbblist = graphbounds_list(databb, plot.layout, nstrips)
@@ -75,13 +101,6 @@ function Graph2DInfo(plot::Plot2D, bb::BoundingBox)
 end
 #Want to define/use coord_grid when displaying coordinates???
 #Or maybe we deprecate coord_grid???
-
-
-#==Accessors
-===============================================================================#
-Transform2D(ginfo::Graph2DInfo, istrip::Int) = ginfo.strips[istrip].xf
-InputXfrm2D(ginfo::Graph2DInfo, istrip::Int) =
-	InputXfrm2D(ginfo.xixf, ginfo.strips[istrip].yixf)
 
 
 #==Helper functions

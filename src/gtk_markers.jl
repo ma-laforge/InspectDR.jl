@@ -48,13 +48,13 @@ function render_ctrlpoint(canvas::PCanvas2D, pt::Point2D, ixf::InputXfrm2D)
 end
 
 function render_markercoord(canvas::PCanvas2D, pt::Point2D, font::Font,
-	xfmt::NumericFormatting, yfmt::NumericFormatting, ixf::InputXfrm2D, strip::Int)
+	xfmt::NumericFormatting, yfmt::NumericFormatting, graphinfo::Graph2DInfo, strip::Int)
 	xstr = formatted(pt.x, xfmt)
 	ystr = formatted(pt.y, yfmt)
 	str = "$xstr, $ystr"
 	a = atext(str, x=pt.x, y=pt.y, xoffset=3, yoffset=-3,
 		font=font, align=:tl, strip=strip)
-	render(canvas, a, ixf)
+	render(canvas, a, graphinfo)
 	return
 end
 
@@ -97,20 +97,15 @@ function render_Δinfo(canvas::PCanvas2D, p1::Point2D, p2::Point2D, font::Font,
 	return
 end
 
-function render(canvas::PCanvas2D, mg::CtrlMarkerGroup, ixf::InputXfrm2D, graphinfo::Graph2DInfo, strip::Int)
-	#In case rendered *before* graphinfo was updated
-	#ex: saving image before GtkPlot displayed (graphinfo updated),
-	#    but after GtkPlot created (CtlMarkerGroup added)
-	const nstrips = length(graphinfo.strips)
-	if strip < 1 || strip > nstrips; return; end
-
+function render(canvas::PCanvas2D, mg::CtrlMarkerGroup, graphinfo::Graph2DInfo, strip::Int)
 	const xfmt = hoverfmt(graphinfo.xfmt)
-	const yfmt = hoverfmt(graphinfo.strips[strip].yfmt)
+	const yfmt = hoverfmt(graphinfo.yfmt)
+	const ixf = graphinfo.ixf
 	for elem in mg.elem
 		mstrip = elem.prop.strip
 		if 0 == mstrip || mstrip == strip
-			render(canvas, elem.prop, ixf) #Render crosshairs
-			render_markercoord(canvas, elem.prop.pos, mg.fntcoord, xfmt, yfmt, ixf, strip)
+			render(canvas, elem.prop, graphinfo) #Render crosshairs
+			render_markercoord(canvas, elem.prop.pos, mg.fntcoord, xfmt, yfmt, graphinfo, strip)
 		end
 	end
 
@@ -196,7 +191,7 @@ addΔmarkerref(pwidget::PlotWidget) = addΔmarker(pwidget, true)
 function cancelmove(s::ISMovingMarker, pwidget::PlotWidget)
 	s.marker.prop.pos = s.initpos
 	pwidget.state = ISNormal()
-	render(pwidget)
+	render(pwidget) #TODO: required???
 	Gtk.draw(pwidget.canvas)
 	return
 end
@@ -220,8 +215,8 @@ end
 #Handle mousepress if a CtrlMarker was clicked:
 function handleevent_mousepress(pwidget::PlotWidget, markers::CtrlMarkerGroup,
 	istrip::Int, x::Float64, y::Float64)
-	xf = Transform2D(pwidget.graphinfo, istrip)
-	ixf = InputXfrm2D(pwidget.graphinfo, istrip)
+	xf = Transform2D(pwidget.plotinfo, istrip)
+	ixf = InputXfrm2D(pwidget.plotinfo, istrip)
 
 	for i in 1:length(markers.elem)
 		elem = markers.elem[i]
@@ -253,8 +248,8 @@ end
 function handleevent_mousemove(s::ISMovingMarker, pwidget::PlotWidget, event::Gtk.GdkEventMotion)
 	handleevent_plothover(pwidget, event, s.istrip)
 
-	xf = Transform2D(pwidget.graphinfo, s.istrip)
-	ixf = InputXfrm2D(pwidget.graphinfo, s.istrip)
+	xf = Transform2D(pwidget.plotinfo, s.istrip)
+	ixf = InputXfrm2D(pwidget.plotinfo, s.istrip)
 	pt = map2axis(xf, Point2D(event.x, event.y))
 	pt = axis2read(pt, ixf)
 	s.marker.prop.pos = pt

@@ -73,7 +73,7 @@ function render_xcirclelabel(ctx::CairoContext, xf::Transform2D, pt::Point2D, xf
 
 	#Compute text position, including offset:
 	pt = Point2D(xscale*pt.x, pt.y)
-	vpos = map2dev_vec(xf, pt) #Directional vector of label position
+	vpos = map2dev(xf, Vector2D(pt)) #Directional vector of label position
 	voffset = (SMITHLABEL_OFFSET/vecnorm(vpos))*vpos
 	pt = map2dev(xf, pt)+voffset
 	render(ctx, lbl, pt, angle=Θ, align=ALIGN_BOTTOM|ALIGN_HCENTER)

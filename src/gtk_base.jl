@@ -87,16 +87,6 @@ CtrlMarkerGroup() = CtrlMarkerGroup([],
 	Font(defaults.fontname, 10), Font(defaults.fontname, 12)
 )
 
-#TODO: move to ISSelectingArea <: InputState??
-type GtkSelection
-	enabled::Bool
-	istrip::Int
-	bb::BoundingBox
-	ext_start::PExtents2D #Exetents @ start of operation
-	#Store ext_start to avoid accumulation of numerical errors.
-end
-GtkSelection() = GtkSelection(false, 0, BoundingBox(0,0,0,0), PExtents2D())
-
 type GtkMouseOver
 	istrip::Int
 	pos::NullOr{Point2D}
@@ -107,7 +97,7 @@ type PlotWidget
 	widget::_Gtk.Box #Base widget
 	canvas::_Gtk.Canvas #Actual plot area
 	src::Plot
-	graphinfo::Graph2DInfo
+	plotinfo::Plot2DInfo
 	state::InputState
 
 	#Scrollbars to control x-scale & position:
@@ -122,7 +112,6 @@ type PlotWidget
 
 	curstrip::Int #Currently active strip
 	mouseover::GtkMouseOver #Where is mouse
-	sel::GtkSelection #Used to describe selection box
 
 	#Control elements:
 	markers::CtrlMarkerGroup
@@ -203,9 +192,9 @@ function render(pwidget::PlotWidget)
 
 	_reset(ctx)
 	clear(ctx, bb)
-	pwidget.graphinfo = render(ctx, plot, bb)
+	pwidget.plotinfo = render(ctx, plot, bb)
 	Cairo.destroy(ctx)
-	nstrips = length(pwidget.graphinfo.strips)
+	nstrips = length(pwidget.plotinfo.strips)
 	pwidget.curstrip = max(pwidget.curstrip, 1) #Focus on 1st strip - if no strip has focus
 	pwidget.curstrip = min(pwidget.curstrip, nstrips) #Make sure focus is not beyond nstrips
 	return

@@ -70,37 +70,17 @@ end
 ===============================================================================#
 #plothover event: show plot coordinates under mouse.
 #-------------------------------------------------------------------------------
-#TODO: deprecate???
-plothover_coordformatting(lstyle::TickLabelStyle, lines::AbstractGridLines) =
-	number_fmt() #Just use default
-function plothover_coordformatting(lstyle::TickLabelStyle, lines::GridLines)
-	fmt = TickLabelFormatting(lstyle, lines.rnginfo).fmt
-	fmt.ndigits += 2 #TODO: Better algorithm?
-	return fmt
-end
-
-function plothover_coordstr(grid::GridRect, xlstyle::TickLabelStyle, ylstyle::TickLabelStyle, x::DReal, y::DReal)
-	#TODO: keep coord formatting around instead of re-evaluating?
-	fmt = plothover_coordformatting(xlstyle, grid.xlines)
-	xstr = formatted(x, fmt)
-	fmt = plothover_coordformatting(ylstyle, grid.ylines)
-	ystr = formatted(y, fmt)
-	return "(x, y) = ($xstr, $ystr)"
-end
-
 function handleevent_plothover(gplot::GtkPlot, pwidget::PlotWidget, x::Float64, y::Float64)
-	const plot = pwidget.src
-	const lyt = plot.layout
+	const plotinfo = pwidget.plotinfo
 
 	istrip = pwidget.mouseover.istrip
 	pos = pwidget.mouseover.pos
 	if istrip > 0 && pos != nothing
-		strip = plot.strips[istrip]
-		ext = getextents_axis(plot, istrip)
-		#TODO: keep _eval-ed grid around instead of re-_eval-uating? (coord_grid uses _eval):
-		grid = coord_grid(strip.grid, plot.xscale, strip.yscale, ext)
-		x, y = pos.x, pos.y #Use transformed coordinates instead.
-		statstr = plothover_coordstr(grid, lyt.xlabelformat, lyt.ylabelformat, x, y)
+		xfmt = hoverfmt(plotinfo.xfmt)
+		yfmt = hoverfmt(plotinfo.strips[istrip].yfmt)
+		xstr = formatted(pos.x, xfmt)
+		ystr = formatted(pos.y, yfmt)
+		statstr = "(x, y) = ($xstr, $ystr)"
 	else
 		statstr = "(x, y) = ( , )"
 	end
@@ -158,10 +138,10 @@ function PlotWidget(plot::Plot)
 #	bufsurf = Gtk.cairo_surface_for(canvas) #create similar - does not work here
 	curstrip = 1 #TODO: Is this what is desired?
 
-	graphinfo = Graph2DInfo(plot)
-	pwidget = PlotWidget(vbox, canvas, plot, graphinfo, ISNormal(),
+	plotinfo = Plot2DInfo(plot)
+	pwidget = PlotWidget(vbox, canvas, plot, plotinfo, ISNormal(),
 		w_xscale, xscale, w_xpos, xpos,
-		bufsurf, curstrip, GtkMouseOver(), GtkSelection(),
+		bufsurf, curstrip, GtkMouseOver(),
 		CtrlMarkerGroup(), nothing, true, true,
 		#Event handlers:
 		nothing

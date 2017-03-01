@@ -21,10 +21,10 @@ const ALIGN_MAP = Dict{Symbol, CAlignment}(
 
 #==Rendering text annotation
 ===============================================================================#
-function render(canvas::PCanvas2D, a::TextAnnotation, ixf::InputXfrm2D)
+function render(canvas::PCanvas2D, a::TextAnnotation, graphinfo::Graph2DInfo)
 	align = get(ALIGN_MAP, a.align, ALIGN_BOTTOM | ALIGN_LEFT)
 	angle = deg2rad(a.angle)
-	pt = map2dev(a.pos, canvas.xf, ixf, canvas.graphbb)
+	pt = map2dev(a.pos, canvas.xf, graphinfo.ixf, canvas.graphbb)
 	render(canvas.ctx, a.text, pt, a.font, angle=angle, align=align)
 	return
 end
@@ -33,7 +33,7 @@ end
 #==Rendering markers
 ===============================================================================#
 
-function render(canvas::PCanvas2D, mkr::HVMarker, ixf::InputXfrm2D)
+function render(canvas::PCanvas2D, mkr::HVMarker, graphinfo::Graph2DInfo)
 	const ctx = canvas.ctx
 	const graphbb = canvas.graphbb
 	if :none == mkr.line.style
@@ -41,7 +41,7 @@ function render(canvas::PCanvas2D, mkr::HVMarker, ixf::InputXfrm2D)
 	end
 
 	setlinestyle(ctx, LineStyle(mkr.line))
-	pt = read2axis(mkr.pos, ixf)
+	pt = read2axis(mkr.pos, graphinfo.ixf)
 	pt = map2dev(canvas.xf, pt)
 
 	if mkr.vmarker
@@ -57,7 +57,7 @@ end
 
 #==Rendering polyline for annotation
 ===============================================================================#
-function render(canvas::PCanvas2D, a::PolylineAnnotation, ixf::InputXfrm2D)
+function render(canvas::PCanvas2D, a::PolylineAnnotation, graphinfo::Graph2DInfo)
 	const ctx = canvas.ctx
 
 	x = a.x; y = a.y
@@ -75,7 +75,7 @@ function render(canvas::PCanvas2D, a::PolylineAnnotation, ixf::InputXfrm2D)
 	Cairo.stroke(ctx)
 
 #	function xf(x, y)
-#		pt = map2dev(canvas.xf, map2axis(Point2D(x,y), ixf))
+#		pt = map2dev(canvas.xf, map2axis(Point2D(x,y), graphinfo.ixf))
 #		return (x, y)
 #	end
 	return
@@ -85,30 +85,19 @@ end
 #==Generic rendering algorithm for annotations
 ===============================================================================#
 #TODO: warn undefined???
-render(canvas::PCanvas2D, a::PlotAnnotation, ixf::InputXfrm2D) = nothing
+render(canvas::PCanvas2D, a::PlotAnnotation, graphinfo::Graph2DInfo) = nothing
 
 #Basic render function for PlotAnnotation types:
-function render(canvas::PCanvas2D, a::PlotAnnotation, ixf::InputXfrm2D, strip::Int)
+function render(canvas::PCanvas2D, a::PlotAnnotation, graphinfo::Graph2DInfo, strip::Int)
 	if 0 == a.strip || a.strip == strip
-		render(canvas, a, ixf)
+		render(canvas, a, graphinfo)
 	end
 	return
 end
 
-#Wrapper: Advanced rendering for PlotAnnotation types (for those requiring Graph2DInfo):
-#TODO: -Simplify API/pass simpler object than Graph2DInfo (strip-specific)???
-#      -Maybe replace PCanvas2D with something more appropriate???
-#      -Maybe rename Graph2DInfo for Plot2DInfo, and provide a strip-specific Graph2DInfo???
-function render(canvas::PCanvas2D, a::PlotAnnotation, ixf::InputXfrm2D, gi::Graph2DInfo, strip::Int)
-	if 0 == a.strip || a.strip == strip
-		render(canvas, a, ixf) #Default behaviour: use "basic render" - ignoring Graph2DInfo
-	end
-	return
-end
-
-function render{T<:PlotAnnotation}(canvas::PCanvas2D, alist::Vector{T}, ixf::InputXfrm2D, gi::Graph2DInfo, strip::Int)
+function render{T<:PlotAnnotation}(canvas::PCanvas2D, alist::Vector{T}, graphinfo::Graph2DInfo, strip::Int)
 	for a in alist
-		render(canvas, a, ixf, gi, strip)
+		render(canvas, a, graphinfo, strip)
 	end
 	return
 end
