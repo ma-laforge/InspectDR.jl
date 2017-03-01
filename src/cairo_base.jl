@@ -259,7 +259,7 @@ function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 		x = map2dev(xf, Point2D(xtick, 0)).x
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MINOR_LEN))
 	end
-	if fmt.splitexp
+	if fmt.splitexp && ticklabels
 		xlabel = graphbb.xmax + tframe
 		render_axisscalelabel(ctx, Point2D(xlabel, yframe), lyt.fntticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, xs)
 	end
