@@ -162,7 +162,7 @@ function addrefmarker(pwidget::PlotWidget)
 	if mkr != nothing
 		push!(pwidget.markers.elem, mkr)
 		pwidget.refmarker = mkr
-		refresh(pwidget)
+		refresh(pwidget, refreshdata=false)
 	end
 	return mkr
 end
@@ -176,7 +176,7 @@ function addΔmarker(pwidget::PlotWidget, makeref::Bool=false)
 			if makeref
 				pwidget.refmarker = mkr
 			end
-			refresh(pwidget)
+			refresh(pwidget, refreshdata=false)
 		end
 	end
 	return mkr
