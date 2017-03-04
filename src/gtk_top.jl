@@ -6,8 +6,10 @@
 #Hack to keep text height in status label from changing as exponents start
 #being included in coordinate values (Noticed on Windows platforms):
 #(Causes display glitches/slowdowns)
-const TEXTH_HACK_STR = "¹"
-#TODO: find a better way to keep height constant.
+const TEXTH_HACK_STR = "⁻" #Superscript `-` has bigger height than other chars.
+#TODO: find a better way to keep height constant in status bar.
+
+const COORDSTAT_NONE = "$TEXTH_HACK_STR(x, y) = ( , )"
 
 
 #==Callback wrapper functions (PlotWidget-level)
@@ -90,7 +92,7 @@ function handleevent_plothover(gplot::GtkPlot, pwidget::PlotWidget, x::Float64, 
 		ystr = formatted(pos.y, yfmt)
 		statstr = "$TEXTH_HACK_STR(x, y) = ($xstr, $ystr)"
 	else
-		statstr = "$TEXTH_HACK_STR(x, y) = ( , )"
+		statstr = COORDSTAT_NONE
 	end
 
 	setproperty!(gplot.status, :label, statstr)
@@ -251,6 +253,7 @@ function GtkPlot(mp::Multiplot)
 		setproperty!(status, :hexpand, true)
 		setproperty!(status, :ellipsize, PANGO_ELLIPSIZE_END)
 		setproperty!(status, :xalign, 0.0)
+		setproperty!(status, :label, COORDSTAT_NONE)
 		sbar_frame = _Gtk.Frame(status)
 			setproperty!(sbar_frame, "shadow-type", GtkShadowType.GTK_SHADOW_ETCHED_IN)
 
