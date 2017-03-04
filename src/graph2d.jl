@@ -1,17 +1,24 @@
 #InspectDR: Store/manipulate info about graph bounds, scales, ...
 #-------------------------------------------------------------------------------
 
+#TODO: Move Plot2D here from base.jl, and rename?
+
 
 #==Main types
 ===============================================================================#
+
+#TODO: deprecate Plot2DInfo & stick with Graph2DInfo (despite redundancy)???
+#Maybe Plot2DInfo just stores array of Graph2DInfo?
 
 #"Evaluated" information about all strips:
 #(Cache for bounds, current extents, text formatting, transforms, etc)
 type StripInfo
 	graphbb::BoundingBox #Location of graph (device units)
+	ext::PExtents2D #Current extents of graph
 	yfmt::TickLabelFormatting #y tick label formatting
 	yixf::InputXfrm1DSpec #Input transform for y-values
 	xf::Transform2D #Transform used to render data
+	grid::PlotGrid #Real, displayed ("_eval"-uated) grid - not "coordinate grid"
 	#TODO: axis scaling, ...?
 end
 
@@ -31,12 +38,15 @@ Plot2DInfo() = Plot2DInfo(
 #Graph-specific version of Plot2DInfo/StripInfo
 type Graph2DInfo
 	graphbb::BoundingBox #Location of graph (device units)
+	ext::PExtents2D #Current extents of graph
 
 	xfmt::TickLabelFormatting #x tick label formatting
 	yfmt::TickLabelFormatting #y tick label formatting
 
 	ixf::InputXfrm2D #Input transform for y-values
 	xf::Transform2D #Transform used to render data
+
+	grid::PlotGrid #Real, displayed ("_eval"-uated) grid - not "coordinate grid"
 end
 
 
@@ -47,16 +57,17 @@ InputXfrm2D(pinfo::Plot2DInfo, istrip::Int) =
 	InputXfrm2D(pinfo.xixf, pinfo.strips[istrip].yixf)
 
 
-
 #==Constructor-like functions
 ===============================================================================#
 function Graph2DInfo(pinfo::Plot2DInfo, istrip::Int)
 	graphbb = pinfo.strips[istrip].graphbb
+	ext = pinfo.strips[istrip].ext
 	xfmt = pinfo.xfmt
 	yfmt = pinfo.strips[istrip].yfmt
 	ixf = InputXfrm2D(pinfo, istrip)
 	xf = Transform2D(pinfo, istrip)
-	return Graph2DInfo(graphbb, xfmt, yfmt, ixf, xf)
+	grid = pinfo.strips[istrip].grid
+	return Graph2DInfo(graphbb, ext, xfmt, yfmt, ixf, xf, grid)
 end
 
 function Plot2DInfo(plot::Plot2D)
@@ -87,14 +98,14 @@ function Plot2DInfo(plot::Plot2D, bb::BoundingBox)
 		strip = plot.strips[istrip]
 		graphbb = graphbblist[istrip]
 		ext = getextents_axis(plot, istrip)
-		grid = coord_grid(strip.grid, plot.xscale, strip.yscale, ext)
+		grid = _eval(strip.grid, plot.xscale, strip.yscale, ext)
+		cgrid = coord_grid(strip.grid, plot.xscale, strip.yscale, ext)
 		yfmt = dfltfmt
-		if !isa(grid.ylines, UndefinedGridLines)
-			yfmt = TickLabelFormatting(plot.layout.ylabelformat, grid.ylines.rnginfo)
+		if !isa(cgrid.ylines, UndefinedGridLines)
+			yfmt = TickLabelFormatting(plot.layout.ylabelformat, cgrid.ylines.rnginfo)
 		end
-		result.strips[istrip] = StripInfo(graphbb, yfmt,
-			InputXfrm1DSpec(strip.yscale),
-			Transform2D(ext, graphbb)
+		result.strips[istrip] = StripInfo(graphbb, ext, yfmt,
+			InputXfrm1DSpec(strip.yscale), Transform2D(ext, graphbb), grid
 		)
 	end
 	return result

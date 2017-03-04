@@ -53,8 +53,17 @@ function _reset(ctx::CairoContext)
 	Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_BEVEL)
 end
 
-#Clears a rectangle-shaped area with a solid color
-function clear(ctx::CairoContext, bb::BoundingBox, color::Colorant=COLOR_WHITE)
+#Set entire context to a single color:
+function clear(ctx::CairoContext, color::Colorant=COLOR_TRANSPARENT)
+	Cairo.save(ctx)
+	Cairo.set_source(ctx, color)
+	Cairo.set_operator(ctx, Cairo.OPERATOR_SOURCE)
+	Cairo.paint(ctx) #_with_alpha?
+	Cairo.restore(ctx)
+end
+
+#Draws a rectangle-shaped area with a solid color
+function wipe(ctx::CairoContext, bb::BoundingBox, color::Colorant)
 	Cairo.set_source(ctx, color)
 	Cairo.rectangle(ctx, bb)
 	Cairo.fill(ctx)

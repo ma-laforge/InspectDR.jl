@@ -18,6 +18,9 @@ type PCanvas2D <: PlotCanvas
 end
 PCanvas2D(ctx, bb, graphbb, ext) =
 	PCanvas2D(ctx, bb, graphbb, ext, Transform2D(ext, graphbb))
+PCanvas2D(ctx, bb, ginfo::Graph2DInfo) =
+	PCanvas2D(ctx, bb, ginfo.graphbb, ginfo.ext, ginfo.xf)
+
 
 #=
 #TODO: use instead of PCanvas2D???
@@ -32,6 +35,12 @@ end
 GCanvas2D(ctx, graphbb, ext) =
 	GCanvas2D(ctx, graphbb, ext, Transform2D(ext, graphbb))
 =#
+
+#Used to buffer portions of plot for better GUI response times
+type CairoBufferedPlot
+	surf::Cairo.CairoSurface #Main surface where plot is drawn
+	data::Cairo.CairoSurface #Cache of data image layer
+end
 
 
 #==Basic rendering

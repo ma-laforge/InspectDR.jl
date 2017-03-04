@@ -191,8 +191,7 @@ addΔmarkerref(pwidget::PlotWidget) = addΔmarker(pwidget, true)
 function cancelmove(s::ISMovingMarker, pwidget::PlotWidget)
 	s.marker.prop.pos = s.initpos
 	pwidget.state = ISNormal()
-	render(pwidget) #TODO: required???
-	Gtk.draw(pwidget.canvas)
+	refresh(pwidget, refreshdata=false)
 	return
 end
 function deletemarker(mkr::CtrlMarker, pwidget::PlotWidget)
@@ -204,8 +203,7 @@ function deletemarker(mkr::CtrlMarker, pwidget::PlotWidget)
 			break
 		end
 	end
-	render(pwidget)
-	Gtk.draw(pwidget.canvas)
+	refresh(pwidget, refreshdata=false)
 	return
 end
 
@@ -253,8 +251,7 @@ function handleevent_mousemove(s::ISMovingMarker, pwidget::PlotWidget, event::Gt
 	pt = map2axis(xf, Point2D(event.x, event.y))
 	pt = axis2read(pt, ixf)
 	s.marker.prop.pos = pt
-	render(pwidget)
-	Gtk.draw(pwidget.canvas)
+	refresh(pwidget, refreshdata=false)
 end
 
 #Last line

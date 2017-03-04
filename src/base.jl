@@ -653,12 +653,14 @@ end
 #==High-level display functions
 ===============================================================================#
 function update_ddata(plot::Plot2D)
-	invalidate_extents(plot) #Always compute below:
+	invalidate_extents(plot) #Always refresh data
 	#TODO: Conditionnaly compute (only when data changed/added)?
 
-	if plot.invalid_ddata
+	refreshed = plot.invalid_ddata #Indicates if fn refreshed data
+	if refreshed
 		preprocess_data(plot)
 	end
+	return refreshed
 end
 
 #Last line

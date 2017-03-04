@@ -107,7 +107,7 @@ type PlotWidget
 	xpos::_Gtk.Adjustment
 
 	#Display image (Cached):
-	bufsurf::Cairo.CairoSurface
+	plotbuf::CairoBufferedPlot
 #	bufbb::BoundingBox
 
 	curstrip::Int #Currently active strip
@@ -169,34 +169,37 @@ end
 ===============================================================================#
 
 function invalidbuffersize(pwidget::PlotWidget)
-	return width(pwidget.canvas) != width(pwidget.bufsurf) ||
-		height(pwidget.canvas) != height(pwidget.bufsurf)
+	return width(pwidget.canvas) != width(pwidget.plotbuf.surf) ||
+		height(pwidget.canvas) != height(pwidget.plotbuf.surf)
 end
 
 #Render PlotWidget widget to buffer:
 #-------------------------------------------------------------------------------
-function render(pwidget::PlotWidget)
+function render(pwidget::PlotWidget; refreshdata::Bool=true)
 	const plot = pwidget.src
 	#Create new buffer large enough to match canvas:
 	#TODO: Is crating surfaces expensive?  This solution might be bad.
 	if invalidbuffersize(pwidget)
-		Cairo.destroy(pwidget.bufsurf)
+		Cairo.destroy(pwidget.plotbuf.surf)
+		Cairo.destroy(pwidget.plotbuf.data)
 		#TODO: use RGB surface? Gtk.cairo_surface_for() appears to generate ARGB surface (slower?)
-		#pwidget.bufsurf = Cairo.CairoRGBSurface(width(pwidget.canvas),height(pwidget.canvas))
-		pwidget.bufsurf = Gtk.cairo_surface_for(pwidget.canvas) #create similar
+		#pwidget.plotbuf.surf = Cairo.CairoRGBSurface(width(pwidget.canvas),height(pwidget.canvas))
+		pwidget.plotbuf.surf = Gtk.cairo_surface_for(pwidget.canvas) #create similar
+		pwidget.plotbuf.data = Gtk.cairo_surface_for(pwidget.canvas) #create similar - must be ARGB
 	end
 
 	w = width(pwidget.canvas); h = height(pwidget.canvas)
 	bb = BoundingBox(0, w, 0, h)
-	ctx = CairoContext(pwidget.bufsurf)
-
-	_reset(ctx)
-	clear(ctx, bb)
-	pwidget.plotinfo = render(ctx, plot, bb)
-	Cairo.destroy(ctx)
+	pwidget.plotinfo = render(pwidget.plotbuf, plot, bb, refreshdata)
 	nstrips = length(pwidget.plotinfo.strips)
 	pwidget.curstrip = max(pwidget.curstrip, 1) #Focus on 1st strip - if no strip has focus
 	pwidget.curstrip = min(pwidget.curstrip, nstrips) #Make sure focus is not beyond nstrips
+	return
+end
+
+function refresh(w::PlotWidget; refreshdata::Bool=true)
+	render(w, refreshdata=refreshdata)
+	Gtk.draw(w.canvas)
 	return
 end
 

@@ -59,20 +59,17 @@ end
 function locdir_h(pwidget::PlotWidget)
 	pwidget.hallowed = true
 	pwidget.vallowed = false
-	render(pwidget)
-	Gtk.draw(pwidget.canvas)
+	refresh(pwidget, refreshdata=false)
 end
 function locdir_v(pwidget::PlotWidget)
 	pwidget.hallowed = false
 	pwidget.vallowed = true
-	render(pwidget)
-	Gtk.draw(pwidget.canvas)
+	refresh(pwidget, refreshdata=false)
 end
 function locdir_any(pwidget::PlotWidget)
 	pwidget.hallowed = true
 	pwidget.vallowed = true
-	render(pwidget)
-	Gtk.draw(pwidget.canvas)
+	refresh(pwidget, refreshdata=false)
 end
 
 
@@ -106,8 +103,7 @@ function scalectrl_apply(pwidget::PlotWidget)
 	xext = merge(getxextents_axis(plot), xext_new)
 	setxextents_axis(plot, xext)
 
-	render(pwidget)
-	Gtk.draw(pwidget.canvas)
+	refresh(pwidget, refreshdata=true)
 end
 
 
@@ -131,8 +127,7 @@ function zoom(pwidget::PlotWidget, bb::BoundingBox, istrip::Int)
 	end
 
 	scalectrl_enabled(pwidget, false) #Scroll bar control no longer valid
-	render(pwidget)
-	Gtk.draw(pwidget.canvas)
+	refresh(pwidget, refreshdata=true)
 end
 
 #Zoom in/out @ point (pt in plot coordinates)
@@ -148,8 +143,7 @@ function zoom(pwidget::PlotWidget, ext::PExtents2D, pt::Point2D, ratio::Float64,
 	setyextents_axis(pwidget.src, PExtents1D(ymin, ymin + ratio*yspan), istrip)
 
 	scalectrl_enabled(pwidget, false) #Scroll bar control no longer valid
-	render(pwidget)
-	Gtk.draw(pwidget.canvas)
+	refresh(pwidget, refreshdata=true)
 end
 
 #Zoom in/out, centered on current extents
@@ -194,9 +188,9 @@ function zoom_full(pwidget::PlotWidget, hallowed::Bool, vallowed::Bool, istrip::
 		setproperty!(pwidget.xpos, :value, Float64(0))
 		scalectrl_enabled(pwidget, true)
 		scalectrl_apply(pwidget)
+		#Will refresh
 	else
-		render(pwidget)
-		Gtk.draw(pwidget.canvas)
+		refresh(pwidget, refreshdata=true)
 	end
 end
 zoom_full(pwidget::PlotWidget, hallowed::Bool=true, vallowed::Bool=true) =
@@ -240,16 +234,14 @@ function pan_xratio(pwidget::PlotWidget, panstepratio::Float64)
 	setxextents_axis(pwidget.src,
 		PExtents1D(xext.min+panstep, xext.max+panstep))
 	scalectrl_enabled(pwidget, false) #Scroll bar control no longer valid
-	render(pwidget)
-	Gtk.draw(pwidget.canvas)
+	refresh(pwidget, refreshdata=true)
 end
 function pan_yratio(pwidget::PlotWidget, panstepratio::Float64, istrip::Int)
 	yext = getyextents_axis(pwidget.src, istrip)
 	panstep = panstepratio*(yext.max-yext.min)
 	setyextents_axis(pwidget.src,
 		PExtents1D(yext.min+panstep, yext.max+panstep), istrip)
-	render(pwidget)
-	Gtk.draw(pwidget.canvas)
+	refresh(pwidget, refreshdata=true)
 end
 pan_yratio(pwidget::PlotWidget, panstepratio::Float64) =
 	pan_yratio(pwidget, panstepratio, activestrip(pwidget))
@@ -278,8 +270,7 @@ function mousepan_delta(pwidget::PlotWidget, ext::PExtents2D, Δx::Float64, Δy:
 	end
 
 	scalectrl_enabled(pwidget, false) #Scroll bar control no longer valid
-	render(pwidget)
-	Gtk.draw(pwidget.canvas)
+	refresh(pwidget, refreshdata=true)
 end
 function mousepan_setstart(pwidget::PlotWidget, x::Float64, y::Float64)
 	locdir_any(pwidget)

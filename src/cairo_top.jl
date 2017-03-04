@@ -1,9 +1,10 @@
 #InspectDR: Top-level interface for Cairo layer
 #-------------------------------------------------------------------------------
 
-#Render entire plot
+#Render base annotation (titles, axis labels, ...)
 #-------------------------------------------------------------------------------
-function render(canvas::PCanvas2D, plot::Plot2D, xticklabels::Bool, graphinfo::Graph2DInfo, istrip::Int)
+function render_baseannotation(canvas::PCanvas2D, graphinfo::Graph2DInfo,
+		xticklabels::Bool, plot::Plot2D, istrip::Int)
 	const strip = plot.strips[istrip]
 	if plot.layout.legend.enabled
 		legend_render(canvas, plot, istrip)
@@ -13,10 +14,34 @@ function render(canvas::PCanvas2D, plot::Plot2D, xticklabels::Bool, graphinfo::G
 Cairo.save(canvas.ctx)
 	drawrectangle(canvas.ctx, canvas.graphbb, plot.layout.framedata)
 Cairo.restore(canvas.ctx)
-	grid = _eval(strip.grid, plot.xscale, strip.yscale, canvas.ext)
-	render_grid(canvas, plot.layout, grid)
+	render_grid(canvas, plot.layout, graphinfo.grid)
 
-	#Plot actual data
+	render_axes(canvas, plot.layout, graphinfo.grid, plot.xscale, strip.yscale, xticklabels)
+	return
+end
+function render_baseannotation(ctx::CairoContext, bb::BoundingBox, plotinfo::Plot2DInfo, 
+		databb::BoundingBox, graphbblist::Vector{BoundingBox}, plot::Plot2D)
+
+Cairo.save(ctx)
+	drawrectangle(ctx, bb, plot.layout.frame)
+Cairo.restore(ctx)
+
+	#Render titles, axis labels, ...
+	#TODO: use Plot2DInfo instead of databb/graphbblist??:
+	render(ctx, plot.annotation, bb, databb, graphbblist, plot.layout)
+
+	nstrips = length(plot.strips)
+	for i in 1:nstrips
+		graphinfo = Graph2DInfo(plotinfo, i)
+		canvas = PCanvas2D(ctx, bb, graphinfo)
+		render_xticklabels = (i == nstrips) #Only bottom-most graph
+		render_baseannotation(canvas, graphinfo, render_xticklabels, plot, i)
+	end
+end
+
+#Render actual plot data
+#-------------------------------------------------------------------------------
+function render_data(canvas::PCanvas2D, plot::Plot2D, istrip::Int)
 Cairo.save(canvas.ctx)
 	setclip(canvas.ctx, canvas.graphbb)
 
@@ -24,48 +49,93 @@ Cairo.save(canvas.ctx)
 	if plot.displayNaN
 		rendernans(canvas, plot.data, istrip)
 	end
+Cairo.restore(canvas.ctx)
+end
+function render_data(ctx::CairoContext, bb::BoundingBox, plotinfo::Plot2DInfo, plot::Plot2D)
+	nstrips = length(plot.strips)
+	for i in 1:nstrips
+		graphinfo = Graph2DInfo(plotinfo, i)
+		canvas = PCanvas2D(ctx, bb, graphinfo)
+		render_data(canvas, plot, i)
+	end
+end
 
-	#Plot secondary annotation:
-	ixf = InputXfrm2D(plot.xscale, strip.yscale)
+#Render secondary plot annotation & redraw frame:
+#-------------------------------------------------------------------------------
+function render_userannotation(canvas::PCanvas2D, graphinfo::Graph2DInfo, plot::Plot2D, istrip::Int)
+Cairo.save(canvas.ctx)
+	setclip(canvas.ctx, canvas.graphbb)
 	render(canvas, plot.userannot, graphinfo, istrip)
 	render(canvas, plot.parentannot, graphinfo, istrip)
-
 Cairo.restore(canvas.ctx)
 
-	#Re-render axis over data:
-	render_axes(canvas, plot.layout, grid, plot.xscale, strip.yscale, xticklabels)
-	return
+	render_graphframe(canvas, plot.layout.framedata) #Redraw frame
+	#TODO: should we be more careful about setclip() - instead of redrawing frame?
+end
+function render_userannotation(ctx::CairoContext, bb::BoundingBox, plotinfo::Plot2DInfo, plot::Plot2D)
+	nstrips = length(plot.strips)
+	for i in 1:nstrips
+		graphinfo = Graph2DInfo(plotinfo, i)
+		canvas = PCanvas2D(ctx, bb, graphinfo)
+		render_userannotation(canvas, graphinfo, plot, i)
+	end
 end
 
 #Render entire plot within provided bounding box:
+#-------------------------------------------------------------------------------
 #TODO: Should base API be written such that user provides databb, and have
 #      InspectDR calculate outwards instead?
 function render(ctx::CairoContext, plot::Plot2D, bb::BoundingBox)
 	const lyt = plot.layout
 	const databb = databounds(bb, lyt, grid1(plot))
+	const nstrips = length(plot.strips)
 
-	_reset(ctx)
-Cairo.save(ctx)
-	drawrectangle(ctx, bb, lyt.frame)
-Cairo.restore(ctx)
+	graphbblist = graphbounds_list(databb, lyt, nstrips)
+	refreshed = update_ddata(plot) #Also computes new extents
+	plotinfo = Plot2DInfo(plot, bb) #Compute new extents before calling.
 
-	#Render annotation
-	graphbblist = graphbounds_list(databb, lyt, length(plot.strips))
-	render(ctx, plot.annotation, bb, databb, graphbblist, lyt)
+	_reset(ctx) #Ensure known state.
+	render_baseannotation(ctx, bb, plotinfo, databb, graphbblist, plot)
+	render_data(ctx, bb, plotinfo, plot)
+	render_userannotation(ctx, bb, plotinfo, plot)
 
-	update_ddata(plot) #Also computes new extents
-	plotinfo = Plot2DInfo(plot, bb)
+	return plotinfo #So parent/caller can position objects/format data
+end
 
-	nstrips = length(plot.strips)
-	for i in 1:nstrips
-		graphbb = graphbounds(databb, lyt, nstrips, i)
-		canvas = PCanvas2D(ctx, bb, graphbb, getextents_axis(plot, i))
-		#TODO: Render all non-data elements *before* plotting once drawing is multi-threaded.
+#Render entire plot plot using CairoBufferedPlot:
+#-------------------------------------------------------------------------------
+#TODO: split in parts so that GUI can be refreshed before refreshing data
+#TODO: Or maybe send in final context so it can be done here.
+function render(bplot::CairoBufferedPlot, plot::Plot2D, bb::BoundingBox, refreshdata::Bool)
+	const lyt = plot.layout
+	const databb = databounds(bb, lyt, grid1(plot))
+	const nstrips = length(plot.strips)
+	refreshed = false
 
-		render_xticklabels = (i == nstrips) #Only bottom-most graph
-		graphinfo = Graph2DInfo(plotinfo, i)
-		render(canvas, plot, render_xticklabels, graphinfo, i)
+	graphbblist = graphbounds_list(databb, lyt, nstrips)
+	if refreshdata
+		refreshed = update_ddata(plot) #Also computes new extents
+		#TODO: don't refresh data if !refresh && bounding box did not change??
 	end
+	plotinfo = Plot2DInfo(plot, bb) #Compute new extents before calling.
+
+	ctx = CairoContext(bplot.surf)
+	_reset(ctx); clear(ctx)
+	render_baseannotation(ctx, bb, plotinfo, databb, graphbblist, plot)
+
+	if refreshdata #Update data surface:
+		ctxdata = CairoContext(bplot.data)
+		_reset(ctxdata); clear(ctxdata)
+		render_data(ctxdata, bb, plotinfo, plot)
+		Cairo.destroy(ctxdata)
+	end
+
+	#Now render data portion onto main context:
+	Cairo.set_source_surface(ctx, bplot.data, 0, 0)
+	Cairo.paint(ctx) #Applies contents of bplot.data
+
+	render_userannotation(ctx, bb, plotinfo, plot)
+	Cairo.destroy(ctx)
 
 	return plotinfo #So parent/caller can position objects/format data
 end

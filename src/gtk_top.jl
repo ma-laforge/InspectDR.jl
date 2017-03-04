@@ -1,6 +1,14 @@
 #InspectDR: Top/high-level functionnality of Gtk layer
 #-------------------------------------------------------------------------------
 
+#==Constants
+===============================================================================#
+#Hack to keep text height in status label from changing as exponents start
+#being included in coordinate values (Noticed on Windows platforms):
+#(Causes display glitches/slowdowns)
+const TEXTH_HACK_STR = "¹"
+#TODO: find a better way to keep height constant.
+
 
 #==Callback wrapper functions (PlotWidget-level)
 ===============================================================================#
@@ -42,7 +50,7 @@ end
 end
 @guarded function cb_mnufileexport(w::Ptr{Gtk.GObject}, gplot::GtkPlot)
 	filepath = Gtk.save_dialog("Export plot...", _Gtk.Null(),
-		(_Gtk.@FileFilter("*.png,*.svg,*.eps", name="All supported formats"), "*.png", "*.svg", "*.eps")
+		(_Gtk.FileFilter("*.png,*.svg,*.eps", name="All supported formats"), "*.png", "*.svg", "*.eps")
 	)
 	if isempty(filepath); return nothing; end
 
@@ -80,9 +88,9 @@ function handleevent_plothover(gplot::GtkPlot, pwidget::PlotWidget, x::Float64, 
 		yfmt = hoverfmt(plotinfo.strips[istrip].yfmt)
 		xstr = formatted(pos.x, xfmt)
 		ystr = formatted(pos.y, yfmt)
-		statstr = "(x, y) = ($xstr, $ystr)"
+		statstr = "$TEXTH_HACK_STR(x, y) = ($xstr, $ystr)"
 	else
-		statstr = "(x, y) = ( , )"
+		statstr = "$TEXTH_HACK_STR(x, y) = ( , )"
 	end
 
 	setproperty!(gplot.status, :label, statstr)
@@ -93,13 +101,13 @@ end
 #==Menu builders:
 ===============================================================================#
 function Gtk_addmenu(parent::Union{_Gtk.Menu, _Gtk.MenuBar}, name::String)
-	item = _Gtk.@MenuItem(name)
-	mnu = _Gtk.@Menu(item)
+	item = _Gtk.MenuItem(name)
+	mnu = _Gtk.Menu(item)
 	push!(parent, item)
 	return mnu
 end
 function Gtk_addmenuitem(mnu::_Gtk.Menu, name::String)
-	item = _Gtk.@MenuItem(name)
+	item = _Gtk.MenuItem(name)
 	push!(mnu, item)
 	return item
 end
@@ -110,19 +118,19 @@ end
 
 #-------------------------------------------------------------------------------
 function PlotWidget(plot::Plot)
-	vbox = _Gtk.@Box(true, 0)
+	vbox = _Gtk.Box(true, 0)
 		can_focus(vbox, true)
 #		setproperty!(vbox, "focus-on-click", true)
 #		setproperty!(vbox, :focus_on_click, true)
-	canvas = Gtk.@Canvas()
+	canvas = Gtk.Canvas()
 		setproperty!(canvas, :vexpand, true)
-	w_xscale = _Gtk.@Scale(false, 1:XAXIS_SCALEMAX)
-		xscale = _Gtk.@Adjustment(w_xscale)
+	w_xscale = _Gtk.Scale(false, 1:XAXIS_SCALEMAX)
+		xscale = _Gtk.Adjustment(w_xscale)
 		setproperty!(xscale, :value, 1)
 #		draw_value(w_xscale, false)
 		value_pos(w_xscale, Int(GtkPositionType.GTK_POS_RIGHT))
-	w_xpos = _Gtk.@Scale(false, -.5:XAXIS_POS_STEPRES:.5)
-		xpos = _Gtk.@Adjustment(w_xpos)
+	w_xpos = _Gtk.Scale(false, -.5:XAXIS_POS_STEPRES:.5)
+		xpos = _Gtk.Adjustment(w_xpos)
 		setproperty!(xpos, :value, 0)
 #		draw_value(w_xpos, false)
 		value_pos(w_xpos, Int(GtkPositionType.GTK_POS_RIGHT))
@@ -131,17 +139,20 @@ function PlotWidget(plot::Plot)
 	push!(vbox, w_xpos)
 	push!(vbox, w_xscale)
 
-	bufsurf = Cairo.CairoRGBSurface(width(canvas), height(canvas))
+	w = width(canvas); h = height(canvas)
+	plotbuf = CairoBufferedPlot(
+		Cairo.CairoARGBSurface(w, h), Cairo.CairoARGBSurface(w, h)
+	)
 	#TODO: how do we get a maximum surface for all monitors?
 	#TODO: or can we resize in some intelligent way??
-	#bufsurf = Cairo.CairoRGBSurface(1920,1200) #Appears slow for average monitor size???
-#	bufsurf = Gtk.cairo_surface_for(canvas) #create similar - does not work here
+	#plotbuf = Cairo.CairoRGBSurface(1920,1200) #Appears slow for average monitor size???
+#	plotbuf = Gtk.cairo_surface_for(canvas) #create similar - does not work here
 	curstrip = 1 #TODO: Is this what is desired?
 
 	plotinfo = Plot2DInfo(plot)
 	pwidget = PlotWidget(vbox, canvas, plot, plotinfo, ISNormal(),
 		w_xscale, xscale, w_xpos, xpos,
-		bufsurf, curstrip, GtkMouseOver(),
+		plotbuf, curstrip, GtkMouseOver(),
 		CtrlMarkerGroup(), nothing, true, true,
 		#Event handlers:
 		nothing
@@ -171,9 +182,12 @@ function PlotWidget(plot::Plot)
 			render(pwidget)
 		end
 		ctx = getgc(pwidget.canvas)
-		Cairo.set_source_surface(ctx, pwidget.bufsurf, 0, 0)
-		Cairo.paint(ctx) #Applies contents of bufsurf
-		selectionbox_draw(ctx, pwidget)
+			w = width(pwidget.canvas); h = height(pwidget.canvas)
+			bb = BoundingBox(0, w, 0, h)
+		wipe(ctx, bb, COLOR_WHITE)
+		Cairo.set_source_surface(ctx, pwidget.plotbuf.surf, 0, 0)
+		Cairo.paint(ctx) #Applies contents of plotbuf.surf
+		selectionbox_draw(ctx, pwidget) #TODO: use more generic method name??
 		#TODO: Can/should we explicitly Cairo.destroy(ctx)???
 	end
 
@@ -225,26 +239,26 @@ end
 #-------------------------------------------------------------------------------
 function GtkPlot(mp::Multiplot)
 	#Generate graphical elements:
-	mb = _Gtk.@MenuBar()
+	mb = _Gtk.MenuBar()
 	mnufile = Gtk_addmenu(mb, "_File")
 		mnuexport = Gtk_addmenuitem(mnufile, "_Export")
-		push!(mnufile, _Gtk.@SeparatorMenuItem())
+		push!(mnufile, _Gtk.SeparatorMenuItem())
 		mnuquit = Gtk_addmenuitem(mnufile, "_Quit")
-	grd = Gtk.@Grid() #Main grid with different subplots.
+	grd = Gtk.Grid() #Main grid with different subplots.
 		setproperty!(grd, :column_homogeneous, true)
 		#setproperty!(grd, :column_spacing, 15) #Gap between
-	status = _Gtk.@Label("")#"(x,y) =")
+	status = _Gtk.Label("")#"(x,y) =")
 		setproperty!(status, :hexpand, true)
 		setproperty!(status, :ellipsize, PANGO_ELLIPSIZE_END)
 		setproperty!(status, :xalign, 0.0)
-		sbar_frame = _Gtk.@Frame(status)
+		sbar_frame = _Gtk.Frame(status)
 			setproperty!(sbar_frame, "shadow-type", GtkShadowType.GTK_SHADOW_ETCHED_IN)
 
-	vbox = _Gtk.@Box(true, 0)
+	vbox = _Gtk.Box(true, 0)
 		push!(vbox, mb) #Menu bar
 		push!(vbox, grd) #Subplots
 		push!(vbox, sbar_frame) #status bar
-	wnd = Gtk.@Window(vbox, "", 640, 480, true)
+	wnd = Gtk.Window(vbox, "", 640, 480, true)
 	settitle(wnd, mp.title)
 
 	gplot = GtkPlot(false, wnd, grd, [], mp, status)
@@ -282,7 +296,6 @@ function clearsubplots(gplot::GtkPlot)
 	return gplot
 end
 
-refresh(w::PlotWidget) = (render(w); Gtk.draw(w.canvas); return w)
 function refresh(gplot::GtkPlot)
 	if !gplot.destroyed
 		settitle(gplot.wnd, gplot.src.title)
@@ -294,7 +307,7 @@ function refresh(gplot::GtkPlot)
 		#TODO: find a way to force GUI to updates here... Animations don't refresh...
 		sleep(eps(0.0)) #Ugly Hack: No guarantee this works... There must be a better way.
 	end
-	return gplot
+	return
 end
 
 function Base.display(d::GtkDisplay, mp::Multiplot)
