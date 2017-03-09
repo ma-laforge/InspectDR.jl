@@ -97,6 +97,8 @@ InspectDR.jl supports keybindings to improve/accelerate user control.  The follo
 | Add &Delta;-marker & set as reference | `D` |
 | Move marker | `left-click` + `mousemove` control point|
 | Delete marker | `DEL` (when moving marker) |
+| Move &Delta;-marker info box | `left-click` + `mousemove` box |
+| Re-center &Delta;-marker info box | `0` (when moving box) |
 
 #### Mouse Pan/Zoom Locks
 There are also keybindings to lock directionnality during mouse pan / zoom operations:
