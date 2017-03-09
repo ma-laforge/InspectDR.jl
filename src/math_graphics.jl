@@ -115,13 +115,15 @@ end
 Base.:*(s::DReal, pt::Point2D) = Point2D(s*pt.x, s*pt.y)
 Base.:*(s::Real, pt::Point2D) = DReal(s)*pt
 Base.:+(p1::Point2D, p2::Point2D) = Point2D(p1.x+p2.x, p1.y+p2.y)
+Base.:-(p1::Point2D, p2::Point2D) = Point2D(p1.x-p2.x, p1.y-p2.y)
 
 Base.:*(s::DReal, v::Vector2D) = Vector2D(s*v.x, s*v.y)
 Base.:*(s::Real, v::Vector2D) = DReal(s)*v
 Base.:+(v1::Vector2D, v2::Vector2D) = Vector2D(v1.x+v2.x, v1.y+v2.y)
 
-Base.:+(v::Vector2D, p::Point2D) = Point2D(v.x+p.x, v.y+p.y)
-Base.:+(p::Point2D, v::Vector2D) = v+p
+Base.:+(p::Point2D, v::Vector2D) = Point2D(p.x+v.x, p.y+v.y)
+Base.:-(p::Point2D, v::Vector2D) = Point2D(p.x-v.x, p.y-v.y)
+Base.:+(v::Vector2D, p::Point2D) = p+v
 
 function union(e1::PExtents1D, e2::PExtents1D)
 	return PExtents1D(

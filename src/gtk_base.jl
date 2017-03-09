@@ -74,6 +74,8 @@ TODO: explain interface
 
 type CtrlMarker <: CtrlElement
 	prop::HVMarker #Properties
+	Δinfo::Vector2D #Offset of Δ-information block
+	Δbb::BoundingBox #Last postion of Δ-information block (optimize hit test)
 	ref::NullOr{CtrlMarker} #Reference marker
 end
 

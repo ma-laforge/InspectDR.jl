@@ -19,13 +19,19 @@ immutable ISMovingMarker <: InputState
 	initpos::Point2D
 	marker::CtrlMarker #Ref to marker
 end
+immutable ISMovingΔInfo <: InputState
+	istrip::Int
+	refpos::Point2D
+	initΔ::Vector2D
+	marker::CtrlMarker #Ref to marker
+end
 
 
 #==Constructor-like functions
 ===============================================================================#
 function CtrlMarker(x::Real, y::Real, strip::Int, ref=nothing)
 	mkr = hvmarker(Point2D(x, y), MARKER_LINE, strip=strip)
-	return CtrlMarker(mkr, ref)
+	return CtrlMarker(mkr, Vector2D(0,0), BoundingBox(), ref)
 end
 
 
@@ -58,8 +64,8 @@ function render_markercoord(canvas::PCanvas2D, pt::Point2D, font::Font,
 	return
 end
 
-function render_Δinfo(canvas::PCanvas2D, p1::Point2D, p2::Point2D, font::Font,
-	xfmt::NumericFormatting, yfmt::NumericFormatting, ixf::InputXfrm2D, strip::Int)
+function render_Δinfo(canvas::PCanvas2D, p1::Point2D, p2::Point2D, Δinfo::Vector2D,
+	font::Font, xfmt::NumericFormatting, yfmt::NumericFormatting, ixf::InputXfrm2D, strip::Int)
 	const align = ALIGN_TOP | ALIGN_LEFT
 	const mfmt = number_fmt(ndigits=4, decfloating=true)
 	const boxattr = AreaAttributes(
@@ -84,7 +90,7 @@ function render_Δinfo(canvas::PCanvas2D, p1::Point2D, p2::Point2D, font::Font,
 	p1a = read2axis(p1, ixf); 	p2a = read2axis(p2, ixf)
 	pdraw = Point2D((p1a.x + p2a.x)/2, (p1a.y + p2a.y)/2)
 		pdraw = map2dev(canvas.xf, pdraw)
-	x = pdraw.x; y = pdraw.y
+	x = pdraw.x + Δinfo.x; y = pdraw.y + Δinfo.y
 	x -= w/2; y -= h/2
 	pad = Δh
 	rect = BoundingBox(x-pad, x+w+pad, y-pad, y+h+pad)
@@ -94,7 +100,7 @@ function render_Δinfo(canvas::PCanvas2D, p1::Point2D, p2::Point2D, font::Font,
 	render(ctx, Δystr, Point2D(x, y), font, align=align)
 	y += hy + Δh
 	render(ctx, mstr, Point2D(x, y), font, align=align)
-	return
+	return rect #Want to know where we drew the box
 end
 
 function render(canvas::PCanvas2D, mg::CtrlMarkerGroup, graphinfo::Graph2DInfo, strip::Int)
@@ -115,7 +121,9 @@ function render(canvas::PCanvas2D, mg::CtrlMarkerGroup, graphinfo::Graph2DInfo, 
 		if 0 == mstrip || mstrip == strip
 			mref = elem.ref
 			if mref != nothing
-				render_Δinfo(canvas, mref.prop.pos, elem.prop.pos, mg.fntdelta, xfmt, yfmt, ixf, strip)
+				elem.Δbb = render_Δinfo(canvas, mref.prop.pos, elem.prop.pos, elem.Δinfo,
+					mg.fntdelta, xfmt, yfmt, ixf, strip
+				)
 			end
 		end
 	end
@@ -141,6 +149,9 @@ function hittest(marker::CtrlMarker, xf::Transform2D, ixf::InputXfrm2D, x::Float
 	Δx = abs(x-pt.x); Δy = abs(y-pt.y)
 	Δ = sqrt(Δx*Δx + Δy*Δy)
 	return (Δ <= Δhit) #Hit successful if clicked on marker.
+end
+function hittest_Δinfo(marker::CtrlMarker, x::Float64, y::Float64)
+	return isinside(marker.Δbb, x, y)
 end
 
 
@@ -206,6 +217,18 @@ function deletemarker(mkr::CtrlMarker, pwidget::PlotWidget)
 	refresh(pwidget, refreshdata=false)
 	return
 end
+function cancelmove_Δinfo(s::ISMovingΔInfo, pwidget::PlotWidget)
+	s.marker.Δinfo = s.initΔ
+	pwidget.state = ISNormal()
+	refresh(pwidget, refreshdata=false)
+	return
+end
+function centerΔinfo(s::ISMovingΔInfo, pwidget::PlotWidget)
+	s.marker.Δinfo = Vector2D(0,0)
+	pwidget.state = ISNormal()
+	refresh(pwidget, refreshdata=false)
+	return
+end
 
 
 #==Event handlers for selecting markers
@@ -216,6 +239,7 @@ function handleevent_mousepress(pwidget::PlotWidget, markers::CtrlMarkerGroup,
 	xf = Transform2D(pwidget.plotinfo, istrip)
 	ixf = InputXfrm2D(pwidget.plotinfo, istrip)
 
+	#See if we clicked on a marker:
 	for i in 1:length(markers.elem)
 		elem = markers.elem[i]
 		if hittest(elem, xf, ixf, x, y)
@@ -224,6 +248,17 @@ function handleevent_mousepress(pwidget::PlotWidget, markers::CtrlMarkerGroup,
 			return true
 		end
 	end
+
+	#Else see if we clicked on a Δ-info box:
+	for i in 1:length(markers.elem)
+		elem = markers.elem[i]
+		if hittest_Δinfo(elem, x, y)
+			refpos = Point2D(x, y) - elem.Δinfo
+			pwidget.state = ISMovingΔInfo(istrip, refpos, elem.Δinfo, elem)
+			return true
+		end
+	end
+
 	return false
 end
 
@@ -253,5 +288,29 @@ function handleevent_mousemove(s::ISMovingMarker, pwidget::PlotWidget, event::Gt
 	s.marker.prop.pos = pt
 	refresh(pwidget, refreshdata=false)
 end
+
+
+#==Event handlers for state: ISMovingΔInfo
+===============================================================================#
+function handleevent_keypress(s::ISMovingΔInfo, pwidget::PlotWidget, event::Gtk.GdkEventKey)
+	if GdkKeySyms.Escape == event.keyval #Cancel move
+		cancelmove_Δinfo(s, pwidget)
+	elseif Int('0') == event.keyval
+		centerΔinfo(s, pwidget)
+	end
+end
+function handleevent_mouserelease(::ISMovingΔInfo, pwidget::PlotWidget, event::Gtk.GdkEventButton)
+	if 1==event.button #Done moving
+		pwidget.state = ISNormal()
+	end
+end
+function handleevent_mousemove(s::ISMovingΔInfo, pwidget::PlotWidget, event::Gtk.GdkEventMotion)
+	handleevent_plothover(pwidget, event, s.istrip)
+
+	curpos = Point2D(event.x, event.y)
+	s.marker.Δinfo = Vector2D(curpos - s.refpos)
+	refresh(pwidget, refreshdata=false)
+end
+
 
 #Last line
