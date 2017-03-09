@@ -1,7 +1,11 @@
 #InspectDR:
 #-------------------------------------------------------------------------------
 
-#__precompile__()
+if true 
+__precompile__()
+else
+warn("Development mode - precompile deactivated.")
+end
 module InspectDR
 
 using Colors
@@ -65,8 +69,6 @@ keybindings_setdefaults(keybindings)
 end
 
 include("show.jl")
-
-#include("precompile.jl")
 
 
 #==Comments
@@ -179,5 +181,7 @@ function __init__()
 	initialize_defaults()
 	checkcompat_plots()
 end
+
+#include("precompile.jl")
 
 end #module
