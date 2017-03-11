@@ -244,12 +244,12 @@ Sample IJulia (Jupyter) notebooks can be found [here](notebook/).
 
  - Documentation is a bit limited at the moment.  See [Sample Usage](#SampleUsage) to learn from examples.
  - API is still a bit rough.  User often has to manipulate data structures directly.
+  - Workaround: Use [JuliaPlots/Plots.jl](https://github.com/JuliaPlots/Plots.jl) as a "frontend" (increases plot times).
  - Font control is not ideal.  The default font might not be available on all platforms - and the fallback font might not have Unicode characters to display exponent values (ex: `10⁻¹⁵`).  Some Greek characters might also be missing.
   - Workaround: Overwrite default font, as described in [Defaults](#Config_Defaults).
  - Legends not very configurable (currently optimized to display many labels @ cost of horizontal real-estate).
  - Does not yet render plot data in separate thread (will improve interactive experience with large datasets).
  - Mouse events currently function even outside data area (a bit odd).
- - Mouse cursor does not change as user switches mousemodes (ex: drag icon, cross-hairs, ...).
  - Significant slowdowns observed when zooming **deep** into non-F1 data... Can likely be solved by discarding data outside plot extents.
   - Workaround: make sure x-values are sorted (F1-acceleration discards data & is less prone to slowdowns).
 
