@@ -49,13 +49,13 @@ end
 #gboolean gtk_window_activate_key (GtkWindow *window, GdkEventKey *event);
 =#
 function gdk_cursor_new(id::String)
-	d = ccall((:gdk_display_get_default,Gtk.libgtk),Ptr{Void},(Cstring,),id)
-	return ccall((:gdk_cursor_new_from_name,Gtk.libgtk),Ptr{Void},(Ptr{Void}, Cstring), d,id)
+	d = ccall((:gdk_display_get_default,Gtk.libgdk),Ptr{Void},(Cstring,),id)
+	return ccall((:gdk_cursor_new_from_name,Gtk.libgdk),Ptr{Void},(Ptr{Void}, Cstring), d,id)
 end
 
 function gdk_window_set_cursor(wnd, cursor::Ptr{Void})
 	wptr = Gtk.GAccessor.window(wnd)
-	ccall((:gdk_window_set_cursor,Gtk.libgtk),Void,(Ptr{Void},Ptr{Void}), wptr, cursor)
+	ccall((:gdk_window_set_cursor,Gtk.libgdk),Void,(Ptr{Void},Ptr{Void}), wptr, cursor)
 	return
 end
 
