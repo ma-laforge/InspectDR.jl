@@ -48,10 +48,24 @@ function activate_key(wnd::Gtk.GtkWindow,event::GdkEventKey)
 end
 #gboolean gtk_window_activate_key (GtkWindow *window, GdkEventKey *event);
 =#
+function gdk_cursor_new(id::String)
+	d = ccall((:gdk_display_get_default,Gtk.libgtk),Ptr{Void},(Cstring,),id)
+	return ccall((:gdk_cursor_new_from_name,Gtk.libgtk),Ptr{Void},(Ptr{Void}, Cstring), d,id)
+end
 
+function gdk_window_set_cursor(wnd, cursor::Ptr{Void})
+	wptr = Gtk.GAccessor.window(wnd)
+	ccall((:gdk_window_set_cursor,Gtk.libgtk),Void,(Ptr{Void},Ptr{Void}), wptr, cursor)
+	return
+end
 
 #==Constants
 ===============================================================================#
+const CURSOR_DEFAULT = Gtk.C_NULL
+const CURSOR_PAN = gdk_cursor_new("grabbing")
+const CURSOR_MOVE = gdk_cursor_new("move")
+const CURSOR_BOXSELECT = gdk_cursor_new("crosshair")
+
 const XAXIS_SCALEMAX = 1000
 const XAXIS_POS_STEPRES = 1/500
 

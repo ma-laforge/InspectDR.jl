@@ -201,7 +201,7 @@ addΔmarkerref(pwidget::PlotWidget) = addΔmarker(pwidget, true)
 ===============================================================================#
 function cancelmove(s::ISMovingMarker, pwidget::PlotWidget)
 	s.marker.prop.pos = s.initpos
-	pwidget.state = ISNormal()
+	setstate_normal(pwidget)
 	refresh(pwidget, refreshdata=false)
 	return
 end
@@ -219,13 +219,13 @@ function deletemarker(mkr::CtrlMarker, pwidget::PlotWidget)
 end
 function cancelmove_Δinfo(s::ISMovingΔInfo, pwidget::PlotWidget)
 	s.marker.Δinfo = s.initΔ
-	pwidget.state = ISNormal()
+	setstate_normal(pwidget)
 	refresh(pwidget, refreshdata=false)
 	return
 end
 function centerΔinfo(s::ISMovingΔInfo, pwidget::PlotWidget)
 	s.marker.Δinfo = Vector2D(0,0)
-	pwidget.state = ISNormal()
+	setstate_normal(pwidget)
 	refresh(pwidget, refreshdata=false)
 	return
 end
@@ -244,6 +244,7 @@ function handleevent_mousepress(pwidget::PlotWidget, markers::CtrlMarkerGroup,
 		elem = markers.elem[i]
 		if hittest(elem, xf, ixf, x, y)
 			initpos = elem.prop.pos
+			gdk_window_set_cursor(pwidget.widget, CURSOR_MOVE)
 			pwidget.state = ISMovingMarker(istrip, initpos, elem)
 			return true
 		end
@@ -254,6 +255,7 @@ function handleevent_mousepress(pwidget::PlotWidget, markers::CtrlMarkerGroup,
 		elem = markers.elem[i]
 		if hittest_Δinfo(elem, x, y)
 			refpos = Point2D(x, y) - elem.Δinfo
+			gdk_window_set_cursor(pwidget.widget, CURSOR_MOVE)
 			pwidget.state = ISMovingΔInfo(istrip, refpos, elem.Δinfo, elem)
 			return true
 		end
@@ -275,7 +277,7 @@ function handleevent_keypress(s::ISMovingMarker, pwidget::PlotWidget, event::Gtk
 end
 function handleevent_mouserelease(::ISMovingMarker, pwidget::PlotWidget, event::Gtk.GdkEventButton)
 	if 1==event.button #Done moving
-		pwidget.state = ISNormal()
+		setstate_normal(pwidget)
 	end
 end
 function handleevent_mousemove(s::ISMovingMarker, pwidget::PlotWidget, event::Gtk.GdkEventMotion)
@@ -301,7 +303,7 @@ function handleevent_keypress(s::ISMovingΔInfo, pwidget::PlotWidget, event::Gtk
 end
 function handleevent_mouserelease(::ISMovingΔInfo, pwidget::PlotWidget, event::Gtk.GdkEventButton)
 	if 1==event.button #Done moving
-		pwidget.state = ISNormal()
+		setstate_normal(pwidget)
 	end
 end
 function handleevent_mousemove(s::ISMovingΔInfo, pwidget::PlotWidget, event::Gtk.GdkEventMotion)

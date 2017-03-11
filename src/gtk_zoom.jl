@@ -205,16 +205,17 @@ function boxzoom_setstart(pwidget::PlotWidget, x::Float64, y::Float64)
 	locdir_any(pwidget)
 	bb = BoundingBox(x, x, y, y)
 	istrip = activestrip(pwidget)
+	gdk_window_set_cursor(pwidget.widget, CURSOR_BOXSELECT)
 	pwidget.state = ISSelectingArea(bb, istrip)
 	return
 end
 function boxzoom_cancel(pwidget::PlotWidget)
-	pwidget.state = ISNormal()
+	setstate_normal(pwidget)
 	Gtk.draw(pwidget.canvas)
 	return
 end
 function boxzoom_complete(s::ISSelectingArea, pwidget::PlotWidget, x::Float64, y::Float64)
-	pwidget.state = ISNormal()
+	setstate_normal(pwidget)
 	bb = BoundingBox(s.bb.xmin, x, s.bb.ymin, y)
 	zoom(pwidget, bb, s.istrip)
 	return
@@ -277,17 +278,18 @@ function mousepan_setstart(pwidget::PlotWidget, x::Float64, y::Float64)
 	istrip = activestrip(pwidget)
 	ext_start = getextents_axis(pwidget.src, istrip)
 	p0 = Point2D(x, y)
+	gdk_window_set_cursor(pwidget.widget, CURSOR_PAN)
 	pwidget.state = ISPanningData(p0, p0, ext_start, istrip)
 	return
 end
 function mousepan_cancel(s::ISPanningData, pwidget::PlotWidget)
 	mousepan_delta(pwidget, s.ext_start, 0.0, 0.0, s.istrip)
-	pwidget.state = ISNormal()
+	setstate_normal(pwidget)
 	return
 end
 function mousepan_complete(pwidget::PlotWidget, x::Float64, y::Float64)
 	#Already panned.  Just revert to normal state:
-	pwidget.state = ISNormal()
+	setstate_normal(pwidget)
 	return
 end
 #Set new point of mousepan operation:

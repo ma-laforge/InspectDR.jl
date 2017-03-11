@@ -21,10 +21,11 @@ const keybindings = KeyBindings()
 
 #==Helper functions
 ===============================================================================#
-function userinput_setstate_normal(pwidget::PlotWidget)
+function setstate_normal(pwidget::PlotWidget)
+	gdk_window_set_cursor(pwidget.widget, CURSOR_DEFAULT)
 	pwidget.state = ISNormal()
 end
-userinput_donothing(pwidget::PlotWidget) = nothing
+ignoreuserinput(pwidget::PlotWidget) = nothing
 
 #Handle mousepress if a CtrlElement was clicked:
 function handleevent_mousepress(pwidget::PlotWidget, ::Type{CtrlElement}, x::Float64, y::Float64)
@@ -71,16 +72,16 @@ function handleevent_keypress(::InputState, pwidget::PlotWidget, event::Gtk.GdkE
 
 	#Find bound functions & execute:
 	if modifiers_pressed(event.state, 0)
-		fn = get(keybindings.nomod, event.keyval, userinput_donothing)
+		fn = get(keybindings.nomod, event.keyval, ignoreuserinput)
 		fn(pwidget)
 	elseif modifiers_pressed(event.state, MODIFIER_SHIFT)
-		fn = get(keybindings.shiftmod, event.keyval, userinput_donothing)
+		fn = get(keybindings.shiftmod, event.keyval, ignoreuserinput)
 		fn(pwidget)
 	elseif modifiers_pressed(event.state, MODIFIER_CTRL)
-		fn = get(keybindings.ctrlmod, event.keyval, userinput_donothing)
+		fn = get(keybindings.ctrlmod, event.keyval, ignoreuserinput)
 		fn(pwidget)
 	elseif modifiers_pressed(event.state, MODIFIER_ALT)
-		fn = get(keybindings.altmod, event.keyval, userinput_donothing)
+		fn = get(keybindings.altmod, event.keyval, ignoreuserinput)
 		fn(pwidget)
 	end
 #	@show event.keyval
@@ -136,7 +137,7 @@ end
 ===============================================================================#
 function keybindings_setdefaults(bnd::KeyBindings)
 	bnd.nomod = KeyMap(
-		GdkKeySyms.Escape => userinput_setstate_normal,
+		GdkKeySyms.Escape => setstate_normal,
 		GdkKeySyms.Up => pan_up,
 		GdkKeySyms.Down => pan_down,
 		GdkKeySyms.Left => pan_left,
