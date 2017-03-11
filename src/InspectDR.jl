@@ -1,7 +1,7 @@
 #InspectDR:
 #-------------------------------------------------------------------------------
 
-if true 
+if true
 __precompile__()
 else
 warn("Development mode - precompile deactivated.")
@@ -179,6 +179,7 @@ for the following MIMEs:
 
 function __init__()
 	initialize_defaults()
+	initialize_cursors()
 	checkcompat_plots()
 end
 

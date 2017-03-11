@@ -59,12 +59,15 @@ function gdk_window_set_cursor(wnd, cursor::Ptr{Void})
 	return
 end
 
+
 #==Constants
 ===============================================================================#
-const CURSOR_DEFAULT = Gtk.C_NULL
-const CURSOR_PAN = gdk_cursor_new("grabbing")
-const CURSOR_MOVE = gdk_cursor_new("move")
-const CURSOR_BOXSELECT = gdk_cursor_new("crosshair")
+function initialize_cursors()
+	global const CURSOR_DEFAULT = Gtk.C_NULL
+	global const CURSOR_PAN = gdk_cursor_new("grabbing")
+	global const CURSOR_MOVE = gdk_cursor_new("move")
+	global const CURSOR_BOXSELECT = gdk_cursor_new("crosshair")
+end
 
 const XAXIS_SCALEMAX = 1000
 const XAXIS_POS_STEPRES = 1/500
