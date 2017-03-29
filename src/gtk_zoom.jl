@@ -205,7 +205,7 @@ function boxzoom_setstart(pwidget::PlotWidget, x::Float64, y::Float64)
 	locdir_any(pwidget)
 	bb = BoundingBox(x, x, y, y)
 	istrip = activestrip(pwidget)
-	gdk_window_set_cursor(pwidget.widget, CURSOR_BOXSELECT)
+	gdk_window_set_cursor(pwidget.canvas, CURSOR_BOXSELECT)
 	pwidget.state = ISSelectingArea(bb, istrip)
 	return
 end
@@ -278,7 +278,7 @@ function mousepan_setstart(pwidget::PlotWidget, x::Float64, y::Float64)
 	istrip = activestrip(pwidget)
 	ext_start = getextents_axis(pwidget.src, istrip)
 	p0 = Point2D(x, y)
-	gdk_window_set_cursor(pwidget.widget, CURSOR_PAN)
+	gdk_window_set_cursor(pwidget.canvas, CURSOR_PAN)
 	pwidget.state = ISPanningData(p0, p0, ext_start, istrip)
 	return
 end

@@ -244,7 +244,7 @@ function handleevent_mousepress(pwidget::PlotWidget, markers::CtrlMarkerGroup,
 		elem = markers.elem[i]
 		if hittest(elem, xf, ixf, x, y)
 			initpos = elem.prop.pos
-			gdk_window_set_cursor(pwidget.widget, CURSOR_MOVE)
+			gdk_window_set_cursor(pwidget.canvas, CURSOR_MOVE)
 			pwidget.state = ISMovingMarker(istrip, initpos, elem)
 			return true
 		end
@@ -255,7 +255,7 @@ function handleevent_mousepress(pwidget::PlotWidget, markers::CtrlMarkerGroup,
 		elem = markers.elem[i]
 		if hittest_Δinfo(elem, x, y)
 			refpos = Point2D(x, y) - elem.Δinfo
-			gdk_window_set_cursor(pwidget.widget, CURSOR_MOVE)
+			gdk_window_set_cursor(pwidget.canvas, CURSOR_MOVE)
 			pwidget.state = ISMovingΔInfo(istrip, refpos, elem.Δinfo, elem)
 			return true
 		end

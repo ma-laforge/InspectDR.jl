@@ -22,7 +22,7 @@ const keybindings = KeyBindings()
 #==Helper functions
 ===============================================================================#
 function setstate_normal(pwidget::PlotWidget)
-	gdk_window_set_cursor(pwidget.widget, CURSOR_DEFAULT)
+	gdk_window_set_cursor(pwidget.canvas, CURSOR_DEFAULT)
 	pwidget.state = ISNormal()
 end
 ignoreuserinput(pwidget::PlotWidget) = nothing
