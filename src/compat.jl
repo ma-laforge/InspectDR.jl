@@ -9,8 +9,13 @@ function checkcompat_plots()
 	#InspectDR => latest compatible version Plots.jl:
 	#Keep updating latest known version of InspectDR/Plots.jl.
 	const compatlist = Dict(
-		 v"0.1.3" => v"0.10.3",
-#		 v"0.1.4" => v"0.10.4",
+		#v"0.1.3" => v"0.10.3",
+		#Keep old versions in code (above) just for reference.
+		#(Never suggest older versions)
+
+		v"0.1.7" => v"0.11.2",
+		#Reminder for tagged releases:
+			#Update InspectDR version / Latest version of Plots.jl.
 	)
 	const inspectverkeys = sort(collect(keys(compatlist)))
 
