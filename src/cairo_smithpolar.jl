@@ -99,8 +99,8 @@ render_xcirclelabels(ctx::CairoContext, xf::Transform2D, xflip::Bool, refscale::
 
 #Split complex input data into real/imag components:
 function getrealimag{T<:Number}(d::Vector{T})
-	x = Array(DReal, length(d))
-	y = Array(DReal, length(d))
+	x = Array{DReal}(length(d))
+	y = Array{DReal}(length(d))
 	for i in 1:length(d)
 		x[i] = convert(DReal, real(d[i]))
 		y[i] = convert(DReal, imag(d[i]))

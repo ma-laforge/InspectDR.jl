@@ -23,7 +23,7 @@ ncycles = 4
 tmax = tcycle*ncycles
 Δ = tmax/(npts-1)
 t = collect(0:Δ:tmax)
-y = sin(t*(ncycles*2pi/tmax))
+y = sin.(t*(ncycles*2pi/tmax))
 
 t[end] = t[1] #x-values are no longer ordered
 

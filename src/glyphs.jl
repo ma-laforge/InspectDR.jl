@@ -23,12 +23,12 @@ const SUPPORTED_GLYPHS = Symbol[
 
 #==Main types
 ===============================================================================#
-abstract Glyph
+abstract type Glyph end
 
-immutable GlyphCircle <: Glyph
+struct GlyphCircle <: Glyph
 	radius::DReal
 end
-immutable GlyphPolyline <: Glyph
+struct GlyphPolyline <: Glyph
 	#TODO: Should we just store deltas? would be more efficient!
 	x::Vector{DReal}
 	y::Vector{DReal}
@@ -36,7 +36,7 @@ immutable GlyphPolyline <: Glyph
 end
 GlyphPolyline(x, y; closepath::Bool=true, scale::DReal=1.0) =
 	GlyphPolyline(x*scale, y*scale, closepath)
-immutable GlyphLineSegments <: Glyph
+struct GlyphLineSegments <: Glyph
 	x1::Vector{DReal}
 	x2::Vector{DReal}
 	y1::Vector{DReal}

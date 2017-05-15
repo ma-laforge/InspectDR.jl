@@ -12,29 +12,29 @@ import NumericIO: UEXPONENT
 ===============================================================================#
 
 #Convenience aliases
-typealias NumericFormatting NumericIO.IOFormattingReal
-typealias ExponentFormatting NumericIO.IOFormattingExp
+const NumericFormatting = NumericIO.IOFormattingReal
+const ExponentFormatting = NumericIO.IOFormattingExp
 
-abstract RangeDisplayInfo
+abstract type RangeDisplayInfo end
 
 #Hints on how to display numbers in a linear range:
-immutable LinearRangeDisplayInfo <: RangeDisplayInfo
+struct LinearRangeDisplayInfo <: RangeDisplayInfo
 	exp_min::Float64 #Base-10 exponent for max value
 	exp_max::Float64 #Base-10 exponent for min value
 	exp_step::Float64 #Base-10 exponent for step size
 end
 LinearRangeDisplayInfo() = LinearRangeDisplayInfo(0,0,0)
 
-immutable NoRangeDisplayInfo <: RangeDisplayInfo; end
+struct NoRangeDisplayInfo <: RangeDisplayInfo; end
 
 #How to display tick labels:
-immutable TickLabelFormatting
+struct TickLabelFormatting
 	fmt::NumericFormatting
 	splitexp::Bool #Only possible when !fmt.decfloating
 end
 
 
-type TickLabelStyle
+mutable struct TickLabelStyle
 	expdisplay::ExponentFormatting
 	ndigits::NullOr{Int} #Force # of digits displayed
 	decpos::NullOr{Int} #User-defined exponent for all displayed numbers

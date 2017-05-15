@@ -19,7 +19,7 @@ const DEFAULT_FONTNAME = (@static is_windows()? "Cambria": "Serif")
 
 #==Types
 ===============================================================================#
-type Defaults
+mutable struct Defaults
 	rendersvg::Bool #Might want to dissalow SVG renderings for performance reasons
 	showtimestamp::Bool
 	fontname::String

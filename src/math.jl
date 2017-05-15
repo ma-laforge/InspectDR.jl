@@ -28,10 +28,22 @@ isincreasing(r::Range) = (step(r) > 0)
 ===============================================================================#
 
 #Safe version of extrema (returns DNaN on error):
+#Also ignores NaNs.  TODO: optimize?
 function extrema_nan(v::Vector)
-	try
-		return extrema(v)
+	vmin = DInf; vmax = -DInf
+	for elem in v
+		if !isnan(elem)
+			if elem > vmax
+				vmax = elem
+			end
+			if elem < vmin
+				vmin = elem
+			end
+		end
 	end
-	return (DNaN, DNaN)
+	if vmin>vmax
+		vmin = vmax = DNaN
+	end
+	return (vmin, vmax)
 end
 #Last line

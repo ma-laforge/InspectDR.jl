@@ -3,9 +3,9 @@
 
 #==Types
 ===============================================================================#
-typealias KeyMap Dict{Int, Function}
+const KeyMap = Dict{Int, Function}
 
-type KeyBindings
+mutable struct KeyBindings
 	nomod::KeyMap
 	shiftmod::KeyMap
 	ctrlmod::KeyMap

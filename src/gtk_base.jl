@@ -76,20 +76,20 @@ const XAXIS_POS_STEPRES = 1/500
 #==Display types
 ===============================================================================#
 #Generic type used to spawn new InspectDR display windows:
-immutable GtkDisplay <: Display
+struct GtkDisplay <: Display
 end
 
 
 #==Main types
 ===============================================================================#
-abstract InputState #Identifies current user input state.
+abstract type InputState end #Identifies current user input state.
 
-abstract CtrlElement #Controllable element
+abstract type CtrlElement end #Controllable element
 #=Implement:
 TODO: explain interface
 =#
 
-type CtrlMarker <: CtrlElement
+mutable struct CtrlMarker <: CtrlElement
 	prop::HVMarker #Properties
 	Δinfo::Vector2D #Offset of Δ-information block
 	Δbb::BoundingBox #Last postion of Δ-information block (optimize hit test)
@@ -97,7 +97,7 @@ type CtrlMarker <: CtrlElement
 end
 
 #Grouping of controllable markers (used to get ::Plot object to render)
-type CtrlMarkerGroup <: PlotAnnotation
+mutable struct CtrlMarkerGroup <: PlotAnnotation
 	elem::Vector{CtrlMarker}
 	fntcoord::Font
 	fntdelta::Font
@@ -106,13 +106,13 @@ CtrlMarkerGroup() = CtrlMarkerGroup([],
 	Font(defaults.fontname, 10), Font(defaults.fontname, 12)
 )
 
-type GtkMouseOver
+mutable struct GtkMouseOver
 	istrip::Int
 	pos::NullOr{Point2D}
 end
 GtkMouseOver() = GtkMouseOver(0, nothing)
 
-type PlotWidget
+mutable struct PlotWidget
 	widget::_Gtk.Box #Base widget
 	canvas::_Gtk.Canvas #Actual plot area
 	src::Plot
@@ -145,7 +145,7 @@ type PlotWidget
 end
 
 #Supports multiplot:
-type GtkPlot
+mutable struct GtkPlot
 	destroyed::Bool #Way to know if window is actually desplayed
 	wnd::_Gtk.Window
 	grd::_Gtk.Grid #Holds subplot widgets

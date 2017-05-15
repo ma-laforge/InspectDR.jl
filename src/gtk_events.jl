@@ -20,7 +20,7 @@ const GdkKeySyms_Minus = 0xffad
 
 #==Main types
 ===============================================================================#
-immutable ISNormal <: InputState; end #Default state
+struct ISNormal <: InputState; end #Default state
 
 
 #==Helper functions

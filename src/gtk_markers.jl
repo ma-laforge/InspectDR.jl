@@ -14,12 +14,12 @@ const CTRLPOINT_ATTR = AreaAttributes(
 
 #==Types
 ===============================================================================#
-immutable ISMovingMarker <: InputState
+struct ISMovingMarker <: InputState
 	istrip::Int
 	initpos::Point2D
 	marker::CtrlMarker #Ref to marker
 end
-immutable ISMovingΔInfo <: InputState
+struct ISMovingΔInfo <: InputState
 	istrip::Int
 	refpos::Point2D
 	initΔ::Vector2D

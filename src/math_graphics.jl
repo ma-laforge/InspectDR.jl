@@ -5,7 +5,7 @@
 #==Aliases
 ===============================================================================#
 #Real data type used for display functionnality (low-level):
-typealias DReal Float64
+const DReal = Float64
 
 
 #==Constants
@@ -26,14 +26,14 @@ const COLOR_BLUE = RGB24(0, 0, 1)
 #==Data structures.
 ===============================================================================#
 #TODO: Use library version?
-abstract Point #So we can use as a function
-immutable Point2D <: Point
+abstract type Point end #So we can use as a function
+struct Point2D <: Point
 	x::DReal
 	y::DReal
 end
 
-abstract DirectionalVector
-immutable Vector2D <: DirectionalVector
+abstract type DirectionalVector end
+struct Vector2D <: DirectionalVector
 	x::DReal
 	y::DReal
 end
@@ -41,7 +41,7 @@ Vector2D(p::Point2D) = Vector2D(p.x, p.y)
 Point2D(p::Vector2D) = Point2D(p.x, p.y)
 
 #Plot extents along one dimension:
-immutable PExtents1D
+struct PExtents1D
 	min::DReal
 	max::DReal
 end
@@ -49,7 +49,7 @@ PExtents1D(;min::Real=DNaN, max::Real=DNaN) = PExtents1D(min, max)
 
 #Could use BoundingBox, but cannot control type (and is technically not a BB).
 #TODO: PExtents2D from PExtents1D?
-immutable PExtents2D
+struct PExtents2D
 	xmin::DReal
 	xmax::DReal
 	ymin::DReal
@@ -65,15 +65,15 @@ PExtents2D(xext::PExtents1D, yext::PExtents1D) =
 #yd = (ys + y0) * yu
 #where: xu/yu: user coordinates & xd/yd: device coordinates
 #NOTE: Format used instead of xs*xu + x0 for improved numeric stability?
-#TODO: Does immutable cause copy on function calls instead of using pointers??
-immutable Transform2D
+#TODO: Does struct cause copy on function calls instead of using pointers??
+struct Transform2D
 	xs::DReal
 	x0::DReal
 	ys::DReal
 	y0::DReal
 end
 
-immutable LineStyle
+struct LineStyle
 	style::Symbol
 	width::Float64 #Device units (~pixels)
 	color::Colorant
@@ -126,9 +126,11 @@ Base.:-(p::Point2D, v::Vector2D) = Point2D(p.x-v.x, p.y-v.y)
 Base.:+(v::Vector2D, p::Point2D) = p+v
 
 function union(e1::PExtents1D, e2::PExtents1D)
+	umin(v1, v2) = isnan(v1)? v2: min(v1, v2)
+	umax(v1, v2) = isnan(v1)? v2: max(v1, v2)
 	return PExtents1D(
-		min(e1.min, e2.min),
-		max(e1.max, e2.max),
+		umin(e1.min, e2.min),
+		umax(e1.max, e2.max),
 	)
 end
 function union(elist::Vector{PExtents1D})
@@ -140,11 +142,13 @@ function union(elist::Vector{PExtents1D})
 end
 
 function union(e1::PExtents2D, e2::PExtents2D)
+	umin(v1, v2) = isnan(v1)? v2: min(v1, v2)
+	umax(v1, v2) = isnan(v1)? v2: max(v1, v2)
 	return PExtents2D(
-		min(e1.xmin, e2.xmin),
-		max(e1.xmax, e2.xmax),
-		min(e1.ymin, e2.ymin),
-		max(e1.ymax, e2.ymax),
+		umin(e1.xmin, e2.xmin),
+		umax(e1.xmax, e2.xmax),
+		umin(e1.ymin, e2.ymin),
+		umax(e1.ymax, e2.ymax),
 	)
 end
 function union(elist::Vector{PExtents2D})

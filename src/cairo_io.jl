@@ -3,12 +3,12 @@
 
 #==Constants
 ===============================================================================#
-typealias MIMEpng MIME"image/png"
-typealias MIMEsvg MIME"image/svg+xml"
-typealias MIMEeps MIME"image/eps"
-typealias MIMEeps2 MIME"application/eps" #Apparently this is also a MIME
-typealias MIMEps MIME"application/postscript" #TODO: support when Cairo.jl supports PSSurface
-typealias MIMEpdf MIME"application/pdf"
+const MIMEpng = MIME"image/png"
+const MIMEsvg = MIME"image/svg+xml"
+const MIMEeps = MIME"image/eps"
+const MIMEeps2 = MIME"application/eps" #Apparently this is also a MIME
+const MIMEps = MIME"application/postscript" #TODO: support when Cairo.jl supports PSSurface
+const MIMEpdf = MIME"application/pdf"
 
 const MAPEXT2MIME = Dict{String,MIME}(
 	".png" => MIMEpng(),
@@ -18,11 +18,11 @@ const MAPEXT2MIME = Dict{String,MIME}(
 )
 
 #If an easy way to read Cairo scripts back to a surface is found:
-#typealias MIMEcairo MIME"image/cairo"
+#const MIMEcairo = MIME"image/cairo"
 
 #All supported MIMEs:
 #EXCLUDE SVG so it can be turnd on/off??
-typealias MIMEall Union{MIMEpng, MIMEeps, MIMEeps2, MIMEpdf, MIMEsvg}
+const MIMEall = Union{MIMEpng, MIMEeps, MIMEeps2, MIMEpdf, MIMEsvg}
 
 
 #=="Constructors"

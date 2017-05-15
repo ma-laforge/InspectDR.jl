@@ -11,14 +11,14 @@ const ZOOM_STEPRATIO = 2.0 #How much to zoom in/out with mousewheel + keybinding
 #==Types
 ===============================================================================#
 #User input states
-type ISPanningData <: InputState #Typically with mouse
+mutable struct ISPanningData <: InputState #Typically with mouse
 	p0::Point2D #Start
 	pmouse::Point2D #move
 	ext_start::PExtents2D #Extents @ start of operation
 	#Store ext_start to avoid accumulation of numerical errors.
 	istrip::Int
 end
-type ISSelectingArea <: InputState #Box-zoom
+mutable struct ISSelectingArea <: InputState #Box-zoom
 	bb::BoundingBox
 	istrip::Int
 end

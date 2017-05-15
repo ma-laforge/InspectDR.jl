@@ -37,7 +37,7 @@ f1 = .8e9
 
 #==Helper functions
 ===============================================================================#
-phase(x) = rad2deg(angle(x))
+phase(x) = rad2deg.(angle.(x))
 function roots(a,b,c)
 	r = sqrt(b*b-4*a*c)
 	result = (-b .+ [r, -r]) / (2a)

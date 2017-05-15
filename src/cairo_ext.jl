@@ -10,7 +10,7 @@ NOTE: might be useful to move to a separate module.
 
 #==Constants
 ===============================================================================#
-immutable CAlignment #Cairo alignment
+struct CAlignment #Cairo alignment
 	v::Int
 end
 Base.:|(a::CAlignment, b::CAlignment) = CAlignment(a.v|b.v)

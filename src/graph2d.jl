@@ -12,7 +12,7 @@
 
 #"Evaluated" information about all strips:
 #(Cache for bounds, current extents, text formatting, transforms, etc)
-type StripInfo
+mutable struct StripInfo
 	graphbb::BoundingBox #Location of graph (device units)
 	ext::PExtents2D #Current extents of graph
 	yfmt::TickLabelFormatting #y tick label formatting
@@ -24,7 +24,7 @@ end
 
 #"Evaluated" information about all graphs on a plot:
 #(Cache for bounds, current extents, text formatting, transforms, etc)
-type Plot2DInfo
+mutable struct Plot2DInfo
 #TODO: store BoundingBox for entire plot??
 #TODO: store extents???
 	xfmt::TickLabelFormatting #x tick label formatting
@@ -36,7 +36,7 @@ Plot2DInfo() = Plot2DInfo(
 )
 
 #Graph-specific version of Plot2DInfo/StripInfo
-type Graph2DInfo
+mutable struct Graph2DInfo
 	graphbb::BoundingBox #Location of graph (device units)
 	ext::PExtents2D #Current extents of graph
 

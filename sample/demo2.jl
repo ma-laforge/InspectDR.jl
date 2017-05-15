@@ -38,7 +38,7 @@ function Zline(ℓ::Real, f::Vector, ZL::Number; ZC::Number=50.0, α::Real=0, μ
 	j = im
 	β = f*(2pi*sqrt(μ*ϵ))
 	γ = α+j*β
-	tanh_γℓ = tanh(γ*ℓ)
+	tanh_γℓ = tanh.(γ*ℓ)
 	return ZC*(ZL+ZC*tanh_γℓ)./(ZC+ZL*tanh_γℓ)
 end
 function Γline(ℓ::Real, f::Vector, ZL::Number; ZC::Number=50.0, Zref::Number=50.0, α::Real=0, μ::Real=μ0, ϵ::Real=ϵ0)

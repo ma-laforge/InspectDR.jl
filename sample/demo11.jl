@@ -36,7 +36,7 @@ t_1bit = t[1:osr] #Time for 1 bit
 
 #=="Simulation" (really rudimentary to keep things simple)
 ===============================================================================#
-expdecay(Δt::Vector, V0, V∞, τ) = V∞+(V0-V∞)*exp(-Δt/τ)
+expdecay(Δt::Vector, V0, V∞, τ) = V∞+(V0-V∞)*exp.(-Δt/τ)
 
 function EmulDigtialWfrm(pat::Vector, τrise, τfall)
 	vrise = expdecay(t_1bit, 0, VSUPPLY, τrise)

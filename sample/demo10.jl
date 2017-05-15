@@ -30,7 +30,7 @@ VRECT = 80 #Rectifier voltage
 
 #=="Simulation" (really rudimentary to keep things simple)
 ===============================================================================#
-mains_fn(t) = VSUPPLY*sqrt(2)*cos(2pi*(t./T))
+mains_fn(t) = VSUPPLY*sqrt(2)*cos.(2pi*(t./T))
 #Find time where mains crosses given threshold:
 mains_xfn(thresh) = acos(thresh/(VSUPPLY*sqrt(2)))*(T/(2pi))
 
@@ -46,7 +46,7 @@ t = collect(linspace(0, T, ppcycle+1)[1:end-1]) #Time
 npts = length(t); hpts = div(npts, 2) #npts should match ppcycle
 
 mains = mains_fn(t)
-mains_rect = abs(mains)
+mains_rect = abs.(mains)
 rectactive = mains_rect .> VRECT
 rectactive_sig = rectactive * 1.0
 vrect = rectactive_sig*VRECT #Voltage @ rectifier

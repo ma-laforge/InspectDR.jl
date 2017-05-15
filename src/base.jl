@@ -8,9 +8,9 @@
 
 #==Abstracts
 ===============================================================================#
-abstract Plot
-abstract PlotCanvas #TODO: Does not appear useful
-abstract PlotAnnotation
+abstract type Plot end
+abstract type PlotCanvas end #TODO: Does not appear useful
+abstract type PlotAnnotation end
 
 
 #==Plot-level structures
@@ -20,7 +20,7 @@ be broken down to lower-level structures later on.
 =#
 
 #Don't want immutable like LineStyle (modified by user):
-type LineAttributes <: AttributeList
+mutable struct LineAttributes <: AttributeList
 	style
 	width #[0, 10]
 	color
@@ -33,14 +33,14 @@ LineStyle(a::LineAttributes) = LineStyle(a.style, Float64(a.width), a.color)
 #TODO: Inadequate
 #eval(genexpr_attriblistbuilder(:line, LineAttributes, reqfieldcnt=0))
 
-type AreaAttributes #<: AttributeList
+mutable struct AreaAttributes #<: AttributeList
 	line::LineAttributes
 	fillcolor::Colorant
 end
 AreaAttributes(;line=InspectDR.line(style=:none), fillcolor=COLOR_TRANSPARENT) =
 	AreaAttributes(line, fillcolor)
 
-type GlyphAttributes <: AttributeList #Don't use "Symbol" - name used by Julia
+mutable struct GlyphAttributes <: AttributeList #Don't use "Symbol" - name used by Julia
 #==IMPORTANT:
 Edge width & color taken from LineAttributes
 ==#
@@ -56,7 +56,7 @@ glyph(;shape=:none, size=3, color=nothing, fillcolor=nothing) =
 #TODO: Inadequate
 #eval(genexpr_attriblistbuilder(:glyph, GlyphAttributes, reqfieldcnt=0))
 
-type Waveform{T}
+mutable struct Waveform{T}
 	id::String
 	ds::T
 	line::LineAttributes
@@ -66,17 +66,17 @@ type Waveform{T}
 end
 
 #Input waveform:
-typealias IWaveform Waveform{IDataset}
+const IWaveform = Waveform{IDataset}
 
 #Display waveform (concrete (x, y) pair):
-typealias DWaveform Waveform{Vector{Point2D}}
+const DWaveform = Waveform{Vector{Point2D}}
 
 #=TODO:
 typealias DWaveformCplx Waveform{PointComplex}
 to track x-values of complex data??
 =#
 
-type Annotation
+mutable struct Annotation
 	title::String
 	xlabel::String
 	ylabels::Vector{String}
@@ -84,7 +84,7 @@ type Annotation
 end
 Annotation(;title="") = Annotation(title, "", [], Libc.strftime(time()))
 
-type Font
+mutable struct Font
 	name::String
 	_size::Float64
 	bold::Bool
@@ -96,7 +96,7 @@ Font(_size::Real; bold::Bool=false, color=COLOR_BLACK) =
 	Font(defaults.fontname, _size, bold, color)
 
 #Legend layout/style
-type LegendLStyle
+mutable struct LegendLStyle
 	enabled::Bool
 	#autosize::Bool Auto-compute width from text.
 	font::Font
@@ -115,7 +115,7 @@ LegendLStyle(;enabled=false, font=Font(12)) =
 #Plot layout
 #TODO: Split Layout into "StyleInfo" - which includes Layout??
 #TODO: Sort out this w/h vs h/v confusion.
-type Layout
+mutable struct Layout
 	htitle::Float64 #Title allocation
 	waxlabel::Float64 #Vertical axis label allocation (width)
 	haxlabel::Float64 #Horizontal axis label allocation (height)
@@ -160,11 +160,11 @@ Layout(;fontname::String=defaults.fontname, fontscale=defaults.fontscale) =
 )
 
 #AnnotationGroup: Allows for hierarchical groupings of PlotAnnotation:
-type AnnotationGroup{T<:PlotAnnotation} <: PlotAnnotation
+mutable struct AnnotationGroup{T<:PlotAnnotation} <: PlotAnnotation
 	elem::Vector{T}
 end
 
-type TextAnnotation <: PlotAnnotation
+mutable struct TextAnnotation <: PlotAnnotation
 	text::String
 	pos::Pos2DOffset
 	font::Font
@@ -181,7 +181,7 @@ atext(text::String; x=DNaN, y=DNaN,
 		font, angle, align, strip
 	)
 
-type HVMarker <: PlotAnnotation
+mutable struct HVMarker <: PlotAnnotation
 	vmarker::Bool
 	hmarker::Bool
 	pos::Point2D
@@ -192,7 +192,7 @@ vmarker(pos, line=InspectDR.line(); strip=0) = HVMarker(true, false, Point2D(pos
 hmarker(pos, line=InspectDR.line(); strip=1) = HVMarker(false, true, Point2D(DNaN, pos), line, strip)
 hvmarker(pos, line=InspectDR.line(); strip=1) = HVMarker(true, true, pos, line, strip)
 
-type PolylineAnnotation <: PlotAnnotation
+mutable struct PolylineAnnotation <: PlotAnnotation
 	#TODO: preferable to use Point2D?
 	x::Vector{DReal}
 	y::Vector{DReal}
@@ -205,7 +205,7 @@ PolylineAnnotation(x, y; line=InspectDR.line(), fillcolor=COLOR_TRANSPARENT, clo
 	PolylineAnnotation(x, y, line, fillcolor, closepath, strip)
 
 #Single graph strip of a Plot2D (shared x-coord):
-type GraphStrip
+mutable struct GraphStrip
 	yscale::AxisScale
 	ext_data::PExtents2D #Maximum extents of data in strip (typically all finite)
 	yext_full::PExtents1D #y-extents when zoomed out to "full" (NaN values: use ext_data)
@@ -217,7 +217,7 @@ GraphStrip() = GraphStrip(AxisScale(:lin, tgtmajor=8, tgtminor=2),
 	GridRect(vmajor=true, vminor=false, hmajor=true, hminor=false))
 
 #2D plot.
-type Plot2D <: Plot
+mutable struct Plot2D <: Plot
 	xscale::AxisScale
 	layout::Layout
 	annotation::Annotation
@@ -255,7 +255,7 @@ Plot2D(;title="") = Plot2D(AxisScale(:lin, tgtmajor=3.5, tgtminor=4),
 	nothing, [GraphStrip()], [], [], [], true, [], false, 1000
 )
 
-type Multiplot
+mutable struct Multiplot
 	title::String
 
 	subplots::Vector{Plot}

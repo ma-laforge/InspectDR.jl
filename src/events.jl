@@ -9,7 +9,7 @@ module for the simple interaction needed here.
 
 #==Types
 ===============================================================================#
-immutable HandlerInfo
+struct HandlerInfo
 	listener::Any
 	fn::Function
 end

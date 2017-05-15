@@ -7,7 +7,7 @@
 
 #Input dataset data:
 #TODO: make x an immutable (read-only) type so data cannot be changed once identified.
-type IDataset{DATAF1} #DATAF1::Bool: Data is function of 1 argument (optimization possible)
+mutable struct IDataset{DATAF1} #DATAF1::Bool: Data is function of 1 argument (optimization possible)
 	x::Vector
 	y::Vector
 end
@@ -40,7 +40,7 @@ end
 function _reduce(input::IDataset, xext::PExtents1D, xres_max::Integer)
 	x = input.x; y = input.y
 	n_ds = length(x) #numer of points of input dataset
-	result = Array(Point2D, n_ds)
+	result = Array{Point2D}(n_ds)
 	for i in 1:n_ds
 		result[i] = Point2D(x[i], y[i])
 	end
@@ -59,7 +59,7 @@ function _reduce(input::IDataset{true}, xext::PExtents1D, xres_max::Integer)
 	#FIXME: improve algorithm
 	#Algorithm succeptible to cumulative errors (esp w large x-values & large xres_max):
 	sz = min(n_ds, xres_max)+1+2*min_lookahead #Allow extra points in case
-	result = Array(Point2D, sz)
+	result = Array{Point2D}(sz)
 	n = 0 #Number of points in reduced dataset
 	i = 1 #Index into input dataset
 

@@ -42,10 +42,10 @@ const GRID_MINORDIV = DReal[
 #==Types
 ===============================================================================#
 
-abstract AbstractGridLines
+abstract type AbstractGridLines end
 
 #Identifies where to place ticks/grid lines
-type GridLines <: AbstractGridLines
+mutable struct GridLines <: AbstractGridLines
 	displaymajor::Bool
 	displayminor::Bool
 	major::Vector{DReal}
@@ -55,20 +55,20 @@ end
 GridLines(displaymajor=true, displayminor=true) =
 	GridLines(displaymajor, displayminor, [], [], NoRangeDisplayInfo())
 
-type GridLinesAuto <: AbstractGridLines
+mutable struct GridLinesAuto <: AbstractGridLines
 	displaymajor::Bool
 	displayminor::Bool
 end
 
-type UndefinedGridLines <: AbstractGridLines
+mutable struct UndefinedGridLines <: AbstractGridLines
 	minline::DReal
 	maxline::DReal
 end
 
-abstract PlotGrid
+abstract type PlotGrid end
 
 #Rectilinear grid (ex: normal cartesian +logarithmic, ...):
-type GridRect <: PlotGrid
+mutable struct GridRect <: PlotGrid
 	xlines::AbstractGridLines
 	ylines::AbstractGridLines
 #TODO: Make it possible for user to specify grids/labels as well.
@@ -76,7 +76,7 @@ end
 GridRect(;vmajor=false, vminor=false, hmajor=false, hminor=false) =
 	GridRect(GridLinesAuto(vmajor, vminor), GridLinesAuto(hmajor, hminor))
 
-type GridSmith <: PlotGrid
+mutable struct GridSmith <: PlotGrid
 	zgrid::Bool #Set to false for Y (admittance)-grid (x -> -x)
 	ref::Float64 #Scaling factor (Zref/Yref)
 	majorR::Vector{DReal} #Major constant resistance/admittance circles
@@ -87,7 +87,7 @@ type GridSmith <: PlotGrid
 end
 
 #TODO: Curvilinear grid (ex: polar plots):
-type GridCurv <: PlotGrid
+mutable struct GridCurv <: PlotGrid
 end
 
 
@@ -191,7 +191,7 @@ function gridlines(scale::AxisScale, min::DReal, max::DReal, displaymajor::Bool,
 	else #Just in case
 		npts = 0
 	end
-	grd.minor = Array(DReal, npts)
+	grd.minor = Array{DReal}(npts)
 
 	nextmajor = major_i1
 	j = 1
@@ -221,7 +221,7 @@ function gridlines(scale::LogScale{10}, logmin::DReal, logmax::DReal, displaymaj
 	majorend = floor(Int, logmax)
 	grd.major = collect(major1:1:majorend)
 
-	offsets = collect(log10(2:1:9))
+	offsets = collect(log10.(2:1:9))
 
 	if length(grd.major) > 0
 		minor = (grd.major[1]-1)+offsets

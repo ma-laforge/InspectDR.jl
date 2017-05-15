@@ -9,7 +9,7 @@
 #==Main types
 ===============================================================================#
 #2D plot canvas; basic info:
-type PCanvas2D <: PlotCanvas
+mutable struct PCanvas2D <: PlotCanvas
 	ctx::CairoContext
 	bb::BoundingBox #Entire canvas
 	graphbb::BoundingBox #Graph portion
@@ -26,7 +26,7 @@ PCanvas2D(ctx, bb, ginfo::Graph2DInfo) =
 #TODO: use instead of PCanvas2D???
 #TODO: Add axis scale info, etc???
 #Canvas for 2D Graph:
-type GCanvas2D
+mutable struct GCanvas2D
 	ctx::CairoContext
 	graphbb::BoundingBox
 	ext::PExtents2D #Extents of graph portion
@@ -37,7 +37,7 @@ GCanvas2D(ctx, graphbb, ext) =
 =#
 
 #Used to buffer portions of plot for better GUI response times
-type CairoBufferedPlot
+mutable struct CairoBufferedPlot
 	surf::Cairo.CairoSurface #Main surface where plot is drawn
 	data::Cairo.CairoSurface #Cache of data image layer
 end

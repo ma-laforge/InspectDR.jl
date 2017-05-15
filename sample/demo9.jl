@@ -20,7 +20,7 @@ blue = RGB24(0, 0, 1)
 npts = 1000
 T=.1e-6 #Clock period
 x = collect(linspace(0, 1e-6, npts))
-y = sin(2pi*(x./T))
+y = sin.(2pi*(x./T))
 
 #Invalidate some data points:
 #NOTE: Cannot use F1-acceleration when x has NaN values

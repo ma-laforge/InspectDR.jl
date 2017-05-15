@@ -6,27 +6,27 @@
 ===============================================================================#
 
 #Tag data as being part of a given coordinate system:
-immutable CoordSystem{ID}; end
-typealias DeviceCoord CoordSystem{:dev}
-typealias AxisCoord CoordSystem{:axis}
-typealias NormCoord CoordSystem{:norm} #Normalized (ex: relative to axis-delimited viewport)
-typealias DataCoord CoordSystem{:data}
+struct CoordSystem{ID}; end
+const DeviceCoord = CoordSystem{:dev}
+const AxisCoord = CoordSystem{:axis}
+const NormCoord = CoordSystem{:norm} #Normalized (ex: relative to axis-delimited viewport)
+const DataCoord = CoordSystem{:data}
 
 #Never actually used:
 #... but could simplify names of mapping functions/mitigate incorrect use.
-immutable TypedCoord{CT<:CoordSystem}
+struct TypedCoord{CT<:CoordSystem}
 	v::DReal
 end
 coord(s::Symbol, v::DReal) = TypedCoord{CoordSystem{s}}(v)
 
 #Annotation coordinates can match data or be normalized to plot bounds (0 -> 1):
 #NOTE: not used
-typealias AnnotationCoord Union{TypedCoord{NormCoord}, TypedCoord{DataCoord}}
+const AnnotationCoord = Union{TypedCoord{NormCoord}, TypedCoord{DataCoord}}
 
 #Dispatchable scale:
-abstract AxisScale #Note: "Scale" too generic a name
+abstract type AxisScale end #Note: "Scale" too generic a name
 
-immutable LinScale{T} <: AxisScale
+struct LinScale{T} <: AxisScale
 	tgtmajor::DReal #Targeted number of major grid lines
 	tgtminor::Int   #Targeted number of minor grid lines
 	(t::Type{LinScale{T}}){T}(a1, a2) = error("$t not supported")
@@ -36,7 +36,7 @@ immutable LinScale{T} <: AxisScale
 end
 LinScale(t=1; tgtmajor=3.5, tgtminor=4) = LinScale{t}(tgtmajor, tgtminor)
 
-immutable LogScale{T} <: AxisScale
+struct LogScale{T} <: AxisScale
 	#TODO: Configure how many major/minor lines are desired?
 	(t::Type{LogScale{T}}){T}() = error("$t not supported")
 	(::Type{LogScale{:e}})() = new{:e}()
@@ -58,12 +58,12 @@ AxisScale() = AxisScale(:lin)
 
 #Nonlinear transform type definitions
 #-------------------------------------------------------------------------------
-abstract NLTransform{NDIMS} #Nonlinear transform
+abstract type NLTransform{NDIMS} end #Nonlinear transform
 
 #InputXfrm: Maps raw input data to axis coordinates:
 
 #InputXfrm1DSpec: Generates specialized (efficient) code:
-immutable InputXfrm1DSpec{T} <: NLTransform{1}
+struct InputXfrm1DSpec{T} <: NLTransform{1}
 end
 InputXfrm1DSpec(::LinScale{1}) = InputXfrm1DSpec{:lin}()
 InputXfrm1DSpec(::LinScale{:dB10}) = InputXfrm1DSpec{:dB10}()
@@ -72,11 +72,11 @@ InputXfrm1DSpec(::LogScale{:e}) = InputXfrm1DSpec{:ln}()
 InputXfrm1DSpec(::LogScale{2}) = InputXfrm1DSpec{:log2}()
 InputXfrm1DSpec(::LogScale{10}) = InputXfrm1DSpec{:log10}()
 
-immutable InputXfrm1D <: NLTransform{1} #Generates non-specialized code
+struct InputXfrm1D <: NLTransform{1} #Generates non-specialized code
 	spec::InputXfrm1DSpec
 end
 InputXfrm1D(s::AxisScale) = InputXfrm1D(InputXfrm1DSpec(s))
-immutable InputXfrm2D <: NLTransform{2} #Generates non-specialized code
+struct InputXfrm2D <: NLTransform{2} #Generates non-specialized code
 	x::InputXfrm1DSpec #x-transform
 	y::InputXfrm1DSpec #y-transform
 end
@@ -86,7 +86,7 @@ InputXfrm2D(xs::AxisScale, ys::AxisScale) = InputXfrm2D(InputXfrm1DSpec(xs), Inp
 #Offsettable 2D position:
 #TODO: Should reloffset exist as is?
 #      Alt: v.x/y is *either* "read" or "relative" (use relx::Bool, rely::Bool)
-type Pos2DOffset
+mutable struct Pos2DOffset
 	v::Point2D #Position ("Read"able coordinates) - set NaN to use offsets only
 	reloffset::Vector2D #Relative offset (Normalized to [0,1] graph bounds)
 	offset::Vector2D #Absolute offset (device units)
@@ -145,7 +145,7 @@ function map2axis{T<:Number}(d::Vector{T}, xf::InputXfrm1DSpec)
 	#-->Specializing on InputXfrm1DSpec, hoping to improve efficiency on dmap:
 	dmap = map2axis(T, xf)
 
-	result = Array(DReal, length(d))
+	result = Array{DReal}(length(d))
 	for i in 1:length(d)
 		result[i] = dmap(d[i])
 	end

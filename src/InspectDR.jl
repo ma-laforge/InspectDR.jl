@@ -34,7 +34,7 @@ end
 
 #==Aliases
 ===============================================================================#
-typealias NullOr{T} Union{Void, T}
+NullOr{T} = Union{Void, T}
 
 include("defaults.jl")
 include("codegen.jl")
