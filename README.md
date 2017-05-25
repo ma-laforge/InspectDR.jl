@@ -4,8 +4,8 @@
 
 **Generated With Other Modules:**
 
- - [:chart_with_upwards_trend: CData.jl output](https://github.com/ma-laforge/FileRepo/tree/master/SignalProcessing/sampleplots/README.md).
- - [:chart_with_upwards_trend: JuliaPlots/Plots.jl output](https://github.com/ma-laforge/FileRepo/blob/master/InspectDR/sampleplots_Plots/README.md).
+- [:chart_with_upwards_trend: CData.jl output](https://github.com/ma-laforge/FileRepo/tree/master/SignalProcessing/sampleplots/README.md).
+- [:chart_with_upwards_trend: JuliaPlots/Plots.jl output](https://github.com/ma-laforge/FileRepo/blob/master/InspectDR/sampleplots_Plots/README.md).
 
 # InspectDR.jl: Fast, Interactive Plots
 
@@ -19,9 +19,9 @@ InspectDR is a fast plotting tool with a responsive GUI, targeting quick navigat
 
 The InspectDR library is implemented using **3 distinct plot layers**:
 
- - **Plot image layer:** Implemented with the [Cairo library](https://cairographics.org/), the plot image layer allows the user to render (multi-) plots as simple images.
- - **Plot widget layer:** Library users can also integrate plots to their own [GTK+](https://www.gtk.org/) application by instantiating a single InspectDR widget.
- - **Plot application layer:** Most end users will likely display/interact with plots/data using the built-in Julia/[GTK+](https://www.gtk.org/) multi-plot application.
+- **Plot image layer:** Implemented with the [Cairo library](https://cairographics.org/), the plot image layer allows the user to render (multi-) plots as simple images.
+- **Plot widget layer:** Library users can also integrate plots to their own [GTK+](https://www.gtk.org/) application by instantiating a single InspectDR widget.
+- **Plot application layer:** Most end users will likely display/interact with plots/data using the built-in Julia/[GTK+](https://www.gtk.org/) multi-plot application.
 
 Users are encouraged to open an issue if it is unclear how to utilize a particular layer.  Documentation is a bit limited at the moment.
 
@@ -29,17 +29,17 @@ Users are encouraged to open an issue if it is unclear how to utilize a particul
 
 The following highlights a few interesting features of InspectDR:
 
- - Publication-quality output.
- - Included as a "backend" of [JuliaPlots/Plots.jl](https://github.com/JuliaPlots/Plots.jl).
- - Relatively short load times / time to first plot.
- - Designed with larger datasets in mind:
+- Publication-quality output.
+- Included as a "backend" of [JuliaPlots/Plots.jl](https://github.com/JuliaPlots/Plots.jl).
+- Relatively short load times / time to first plot.
+- Designed with larger datasets in mind:
   - Responsive even with moderate (>200k points) datasets.
   - Confirmed to handle 2GB datsets with reasonable speed on older desktop running Windows 7 (drag+pan of data area highly discouraged).
- - Support for Smith charts (admittance & impedance).
- - Support for various types of annotation:
+- Support for Smith charts (admittance & impedance).
+- Support for various types of annotation:
   - User-programmable text, polyline, vertical & horizontal bars.
   - Drag & drop &Delta;-markers (Measures/displays &Delta;x, &Delta;y & slope).
- - Interactive mouse/keybindings.
+- Interactive mouse/keybindings.
   - Fast & simple way to pan/zoom into data.
   - In line with other similar tools.
 
@@ -67,9 +67,9 @@ InspectDR.jl also supports generic 2D plotting.  More specifically, the tool is 
 
 Examples of of such plots (where x-values are not guaranteed to be sorted) include:
 
- - Nyquist plots
- - Lissajous plots
- - Smith/polar (S-Parameter) charts
+- Nyquist plots
+- Lissajous plots
+- Smith/polar (S-Parameter) charts
 
 <a name="Bindings"></a>
 #### Mouse/Keybindings
@@ -117,9 +117,9 @@ Note that many types & functions are not exported from InspectDR in order to avo
 
 Principal objects:
 
- - **`InspectDR.Plot`**: An abstract plot object.
- - **`InspectDR.Plot2D <: Plot`**:  A 2D plot object.  Construct empty 2D plot using `InspectDR.Plot2D(title="Plot Title")`.
- - **`InspectDR.Multiplot`**:  A multi-plot object.  Construct empty multi-plot using: `InspectDR.Multiplot(title="Multiplot Title")`.
+- **`InspectDR.Plot`**: An abstract plot object.
+- **`InspectDR.Plot2D <: Plot`**:  A 2D plot object.  Construct empty 2D plot using `InspectDR.Plot2D(title="Plot Title")`.
+- **`InspectDR.Multiplot`**:  A multi-plot object.  Construct empty multi-plot using: `InspectDR.Multiplot(title="Multiplot Title")`.
 
 Subplots (`T<:Plot`) are added to a multi-plot object using the `add()` method:
 ```
@@ -156,29 +156,32 @@ display(InspectDR.GtkDisplay(), mplot)
 
 In order to support stacked graphs with independent y-axes (tied to the same x-axis), specifying axis scales is a bit involved:
 
- - `InspectDR.Plot2D.xscale` controls the x-axis scale.
- - `InspectDR.Plot2D.strips[STRIP_INDEX].yscale` controls the y-axis scale.
+- `InspectDR.Plot2D.xscale` controls the x-axis scale.
+- `InspectDR.Plot2D.strips[STRIP_INDEX].yscale` controls the y-axis scale.
 
 To streamline control over plot axes/grids/labels/..., it is highly recommended to use the following **plot templates**:
 
- 1. `Plot2D(xscale, yscalelist; kwargs...)`: Generic 2D plot template.
-  - `Plot2D(:lin, :log, title="title", xlabel="X", ylabels=["log(Y)"])`: Construct plot with a linear X-axis & log10 Y-axis.
-  - `Plot2D(:log10, [:dB20, :lin, :lin], title="title", xlabel="X", ylabels=["Y1 (dB)", "Y2", "Y3"])`: Construct plot with a log10 X-axis, and 2 Y-strips: the top-most with a dB20 Y-scale, and the next two with linear Y-scale.
- 2. `bodeplot(; kwargs...)`: Template for generating Bode plots.
-  - `bodeplot()`: Default `kwargs` already set: `xlabel="Frequency (Hz)"`, ylabels=["Magnitude (dB)", "Phase (°)]"`.
- 3. `transientplot(yscalelist; kwargs...)`: Template for plotting transient data.
-  - `transientplot([:lin, :lin, :lin], title="title", ylabels=["Voltage", "Voltage", "Current"])`: `xlabel` already set to `"Time (s)"`, by default.
+1. `Plot2D(xscale, yscalelist; kwargs...)`: Generic 2D plot template.
 
- 4. `smithchart(TYPE; ref, kwargs...)`: Template for plotting onto a Smith Chart.
-  - `smithchart(:Z, ref=50)`: Impedance (`Z`) Smith Chart with a 50&Omega; reference. Default `kwargs` already set: `xlabel="Real(Γ)"`, `ylabels=["Imaginary(Γ)"]"`.
-  - `smithchart(:Y, ref=75)`: Admittance (`Y`) Smith Chart with a 75&Omega; reference.
+    - `Plot2D(:lin, :log, title="title", xlabel="X", ylabels=["log(Y)"])`: Construct plot with a linear X-axis & log10 Y-axis.
+    - `Plot2D(:log10, [:dB20, :lin, :lin], title="title", xlabel="X", ylabels=["Y1 (dB)", "Y2", "Y3"])`: Construct plot with a log10 X-axis, and 2 Y-strips: the top-most with a dB20 Y-scale, and the next two with linear Y-scale.
+
+2. `bodeplot(; kwargs...)`: Template for generating Bode plots.
+    - `bodeplot()`: Default `kwargs` already set: `xlabel="Frequency (Hz)"`, ylabels=["Magnitude (dB)", "Phase (°)]"`.
+
+3. `transientplot(yscalelist; kwargs...)`: Template for plotting transient data.
+    - `transientplot([:lin, :lin, :lin], title="title", ylabels=["Voltage", "Voltage", "Current"])`: `xlabel` already set to `"Time (s)"`, by default.
+
+4. `smithchart(TYPE; ref, kwargs...)`: Template for plotting onto a Smith Chart.
+    - `smithchart(:Z, ref=50)`: Impedance (`Z`) Smith Chart with a 50&Omega; reference. Default `kwargs` already set: `xlabel="Real(Γ)"`, `ylabels=["Imaginary(Γ)"]"`.
+    - `smithchart(:Y, ref=75)`: Admittance (`Y`) Smith Chart with a 75&Omega; reference.
 
 NOTE: X/Y-axis scales are specified using one of the following `::Symbols`:
 
- - `:lin`
- - `:log10`, `:log` (= `:log10`)
- - `:ln`, `:log2`: Grid lines might need improvement here.
- - `:dB20`, `:dB10`
+- `:lin`
+- `:log10`, `:log` (= `:log10`)
+- `:ln`, `:log2`: Grid lines might need improvement here.
+- `:dB20`, `:dB10`
 
 ### Layout/Plot Style
 
@@ -242,22 +245,22 @@ Sample IJulia (Jupyter) notebooks can be found [here](notebook/).
 <a name="KnownLimitations"></a>
 ## Known Limitations
 
- - Documentation is a bit limited at the moment.  See [Sample Usage](#SampleUsage) to learn from examples.
- - API is still a bit rough.  User often has to manipulate data structures directly.
+- Documentation is a bit limited at the moment.  See [Sample Usage](#SampleUsage) to learn from examples.
+- API is still a bit rough.  User often has to manipulate data structures directly.
   - Workaround: Use [JuliaPlots/Plots.jl](https://github.com/JuliaPlots/Plots.jl) as a "frontend" (increases plot times).
- - Font control is not ideal.  The default font might not be available on all platforms - and the fallback font might not have Unicode characters to display exponent values (ex: `10⁻¹⁵`).  Some Greek characters might also be missing.
+- Font control is not ideal.  The default font might not be available on all platforms - and the fallback font might not have Unicode characters to display exponent values (ex: `10⁻¹⁵`).  Some Greek characters might also be missing.
   - Workaround: Overwrite default font, as described in [Defaults](#Config_Defaults).
- - Legends not very configurable (currently optimized to display many labels @ cost of horizontal real-estate).
- - Does not yet render plot data in separate thread (will improve interactive experience with large datasets).
- - Mouse events currently function even outside data area (a bit odd).
- - Significant slowdowns observed when zooming **deep** into non-F1 data... Can likely be solved by discarding data outside plot extents.
+- Legends not very configurable (currently optimized to display many labels @ cost of horizontal real-estate).
+- Does not yet render plot data in separate thread (will improve interactive experience with large datasets).
+- Mouse events currently function even outside data area (a bit odd).
+- Significant slowdowns observed when zooming **deep** into non-F1 data... Can likely be solved by discarding data outside plot extents.
   - Workaround: make sure x-values are sorted (F1-acceleration discards data & is less prone to slowdowns).
 
 ### Compatibility
 
 Extensive compatibility testing of InspectDR.jl has not been performed.  The module has been tested using the following environment(s):
 
- - Windows / Linux / Julia-0.5.0 / Gtk 0.10.4 (GTK+ 3) / Cairo 0.2.35
+- Windows / Linux / Julia-0.6.0-rc1 / Gtk 0.13.0 (GTK+ 3) / Cairo 0.3.0
 
 ## Disclaimer
 
