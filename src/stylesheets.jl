@@ -92,6 +92,9 @@ function build_default_plot_layout(fontname::String, fontscale::Float64,
 	lyt.font_time = Font(font, _size = 8*fontscale)
 	lyt.font_legend = Font(font, _size = 12*fontscale)
 
+	lyt.valloc_data = DEFAULT_DATA_HEIGHT
+	lyt.halloc_data = DEFAULT_DATA_WIDTH
+
 	lyt.halloc_legendlineseg = 20
 	lyt.hoffset_legendtext = 0.5
 	lyt.valloc_legenditemsp = 0.25
