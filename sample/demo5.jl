@@ -28,7 +28,7 @@ k = 0.2 #Exponential coefficient
 #==Generate plot
 ===============================================================================#
 mplot = InspectDR.Multiplot(title="Log-Y Tests")
-mplot.ncolumns = 1
+mplot.layout[:ncolumns] = 1
 
 plot = add(mplot, InspectDR.Plot2D(:lin, [:lin, :log10],
 		title="y = $b^($(k)x)", xlabel="x", ylabels=["y", "y"])

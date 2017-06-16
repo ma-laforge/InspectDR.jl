@@ -21,7 +21,7 @@ blue = RGB24(0, 0, 1)
 #==Generate plot
 ===============================================================================#
 mplot = InspectDR.Multiplot(title="Empty/Undefined Plots")
-mplot.ncolumns = 2
+mplot.layout[:ncolumns] = 2
 xlabel = "X-Axis (X-Unit)"
 ylabel = "Y-Axis (Y-Unit)"
 kwargs = (:xlabel=>xlabel, :ylabels=>[ylabel])

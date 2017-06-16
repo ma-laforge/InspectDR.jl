@@ -64,9 +64,9 @@ function new()
 	const w = 500; const h = w/1.6 #Select plot width/height
 
 	mplot = InspectDR.Multiplot()
-	mplot.ncolumns = 1
+	mplot.layout[:ncolumns] = 1
 	#Bode plot looks better with wider aspect ratio:
-	mplot.wplot = w; mplot.hplot = h
+	mplot.layout[:halloc_plot] = w; mplot.layout[:valloc_plot] = h
 
 	add(mplot, new(InspectDR.Plot))
 	return mplot
@@ -86,9 +86,9 @@ function update(plot::Plot2D, f::Vector, y::Vector)
 	strip_mag.yext = InspectDR.PExtents1D()
 	strip_phase.yext = InspectDR.PExtents1D()
 
-	wfrm = add(plot, f, mag(y), strip=1)
+	wfrm = add(plot, f, mag.(y), strip=1)
 		wfrm.line = ldata
-	wfrm = add(plot, f, phase(y), strip=2)
+	wfrm = add(plot, f, phase.(y), strip=2)
 		wfrm.line = ldata
 
 	return
@@ -105,7 +105,7 @@ function update_annotation(plot::Plot2D, f0, fBW, phase0, enabled=true)
 	if !enabled; return; end
 
 	#Add specialized annotation
-	afont = InspectDR.Font(12) #Font for annotation
+	afont = plot.layout[:font_annotation]
 
 	#Add vertical markers to both plots:
 	isfinite(f0)? add(plot, vmarker(f0, lmarker, strip=0)): nothing

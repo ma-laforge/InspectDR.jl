@@ -183,12 +183,7 @@ NOTE: X/Y-axis scales are specified using one of the following `::Symbols`:
 - `:ln`, `:log2`: Grid lines might need improvement here.
 - `:dB20`, `:dB10`
 
-### Layout/Plot Style
-
-Until a proper API is defined, one is encouraged to look at the `Layout` object to alter how plots are displayed:
-```
-?InspectDR.Layout
-```
+### Layout/Stylesheets
 
 #### Legends
 
@@ -196,13 +191,8 @@ At this point in time, legends have limited configurability.  When displayed, le
 
 In order to display the legend of a `plot::Plot2D` object, one would set:
 ```
-plot.layout.legend.enabled = true
-```
-
-
-Until a proper API is defined, one is encouraged to look at the `LegendLStyle` object to alter how legends are displayed:
-```
-?InspectDR.LegendLStyle
+plot.layout[:enable_legend] = true #Enables legend
+plot.layout[:halloc_legend] = 150 #Control size of legend
 ```
 
 <a name="Config_Defaults"></a>
@@ -214,26 +204,53 @@ Default InspectDR.jl settings can be overwritten once the module is loaded by ed
 #Dissalow SVG MIME output for performance reasons:
 InspectDR.defaults.rendersvg = false
 
-InspectDR.defaults.showtimestamp = true
-InspectDR.defaults.fontname = "Sans"
-InspectDR.defaults.fontscale = 1.2 #Bigger fonts
+#Enable time stamp & legend:
+InspectDR.defaults.plotlayout[:enable_timestamp] = true
+InspectDR.defaults.plotlayout[:enable_legend] = true
 
-#Default values for data-area dimensions (saving single plot):
-InspectDR.defaults.wdata = 500
-InspectDR.defaults.hdata = 350
+#Set data-area dimensions (saving single plot):
+InspectDR.defaults.plotlayout[:halloc_data] = 500
+InspectDR.defaults.plotlayout[:valloc_data] = 350
 
-#Default values for plot dimensions (saving multi-plot):
-InspectDR.defaults.wdata = 500
-InspectDR.defaults.hdata = 350
+#Set plot dimensions (saving multi-plot):
+InspectDR.defaults.mplotlayout[:halloc_plot] = 500
+InspectDR.defaults.mplotlayout[:valloc_plot] = 350
+
+#Configure # of columns in multi-plot outputs:
+InspectDR.defaults.mplotlayout[:ncolumns] = 2
+```
+
+Until a proper API is defined, one is encouraged to look at the `PlotLayout` object to alter how plots are displayed:
+```
+?InspectDR.PlotLayout
 ```
 
 Defaults can also be specified *before* importing InspectDR.jl with the help of `Main.DEFAULTS_INSPECTDR::Dict`.  Simply create the variable in your `~/.juliarc.jl` file, using the following pattern:
 ```
 DEFAULTS_INSPECTDR = Dict(
-	:fontname => "Sans",
-	:showtimestamp => true,
+	:rendersvg = false,
+
+	#Special options available @ initialization:
+	:notation_x => :SI,   #Change x-axis notation
+	:notation_y => :SI,   #Change y-axis notation
+	:fontname => "Sans", #Change default font family
+	:fontscale => 1.2,   #Scale up/down font default sizes
+
+	#Basic plot options:
+	:enable_timestamp => true,
+	:enable_legend => true,
+	:halloc_legend => 150,
+
+	#Supported multiplot options:
+	:ncolumns => 2,
+	:halloc_plot => 500,
+	:valloc_plot => 350,
 )
 ```
+
+#### Pre-defined Stylesheets
+
+Future work: `{:default, :screen, :publication}`
 
 <a name="SampleUsage"></a>
 ## Sample Usage

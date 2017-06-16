@@ -57,14 +57,15 @@ end
 #==Generate plot
 ===============================================================================#
 mplot = InspectDR.Multiplot(title="Transmission Line Example")
-mplot.ncolumns = 2
+mplot.layout[:ncolumns] = 2
 
 smithext = InspectDR.PExtents1D(min=-1.2,max=1.2) #Padded a bit
 
 plot_linf = InspectDR.Plot2D(:lin, :dB20)
 	graph_linf = plot_linf.strips[1]
 	graph_linf.yext_full = InspectDR.PExtents1D(max=5)
-#	plot_linf.layout.legend.enabled=true
+#	plot_linf.layout[:enable_legend] = true
+
 plot_logf = InspectDR.Plot2D(:log10, :dB20)
 	graph_logf = plot_logf.strips[1]
 	plot_logf.xext_full = InspectDR.PExtents1D(min=10e6) #Avoid issues with log scale
@@ -74,12 +75,12 @@ plot_ysmith = InspectDR.smithchart(:Y, title="Y-Smith Chart")
 	graph_ysmith = plot_ysmith.strips[1]
 	plot_ysmith.xext_full = smithext
 	graph_ysmith.yext_full = smithext
-	plot_ysmith.layout.legend.enabled=true
+	plot_ysmith.layout[:enable_legend] = true
 plot_zsmith = InspectDR.smithchart(:Z, ref=50, title="Z-Smith Chart")
 	graph_zsmith = plot_zsmith.strips[1]
 	plot_zsmith.xext_full = smithext
 	graph_zsmith.yext_full = smithext
-	plot_zsmith.layout.legend.enabled=true
+	plot_zsmith.layout[:enable_legend] = true
 
 for plot in [plot_linf, plot_logf]
 	a = plot.annotation
@@ -112,11 +113,11 @@ if maximize_square
 	#Target plot size to get square Smith plots without gaps:
 	#(HACK: Method not suggested)
 	lyt = plot_zsmith.layout
-		lyt.wdata = 500
-		lyt.hdata = 500
-	bb = InspectDR.plotbounds(lyt, InspectDR.grid1(plot_zsmith)) #Required
-		mplot.wplot = width(bb)
-		mplot.hplot = height(bb)
+		lyt[:halloc_data] = 500
+		lyt[:valloc_data] = 500
+	bb = InspectDR.plotbounds(lyt.values, InspectDR.grid1(plot_zsmith)) #Required
+		mplot.layout[:halloc_plot] = width(bb)
+		mplot.layout[:valloc_plot] = height(bb)
 end
 
 if false

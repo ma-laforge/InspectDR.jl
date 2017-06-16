@@ -116,7 +116,7 @@ end
 
 #==High-level rendering functions
 ===============================================================================#
-function render_grid(canvas::PCanvas2D, lyt::Layout, grid::GridSmith)
+function render_grid(canvas::PCanvas2D, lyt::PlotLayout, grid::GridSmith)
 	const ctx = canvas.ctx
 	const graphbb = canvas.graphbb
 	const xflip = !grid.zgrid #Flip x-axis for admittance(Y)-grid lines
@@ -145,7 +145,7 @@ Cairo.save(ctx) #-----
 	drawline(ctx::CairoContext, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
 
 	#Draw labels:
-	setfont(ctx, lyt.fntticklabel)
+	setfont(ctx, lyt.font_ticklabel)
 	render_rcirclelabels(ctx, canvas.xf, xflip, grid.ref, grid.labelR)
 	render_rcirclelabel(ctx, canvas.xf, Point2D(1,0), xflip, "∞")
 	render_xcirclelabels(ctx, canvas.xf, xflip, grid.ref, grid.labelX)
@@ -154,8 +154,8 @@ Cairo.restore(ctx) #-----
 	nothing
 end
 
-function render_axes(canvas::PCanvas2D, lyt::Layout, grid::GridSmith, xs::AxisScale, ys::AxisScale, xticklabels::Bool)
-	render_graphframe(canvas, lyt.framedata)
+function render_axes(canvas::PCanvas2D, lyt::PlotLayout, grid::GridSmith, xs::AxisScale, ys::AxisScale, xticklabels::Bool)
+	render_graphframe(canvas, lyt.frame_data)
 
 	#Display grid:
 	#TODO: make it possible to disable?

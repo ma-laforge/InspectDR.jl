@@ -77,7 +77,7 @@ vsup = vgnd+VSUPPLY
 #==Generate plot
 ===============================================================================#
 mplot = InspectDR.Multiplot(title="Digital Buffer \"Simulation\"")
-mplot.ncolumns = 1
+mplot.layout[:ncolumns] = 1
 ext_digital = InspectDR.PExtents1D(-0.2, 1.2) #"Digital" signals
 v10 = 0.1*VSUPPLY; v90 = 0.9*VSUPPLY #10/90 digital thresholds
 
@@ -91,8 +91,9 @@ plot = add(mplot, InspectDR.transientplot([:lin for i in siginfolist],
 	title="Measure trise/tfall with `r` & `d` keys",
 	ylabels=["(V)" for i in siginfolist])
 )
-plot.layout.legend.enabled=true
-#plot.layout.legend.width = 150
+plot.layout[:enable_legend] = true
+#plot.layout[:halloc_legend] = 150
+
 
 	for (i, siginfo) in enumerate(siginfolist)
 		id, sig, ext = siginfo
@@ -117,7 +118,7 @@ plot.layout.legend.enabled=true
 
 gplot = display(InspectDR.GtkDisplay(), mplot)
 
-mplot.wplot = 700; mplot.hplot = 450
+mplot.layout[:halloc_plot] = 700; mplot.layout[:valloc_plot] = 450
 InspectDR.write_png("export_simdig.png", mplot)
 
 :DONE

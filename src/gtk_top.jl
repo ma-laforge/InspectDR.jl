@@ -155,7 +155,7 @@ function PlotWidget(plot::Plot)
 	pwidget = PlotWidget(vbox, canvas, plot, plotinfo, ISNormal(),
 		w_xscale, xscale, w_xpos, xpos,
 		plotbuf, curstrip, GtkMouseOver(),
-		CtrlMarkerGroup(), nothing, true, true,
+		CtrlMarkerGroup(plot.layout[:font_annotation]), nothing, true, true,
 		#Event handlers:
 		nothing
 	)
@@ -223,7 +223,7 @@ function sync_subplots(gplot::GtkPlot)
 	for i in length(gplot.grd):-1:1
 		Gtk.delete!(gplot.grd, gplot.grd[i]) #Does not destroy existing child widgets
 	end
-	const ncols = gplot.src.ncolumns
+	const ncols = gplot.src.layout.values.ncolumns
 	for (i, w) in enumerate(wlist)
 		row = div(i-1, ncols)+1
 		col = i - ((row-1)*ncols)

@@ -34,11 +34,11 @@ t_lres = collect(0:(tmax/10):tmax)
 #==Generate plot
 ===============================================================================#
 plot = InspectDR.transientplot(:lin, title="Sample Plot (λ)")
-plot.layout = InspectDR.Layout(fontname="monospace", fontscale=1.5)
-plot.layout.legend.enabled = true
-plot.layout.legend.width = 150
-plot.layout.showtimestamp = true
-plot.layout.xlabelformat.expdisplay = UEXPONENT_SI #Use SI notation on x-axis
+	InspectDR.overwritefont!(plot.layout, fontname="monospace", fontscale=1.5)
+plot.layout[:enable_legend] = true
+plot.layout[:halloc_legend] = 150
+plot.layout[:enable_timestamp] = true
+plot.layout[:format_xtick] = InspectDR.TickLabelStyle(UEXPONENT_SI) #Use SI notation on x-axis
 
 graph = plot.strips[1]
 graph.grid = InspectDR.GridRect(vmajor=true, vminor=true, hmajor=true)

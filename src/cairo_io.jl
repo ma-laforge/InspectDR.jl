@@ -68,7 +68,7 @@ Base.show(io::IO, ::MIME"text/plain", mplot::Multiplot) = Base.showcompact(io, m
 
 #w, h: w/h of entire figure.
 function _show(stream::IO, mime::MIME, mplot::Multiplot, w::Float64, h::Float64)
-	yoffset = mplot.htitle
+	yoffset = mplot.layout.values.valloc_title
 	nrows, ncols = griddims_auto(mplot)
 	wplot = w/ncols; hplot = (h-yoffset)/nrows
 
@@ -76,10 +76,10 @@ function _show(stream::IO, mime::MIME, mplot::Multiplot, w::Float64, h::Float64)
 		_reset(ctx)
 		bb = BoundingBox(0,w,0,h)
 		Cairo.save(ctx)
-			drawrectangle(ctx, bb, mplot.frame)
+			drawrectangle(ctx, bb, mplot.layout.values.frame)
 		Cairo.restore(ctx)
 		render(ctx, mplot.title, Point2D(w/2, yoffset/2),
-			mplot.fnttitle, align=ALIGN_HCENTER|ALIGN_VCENTER
+			mplot.layout.values.font_title, align=ALIGN_HCENTER|ALIGN_VCENTER
 		)
 
 		for (i, plot) in enumerate(mplot.subplots)
@@ -103,14 +103,14 @@ end
 #_show() Plot: Leverage write to Multiplot
 function _show(stream::IO, mime::MIME, plot::Plot, w::Float64, h::Float64)
 	mplot = Multiplot()
-	mplot.htitle = 0
+	mplot.valloc_title = 0
 	push!(mplot.subplots, plot)
 	_show(stream, mime, mplot, w, h)
 end
 
 #_show() Plot2D: Auto-coumpute w/h
 function _show(stream::IO, mime::MIME, plot::Plot2D)
-	bb = plotbounds(plot.layout, grid1(plot))
+	bb = plotbounds(plot.layout.values, grid1(plot))
 	_show(stream, mime, plot, bb.xmax, bb.ymax)
 end
 
@@ -151,7 +151,7 @@ end
 #_write() Plot: Leverage write to Multiplot
 function _write(path::String, mime::MIME, plot::Plot, w::Float64, h::Float64)
 	mplot = Multiplot()
-	mplot.htitle = 0
+	mplot.layout[:valloc_title] = 0
 	push!(mplot.subplots, plot)
 	_write(path, mime, mplot, w, h)
 end
@@ -162,7 +162,7 @@ _write(path::String, mime::MIME, mplot::Multiplot) =
 
 #_write() Plot2D: Auto-coumpute w/h
 function _write(path::String, mime::MIME, plot::Plot2D)
-	bb = plotbounds(plot.layout, grid1(plot))
+	bb = plotbounds(plot.layout.values, grid1(plot))
 	_write(path, mime, plot, bb.xmax, bb.ymax)
 end
 

@@ -16,7 +16,6 @@ blue = RGB24(0, 0, 1)
 j = im
 
 #Fonts, Line types, etc:
-afont = InspectDR.Font(12) #Font for annotation
 default_line = line(color=blue, width=3)
 markerline = line(style=:dash, width=2.5)
 markerline_light = line(style=:dash, width=2.5, color=RGB24(.4,.4,.4))
@@ -69,7 +68,8 @@ pmargin = 180+phase0
 #==Generate plot
 ===============================================================================#
 mplot = InspectDR.Multiplot(title="Bode Template Test")
-mplot.hplot*=.6 #Bode plot looks better with wider aspect ratio
+#Bode plot looks better with wider aspect ratio:
+mplot.layout[:valloc_plot] = mplot.layout[:valloc_plot]*.6
 
 plot = add(mplot, InspectDR.bodeplot())
 	strip_mag, strip_phase = plot.strips
@@ -93,6 +93,7 @@ add(plot, vmarker(f0, markerline, strip=0))
 add(plot, vmarker(fBW, markerline, strip=0))
 
 #Add annotation to Magnitude plot:
+afont = plot.layout[:font_annotation]
 fstr = "f3dB=" * @sprintf("%.1f MHz", fBW/1e6)
 	add(plot, atext(fstr, x=fBW, xoffset=-3, yoffset_rel=.5, font=afont, angle=-90, align=:bc, strip=1))
 fstr = "f0=" * @sprintf("%.1f MHz", f0/1e6)
@@ -110,7 +111,7 @@ add(plot, hmarker(phase0, markerline, strip=2))
 ===============================================================================#
 gplot = display(InspectDR.GtkDisplay(), mplot)
 
-mplot.wplot = 800; mplot.hplot = 500
+mplot.layout[:halloc_plot] = 800; mplot.layout[:valloc_plot] = 500
 InspectDR.write_png("export_bode.png", mplot)
 #InspectDR.write_svg("export_bode.svg", mplot)
 #InspectDR.write_eps("export_bode.eps", mplot)

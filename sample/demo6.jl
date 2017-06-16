@@ -44,21 +44,19 @@ smithext = InspectDR.PExtents1D(min=-1.1,max=1.1) #Padded a bit
 plot = add(mplot, InspectDR.smithchart(:Z, ref=50, title="", xlabel="", ylabels=String[]))
 	strip = plot.strips[1]
 	plot.xext_full = smithext; strip.yext_full = smithext
-	#plot.layout.legend.enabled=true
-	plot.layout.legend.width=110
+	#plot.layout[:enable_legend] = true
+	plot.layout[:halloc_legend] = 110
 	lyt = plot.layout
 
 #Zero-out title areas, etc:
-	lyt.htitle = 0
-	lyt.waxlabel = 0
-	lyt.haxlabel = 0
-	lyt.wnolabels = 0
-	lyt.wticklabel = 0
-	lyt.hticklabel = 0
+	lyt[:halloc_left] = 0
+	lyt[:halloc_right] = 0
+	lyt[:valloc_top] = 0
+	lyt[:valloc_bottom] = 0
 
 #Make data area sqare when saved:
-	lyt.wdata = 500
-	lyt.hdata = 500
+	lyt[:halloc_data] = 500
+	lyt[:valloc_data] = 500
 
 	wfrm = add(plot, f, Γ(ZC1), id="cap: $(C1/1e-12)pF")
 	wfrm.line = line(color=blue, width=3)

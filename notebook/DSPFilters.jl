@@ -33,8 +33,8 @@ function newplot()
 	const w = 500
 	mplot = InspectDR.Multiplot(title="Filter Response")
 	#Mag/phase plots look better with wider aspect ratio:
-#	mplot.wplot = w; mplot.hplot = w/2.3 #Not needed with multi-y strips
-	mplot.ncolumns = 1
+#	mplot.layout[:halloc_plot] = w; mplot.layout[:valloc_plot] = w/2.3 #Not needed with multi-y strips
+	mplot.layout[:ncolumns] = 1
 
 	#Initialize as Bode plot:
 	plot_bode = add(mplot, BodePlots.new(InspectDR.Plot))

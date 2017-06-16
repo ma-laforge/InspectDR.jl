@@ -36,7 +36,7 @@ end
 #==Generate plot
 ===============================================================================#
 mplot = InspectDR.Multiplot(title="Waveforms with NaN")
-mplot.ncolumns = 1
+mplot.layout[:ncolumns] = 1
 
 
 plot = add(mplot, InspectDR.transientplot(:lin, title="Transient Data",

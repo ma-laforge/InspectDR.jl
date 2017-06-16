@@ -79,7 +79,7 @@ function Plot2DInfo(plot::Plot2D)
 		#Get the rectangular coordinate grid:
 		grid = coord_grid(strip.grid, plot.xscale, strip.yscale, ext)
 		if !isa(grid.xlines, UndefinedGridLines)
-			xfmt = TickLabelFormatting(plot.layout.xlabelformat, grid.xlines.rnginfo)
+			xfmt = TickLabelFormatting(plot.layout.values.format_xtick, grid.xlines.rnginfo)
 		end
 	end
 	return Plot2DInfo(xfmt, InputXfrm1DSpec(plot.xscale), [])
@@ -89,9 +89,9 @@ end
 function Plot2DInfo(plot::Plot2D, bb::BoundingBox)
 	const dfltfmt = TickLabelFormatting(NoRangeDisplayInfo())
 	result = Plot2DInfo(plot)
-	databb = databounds(bb, plot.layout, grid1(plot))
+	databb = databounds(bb, plot.layout.values, grid1(plot))
 	nstrips = length(plot.strips)
-	graphbblist = graphbounds_list(databb, plot.layout, nstrips)
+	graphbblist = graphbounds_list(databb, plot.layout.values, nstrips)
 	resize!(result.strips, nstrips)
 
 	for istrip in 1:nstrips #Compute x/y label formats:
@@ -102,7 +102,7 @@ function Plot2DInfo(plot::Plot2D, bb::BoundingBox)
 		cgrid = coord_grid(strip.grid, plot.xscale, strip.yscale, ext)
 		yfmt = dfltfmt
 		if !isa(cgrid.ylines, UndefinedGridLines)
-			yfmt = TickLabelFormatting(plot.layout.ylabelformat, cgrid.ylines.rnginfo)
+			yfmt = TickLabelFormatting(plot.layout.values.format_ytick, cgrid.ylines.rnginfo)
 		end
 		result.strips[istrip] = StripInfo(graphbb, ext, yfmt,
 			InputXfrm1DSpec(strip.yscale), Transform2D(ext, graphbb), grid

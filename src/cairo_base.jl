@@ -132,33 +132,33 @@ end
 #Render main plot annotation (titles, axis labels, ...)
 #-------------------------------------------------------------------------------
 function render(ctx::CairoContext, a::Annotation,
-	bb::BoundingBox, databb::BoundingBox, graphbblist::Vector{BoundingBox}, lyt::Layout)
+	bb::BoundingBox, databb::BoundingBox, graphbblist::Vector{BoundingBox}, lyt::PlotLayout)
 	const TIMESTAMP_OFFSET = 3
 
 	#Title
 #	xcenter = (bb.xmin+bb.xmax)/2 #Entire plot BB.
 	xcenter = (databb.xmin+databb.xmax)/2 #Data-area BB only.
-	pt = Point2D(xcenter, bb.ymin+lyt.htitle/2)
-	render(ctx, a.title, pt, lyt.fnttitle, align=ALIGN_HCENTER|ALIGN_VCENTER)
+	pt = Point2D(xcenter, bb.ymin+lyt.voffset_title)
+	render(ctx, a.title, pt, lyt.font_title, align=ALIGN_HCENTER|ALIGN_VCENTER)
 
 	#X-axis label
 	xcenter = (databb.xmin+databb.xmax)/2
-	pt = Point2D(xcenter, bb.ymax-lyt.haxlabel/2)
-	render(ctx, a.xlabel, pt, lyt.fntaxlabel, align=ALIGN_HCENTER|ALIGN_VCENTER)
+	pt = Point2D(xcenter, bb.ymax-lyt.voffset_xaxislabel)
+	render(ctx, a.xlabel, pt, lyt.font_axislabel, align=ALIGN_HCENTER|ALIGN_VCENTER)
 
 	#Y-axis labels
 	nstrips = min(length(a.ylabels), length(graphbblist))
 	for i in 1:nstrips
 		graphbb = graphbblist[i]
 		ycenter = (graphbb.ymin+graphbb.ymax)/2
-		pt = Point2D(bb.xmin+lyt.waxlabel/2, ycenter)
-		render(ctx, a.ylabels[i], pt, lyt.fntaxlabel, align=ALIGN_HCENTER|ALIGN_VCENTER, angle=-π/2)
+		pt = Point2D(bb.xmin+lyt.hoffset_yaxislabel, ycenter)
+		render(ctx, a.ylabels[i], pt, lyt.font_axislabel, align=ALIGN_HCENTER|ALIGN_VCENTER, angle=-π/2)
 	end
 
 	#Time stamp
-	if lyt.showtimestamp
+	if lyt.enable_timestamp
 		pt = Point2D(bb.xmax-TIMESTAMP_OFFSET, bb.ymax-TIMESTAMP_OFFSET)
-		render(ctx, a.timestamp, pt, lyt.fnttime, align=ALIGN_RIGHT|ALIGN_BOTTOM)
+		render(ctx, a.timestamp, pt, lyt.font_time, align=ALIGN_RIGHT|ALIGN_BOTTOM)
 	end
 end
 
@@ -211,7 +211,7 @@ function render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	end
 end
 
-function render_grid(canvas::PCanvas2D, lyt::Layout, grid::GridRect)
+function render_grid(canvas::PCanvas2D, lyt::PlotLayout, grid::GridRect)
 	const ctx = canvas.ctx
 	Cairo.save(ctx) #-----
 	render_vlines(ctx, canvas.graphbb, canvas.xf, grid.xlines)
@@ -252,15 +252,15 @@ end
 
 #Render ticks: Well-defined GridLines
 #-------------------------------------------------------------------------------
-function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::GridLines, xs::AxisScale, ticklabels::Bool)
-	const tframe = DReal(lyt.framedata.line.width) #TODO: Fix LineAttributes to have concrete type
-	fmt = TickLabelFormatting(lyt.xlabelformat, xlines.rnginfo)
+function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, xlines::GridLines, xs::AxisScale, ticklabels::Bool)
+	const tframe = DReal(lyt.frame_data.line.width) #TODO: Fix LineAttributes to have concrete type
+	fmt = TickLabelFormatting(lyt.format_xtick, xlines.rnginfo)
 	yframe = graphbb.ymax
-	ylabel = graphbb.ymax + lyt.vlabeloffset
+	ylabel = graphbb.ymax + lyt.voffset_xticklabel
 	for xtick in xlines.major
 		x = map2dev(xf, Point2D(xtick, 0)).x
 		if ticklabels
-			render_ticklabel(ctx, xtick, Point2D(x, ylabel), lyt.fntticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, xs)
+			render_ticklabel(ctx, xtick, Point2D(x, ylabel), lyt.font_ticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, xs)
 		end
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
 	end
@@ -270,17 +270,17 @@ function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	end
 	if fmt.splitexp && ticklabels
 		xlabel = graphbb.xmax + tframe
-		render_axisscalelabel(ctx, Point2D(xlabel, yframe), lyt.fntticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, xs)
+		render_axisscalelabel(ctx, Point2D(xlabel, yframe), lyt.font_ticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, xs)
 	end
 end
-function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::GridLines, ys::AxisScale)
-	const tframe = DReal(lyt.framedata.line.width) #TODO: Fix LineAttributes to have concrete type
-	fmt = TickLabelFormatting(lyt.ylabelformat, ylines.rnginfo)
+function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, ylines::GridLines, ys::AxisScale)
+	const tframe = DReal(lyt.frame_data.line.width) #TODO: Fix LineAttributes to have concrete type
+	fmt = TickLabelFormatting(lyt.format_ytick, ylines.rnginfo)
 	xframe = graphbb.xmin
-	xlabel = graphbb.xmin - lyt.hlabeloffset
+	xlabel = graphbb.xmin - lyt.hoffset_yticklabel
 	for ytick in ylines.major
 		y = map2dev(xf, Point2D(0, ytick)).y
-		render_ticklabel(ctx, ytick, Point2D(xlabel, y), lyt.fntticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, ys)
+		render_ticklabel(ctx, ytick, Point2D(xlabel, y), lyt.font_ticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, ys)
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
 	end
 	for ytick in ylines.minor
@@ -289,34 +289,34 @@ function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	end
 	if fmt.splitexp
 		ylabel = graphbb.ymin - tframe
-		render_axisscalelabel(ctx, Point2D(xframe, ylabel), lyt.fntticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, ys)
+		render_axisscalelabel(ctx, Point2D(xframe, ylabel), lyt.font_ticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, ys)
 	end
 end
 
 #Render ticks: UndefinedGridLines
 #-------------------------------------------------------------------------------
-function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, xlines::UndefinedGridLines, xs::AxisScale, ticklabels::Bool)
+function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, xlines::UndefinedGridLines, xs::AxisScale, ticklabels::Bool)
 	fmt = TickLabelFormatting(NoRangeDisplayInfo())
 	yframe = graphbb.ymax
-	ylabel = graphbb.ymax + lyt.vlabeloffset
+	ylabel = graphbb.ymax + lyt.voffset_xticklabel
 	for (x, xlabel) in [(graphbb.xmin, xlines.minline), (graphbb.xmax, xlines.maxline)]
 		if ticklabels
-			render_ticklabel(ctx, xlabel, Point2D(x, ylabel), lyt.fntticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, LinScale())
+			render_ticklabel(ctx, xlabel, Point2D(x, ylabel), lyt.font_ticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, LinScale())
 		end
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
 	end
 end
-function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::Layout, ylines::UndefinedGridLines, ys::AxisScale)
+function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, ylines::UndefinedGridLines, ys::AxisScale)
 	fmt = TickLabelFormatting(NoRangeDisplayInfo())
 	xframe = graphbb.xmin
-	xlabel = graphbb.xmin - lyt.hlabeloffset
+	xlabel = graphbb.xmin - lyt.hoffset_yticklabel
 	for (y, ylabel) in [(graphbb.ymax, ylines.minline), (graphbb.ymin, ylines.maxline)]
-		render_ticklabel(ctx, ylabel, Point2D(xlabel, y), lyt.fntticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, LinScale())
+		render_ticklabel(ctx, ylabel, Point2D(xlabel, y), lyt.font_ticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, LinScale())
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
 	end
 end
 
-function render_ticks(canvas::PCanvas2D, lyt::Layout, grid::GridRect, xs::AxisScale, ys::AxisScale, xticklabels::Bool)
+function render_ticks(canvas::PCanvas2D, lyt::PlotLayout, grid::GridRect, xs::AxisScale, ys::AxisScale, xticklabels::Bool)
 	render_xticks(canvas.ctx, canvas.graphbb, canvas.xf, lyt, grid.xlines, xs, xticklabels)
 	render_yticks(canvas.ctx, canvas.graphbb, canvas.xf, lyt, grid.ylines, ys)
 end
@@ -327,8 +327,8 @@ end
 
 #Render axis labels, ticks, ...
 #-------------------------------------------------------------------------------
-function render_axes(canvas::PCanvas2D, lyt::Layout, grid::GridRect, xs::AxisScale, ys::AxisScale, xticklabels::Bool)
-	render_graphframe(canvas, lyt.framedata)
+function render_axes(canvas::PCanvas2D, lyt::PlotLayout, grid::GridRect, xs::AxisScale, ys::AxisScale, xticklabels::Bool)
+	render_graphframe(canvas, lyt.frame_data)
 	render_ticks(canvas, lyt, grid, xs, ys, xticklabels)
 end
 

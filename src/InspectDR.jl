@@ -32,12 +32,20 @@ end
 =#
 
 
+#==Constants: Initial default values
+===============================================================================#
+#Default font:
+const DEFAULT_FONTNAME = (@static is_windows()? "Cambria": "Serif")
+#Cairo "built-in": Serif, Sans, Serif, Fantasy, Monospace
+#NOTE: "Serif" does not work well in Windows.
+
+
 #==Aliases
 ===============================================================================#
 NullOr{T} = Union{Void, T}
 
-include("defaults.jl")
 include("codegen.jl")
+include("styles.jl")
 include("math.jl")
 include("math_graphics.jl")
 include("math_coordinates.jl")
@@ -46,6 +54,8 @@ include("events.jl")
 include("datasets.jl")
 include("grids.jl")
 include("base.jl")
+include("stylesheets.jl")
+include("defaults.jl")
 include("graph2d.jl")
 include("glyphs.jl")
 include("cairo_ext.jl")

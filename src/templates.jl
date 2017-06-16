@@ -51,16 +51,16 @@ end
 function transientplot(yscalelist::Vector{Symbol}; title="Time-Domain Plot",
 	xlabel="Time (s)", kwargs...)
 	plot = Plot2D(:lin, yscalelist, title=title, xlabel=xlabel; kwargs...)
-	plot.layout.legend.enabled = true
-	#plot.layout.legend.width = 150
+	plot.layout[:enable_legend] = true
+	#plot.layout[:halloc_legend] = 150
 
 	for graph in plot.strips
 		graph.grid = InspectDR.GridRect(vmajor=true, vminor=true, hmajor=true)
 	end
 
 	#Use SI notation on both x & y axes:
-	plot.layout.xlabelformat.expdisplay = NumericIO.UEXPONENT_SI
-	plot.layout.ylabelformat.expdisplay = NumericIO.UEXPONENT_SI
+	plot.layout[:format_xtick] = TickLabelStyle(NumericIO.UEXPONENT_SI) 
+	plot.layout[:format_ytick] = TickLabelStyle(NumericIO.UEXPONENT_SI) 
 	return plot
 end
 transientplot(yscale::Symbol=:lin; kwargs...) = transientplot([yscale]; kwargs...)

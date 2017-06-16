@@ -10,8 +10,8 @@ import InspectDR: Plot2D
 using NumericIO
 using Colors
 
-typealias VecOrNum Union{Vector,Number}
-typealias VecOrReal Union{Vector,Real}
+const VecOrNum = Union{Vector,Number}
+const VecOrReal = Union{Vector,Real}
 
 #Colour constants
 #-------------------------------------------------------------------------------
@@ -63,9 +63,9 @@ function newplot()
 	const smithext = InspectDR.PExtents1D(min=-1.2,max=1.2) #Padded a bit
 
 	mplot = InspectDR.Multiplot(title="Loaded Transmission Line")
-	mplot.ncolumns = 2
+	mplot.layout[:ncolumns] = 2
 	#Bode plot looks better with wider aspect ratio:
-#	mplot.wplot = w; mplot.hplot = h/2
+#	mplot.layout[:halloc_plot] = w; mplot.layout[:valloc_plot] = h/2
 	#... But not Smith chart.
 
 	plot_bode = add(mplot, BodePlots.new(InspectDR.Plot))

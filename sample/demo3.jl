@@ -26,15 +26,15 @@ end
 #==Generate plot
 ===============================================================================#
 mplot = InspectDR.Multiplot(title="Powers of X")
-mplot.ncolumns = 2
+mplot.layout[:ncolumns] = 2
 xlabel = "X-Axis (X-Unit)"
 ylabel = "Y-Axis (Y-Unit)"
 
 plotlist = InspectDR.Plot
 for i in 1:4
 	plot = add(mplot, InspectDR.Plot2D) #Generate empty plot
-	plot.layout.legend.enabled = true
-	plot.layout.legend.width = 80
+	plot.layout[:enable_legend] = true
+	plot.layout[:halloc_legend] = 80
 	a = plot.annotation
 		a.xlabel = xlabel
 		a.ylabels = [ylabel]

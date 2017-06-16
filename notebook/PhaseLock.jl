@@ -29,7 +29,7 @@ const j = im
 ===============================================================================#
 
 #1st order transfer function:
-type Xf1
+mutable struct Xf1
 	K::Float64
 	ωz::Float64
 	ωp::Float64
@@ -37,7 +37,7 @@ end
 Xf1(;K=1, ωz=1, ωp=1) = Xf1(K, ωz, ωp)
 
 #2nd order system (standard form):
-type Sys2
+mutable struct Sys2
 	α::Float64
 	ζ::Float64
 	ωn::Float64
@@ -103,10 +103,10 @@ function newplot()
 	const yext_step = InspectDR.PExtents1D(0, 1.6)
 
 	mplot = InspectDR.Multiplot(title="PLL Characteristics")
-	Δh = mplot.htitle
-	mplot.ncolumns = 2
+	Δh = mplot.layout[:valloc_title]
+	mplot.layout[:ncolumns] = 2
 	#Bode plot looks better with wider aspect ratio:
-	mplot.wplot = w; mplot.hplot = h/2
+	mplot.layout[:halloc_plot] = w; mplot.layout[:valloc_plot] = h/2
 
 	plot_step = add(mplot, InspectDR.Plot2D)
 	plot_bode = add(mplot, BodePlots.new(InspectDR.Plot))
@@ -131,7 +131,7 @@ function newplot()
 #		plot_step.layout.grid = grid(vmajor=true, vminor=true, hmajor=false)
 
 	a = plot_stepnorm.annotation; lyt = plot_stepnorm.layout
-		a.title = ""; lyt.htitle = 8 #subtitle/space
+		a.title = ""; lyt.layout[:valloc_top] = 8 #subtitle/space
 		a.xlabel = "ωn*t (rad)"
 		a.ylabels = ["Amplitude"]
 	plot_stepnorm.strips[1].yext_full = yext_step
@@ -169,7 +169,7 @@ function update_bodeannot(plot_bode::Plot2D, G::Xf1, ωn)
 	const phase0 = phase(xf_ol([ω0], G)[1]) #Unity gain phase
 
 	#Add specialized annotation
-	afont = InspectDR.Font(12) #Font for annotation
+	afont = plot.layout[:font_annotation]
 
 	#Add annotation to Magnitude plot:
 #	add(plot_bode, atext("0dB", y=0, xoffset_rel=0.5, yoffset=3, font=afont, align=:bc, strip=1))

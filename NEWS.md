@@ -8,7 +8,9 @@ The following grid contains select pairings of Plots.jl and InspectDR.jl.  Not a
 
 |         | Plots.jl | InspectDR.jl | Comment |
 | :-----: | :------: | :----------: | :------ |
-| &check; | `v0.10.3` | `v0.1.3` |  |
+| &check; | `v0.10.3` | `v0.1.3` | Julia v0.5 |
 | &cross; | `v0.10.3` | `v0.1.4+` | InspectDR re-structured to support multiple y axis strips. |
 | &check; | `v0.11.2` | `v0.1.7` |  |
+| &check; | `v0.12.0` | `v0.2.0` | Julia v0.6 |
+| &cross; | `v0.12.0` | `v0.2.1` | InspectDR PlotLayout/PlotStyle re-structuring. |
 

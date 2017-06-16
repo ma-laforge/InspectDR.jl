@@ -83,7 +83,7 @@ vrect_gated = vrect.*gate_b
 #==Generate plot
 ===============================================================================#
 mplot = InspectDR.Multiplot(title="Mixed-Signal \"Simulation\"")
-mplot.ncolumns = 1
+mplot.layout[:ncolumns] = 1
 ext_digital = InspectDR.PExtents1D(-0.2, 1.2) #"Digital" signals
 _E = InspectDR.PExtents1D #Succinct alias for extents.
 
@@ -99,8 +99,8 @@ plot = add(mplot, InspectDR.transientplot([:lin for i in siginfolist],
 	title="$(VRECT)V Rectifier",
 	ylabels=["(V)" for i in siginfolist])
 )
-plot.layout.legend.enabled=true
-plot.layout.legend.width = 150
+plot.layout[:enable_legend] = true
+plot.layout[:halloc_legend] = 150
 
 	for (i, siginfo) in enumerate(siginfolist)
 		id, sig, ext = siginfo
@@ -124,7 +124,7 @@ plot.layout.legend.width = 150
 
 gplot = display(InspectDR.GtkDisplay(), mplot)
 
-mplot.wplot = 700; mplot.hplot = 600
+mplot.layout[:halloc_plot] = 700; mplot.layout[:valloc_plot] = 600
 InspectDR.write_png("export_rectifier.png", mplot)
 
 :DONE

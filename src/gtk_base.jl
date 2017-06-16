@@ -102,8 +102,8 @@ mutable struct CtrlMarkerGroup <: PlotAnnotation
 	fntcoord::Font
 	fntdelta::Font
 end
-CtrlMarkerGroup() = CtrlMarkerGroup([],
-	Font(defaults.fontname, 10), Font(defaults.fontname, 12)
+CtrlMarkerGroup(reffont::Font) = CtrlMarkerGroup([],
+	Font(reffont, _size = 10), Font(reffont, _size = 12)
 )
 
 mutable struct GtkMouseOver

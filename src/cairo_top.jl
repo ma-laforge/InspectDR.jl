@@ -6,29 +6,29 @@
 function render_baseannotation(canvas::PCanvas2D, graphinfo::Graph2DInfo,
 		xticklabels::Bool, plot::Plot2D, istrip::Int)
 	const strip = plot.strips[istrip]
-	if plot.layout.legend.enabled
+	if plot.layout.values.enable_legend
 		legend_render(canvas, plot, istrip)
 	end
 
 	#Draw data area & grid lines
 Cairo.save(canvas.ctx)
-	drawrectangle(canvas.ctx, canvas.graphbb, plot.layout.framedata)
+	drawrectangle(canvas.ctx, canvas.graphbb, plot.layout.values.frame_data)
 Cairo.restore(canvas.ctx)
-	render_grid(canvas, plot.layout, graphinfo.grid)
+	render_grid(canvas, plot.layout.values, graphinfo.grid)
 
-	render_axes(canvas, plot.layout, graphinfo.grid, plot.xscale, strip.yscale, xticklabels)
+	render_axes(canvas, plot.layout.values, graphinfo.grid, plot.xscale, strip.yscale, xticklabels)
 	return
 end
 function render_baseannotation(ctx::CairoContext, bb::BoundingBox, plotinfo::Plot2DInfo, 
 		databb::BoundingBox, graphbblist::Vector{BoundingBox}, plot::Plot2D)
 
 Cairo.save(ctx)
-	drawrectangle(ctx, bb, plot.layout.frame)
+	drawrectangle(ctx, bb, plot.layout.values.frame_canvas)
 Cairo.restore(ctx)
 
 	#Render titles, axis labels, ...
 	#TODO: use Plot2DInfo instead of databb/graphbblist??:
-	render(ctx, plot.annotation, bb, databb, graphbblist, plot.layout)
+	render(ctx, plot.annotation, bb, databb, graphbblist, plot.layout.values)
 
 	nstrips = length(plot.strips)
 	for i in 1:nstrips
@@ -69,7 +69,7 @@ Cairo.save(canvas.ctx)
 	render(canvas, plot.parentannot, graphinfo, istrip)
 Cairo.restore(canvas.ctx)
 
-	render_graphframe(canvas, plot.layout.framedata) #Redraw frame
+	render_graphframe(canvas, plot.layout.values.frame_data) #Redraw frame
 	#TODO: should we be more careful about setclip() - instead of redrawing frame?
 end
 function render_userannotation(ctx::CairoContext, bb::BoundingBox, plotinfo::Plot2DInfo, plot::Plot2D)
@@ -86,7 +86,7 @@ end
 #TODO: Should base API be written such that user provides databb, and have
 #      InspectDR calculate outwards instead?
 function render(ctx::CairoContext, plot::Plot2D, bb::BoundingBox)
-	const lyt = plot.layout
+	const lyt = plot.layout.values
 	const databb = databounds(bb, lyt, grid1(plot))
 	const nstrips = length(plot.strips)
 
@@ -107,7 +107,7 @@ end
 #TODO: split in parts so that GUI can be refreshed before refreshing data
 #TODO: Or maybe send in final context so it can be done here.
 function render(bplot::CairoBufferedPlot, plot::Plot2D, bb::BoundingBox, refreshdata::Bool)
-	const lyt = plot.layout
+	const lyt = plot.layout.values
 	const databb = databounds(bb, lyt, grid1(plot))
 	const nstrips = length(plot.strips)
 	refreshed = false

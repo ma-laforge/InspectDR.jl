@@ -2,72 +2,60 @@
 #-------------------------------------------------------------------------------
 
 
-#==Constants: Initial default values
-===============================================================================#
-#Default values for data area dimensions (used to save single plot):
-const DEFAULT_DATA_WIDTH = 500.0
-const DEFAULT_DATA_HEIGHT = DEFAULT_DATA_WIDTH / φ #Use golden ratio
-
-#Default values for plot dimensions (used to save multi-plot):
-const DEFAULT_PLOT_WIDTH = 600.0
-const DEFAULT_PLOT_HEIGHT = DEFAULT_PLOT_WIDTH / φ #Use golden ratio
-
-#Default font:
-const DEFAULT_FONTNAME = (@static is_windows()? "Cambria": "Serif")
-#Cairo "built-in": Serif, Sans, Serif, Fantasy, Monospace
-
-
 #==Types
 ===============================================================================#
 mutable struct Defaults
 	rendersvg::Bool #Might want to dissalow SVG renderings for performance reasons
-	showtimestamp::Bool
-	fontname::String
-	fontscale::Float64
 
-	#Default values for data-area dimensions (saving single plot):
-	wdata::Float64
-	hdata::Float64
-
-	#Default values for plot dimensions (saving multi-plot):
-	wplot::Float64
-	hplot::Float64
+	plotlayout::PlotLayout
+	mplotlayout::MultiplotLayout
 end
-Defaults() =
-	Defaults(true, false, DEFAULT_FONTNAME, 1,
-		DEFAULT_DATA_WIDTH, DEFAULT_DATA_HEIGHT,
-		DEFAULT_PLOT_WIDTH, DEFAULT_PLOT_HEIGHT,
-	)
 
 
-#==Data
+#==Data Initialization
 ===============================================================================#
+#Initialize InspectDR.defaults (To be called in __init__()):
 function initialize_defaults()
-	global const defaults = Defaults()
-	local userdefaults
+	local userdefaults = Dict{Symbol, Any}()
+	try
+		userdefaults = copy(Main.DEFAULTS_INSPECTDR)
+	end
 
-	try; userdefaults = Main.DEFAULTS_INSPECTDR
-	catch; return;	end
-
-	for (k, v) in userdefaults
-		try
-			setfield!(defaults, k, v)
-		catch
-			warn("Cannot set InspectDR.defaults.$k = $v.")
+	function condget(dict, key::Symbol, T::Type, default)
+		if haskey(dict, key)
+			return T(pop!(dict, key))
+		else
+			return T(default)
 		end
 	end
+
+	rendersvg = condget(userdefaults, :rendersvg, Bool, true)
+	notation_x = condget(userdefaults, :notation_x, Symbol, :ENG)
+	notation_y = condget(userdefaults, :notation_y, Symbol, :ENG)
+
+	fontname = condget(userdefaults, :fontname, String, DEFAULT_FONTNAME)
+	fontscale = condget(userdefaults, :fontscale, Float64, 1.0)
+
+	#Manually get SUPPORTED defaults for Multiplot layout:
+	mplotlayout = build_default_multiplot_layout(fontname, fontscale)
+	condoverwrite(key::Symbol, T::Type) =
+		mplotlayout[key] = condget(userdefaults, key, T, mplotlayout[key])
+	condoverwrite(:ncolumns, Int)
+	condoverwrite(:valloc_plot, Float64)
+	condoverwrite(:halloc_plot, Float64)
+
+	#Automatically get defaults for Plot layout:
+	plotlayout = build_default_plot_layout(fontname, fontscale, notation_x, notation_y)
+	for (k, v) in userdefaults
+		try
+			plotlayout[k] = v
+		catch
+			warn("Cannot set default PlotLayout.$k = $v.")
+		end
+	end
+
+	global const defaults = Defaults(rendersvg, plotlayout, mplotlayout)
+	return
 end
-
-
-#==Functions
-===============================================================================#
-#Forces a function call to read *current* settings during parameter initialization:
-#=Not needed:
-function getdefaults(field::Symbol)
-	global defaults
-	return getfield(defaults, field)
-end
-=#
-
 
 #Last line

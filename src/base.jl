@@ -2,8 +2,7 @@
 #-------------------------------------------------------------------------------
 
 #AnnotationArea
-#TODO: Themes: Define StyleInfo/style?
-#TODO: Themes: Vector/Dict of StyleInfo/Layout?
+#TODO: Themes: Vector/Dict of PlotLayout/MultiplotLayout?
 
 
 #==Abstracts
@@ -84,7 +83,7 @@ mutable struct Annotation
 end
 Annotation(;title="") = Annotation(title, "", [], Libc.strftime(time()))
 
-mutable struct Font
+mutable struct Font <: AbstractStyle
 	name::String
 	_size::Float64
 	bold::Bool
@@ -92,72 +91,74 @@ mutable struct Font
 end
 Font(name::String, _size::Real; bold::Bool=false, color=COLOR_BLACK) =
 	Font(name, _size, bold, color)
-Font(_size::Real; bold::Bool=false, color=COLOR_BLACK) =
-	Font(defaults.fontname, _size, bold, color)
-
-#Legend layout/style
-mutable struct LegendLStyle
-	enabled::Bool
-	#autosize::Bool Auto-compute width from text.
-	font::Font
-	#position: left/right/...
-	width::Float64
-	#border::Bool
-	#wborder
-	vgap::Float64 #Vertical spacing between (% of text height).
-	linegap::Float64 #Spacing between line and label (% of M character).
-	linelength::Float64 #length of line segment to display.
-	frame::AreaAttributes
+Font() = Font(DEFAULT_FONTNAME, 10)
+function Font(ref::Font; name=StyleDefault, _size=StyleDefault, bold=StyleDefault, color=StyleDefault)
+	result = deepcopy(ref)
+	result[:name] = name
+	result[:_size] = _size
+	result[:bold] = bold
+	result[:color] = color
+	return result
 end
-LegendLStyle(;enabled=false, font=Font(12)) =
-	LegendLStyle(enabled, font, 100.0, .25, 0.5, 20, AreaAttributes())
 
-#Plot layout
-#TODO: Split Layout into "StyleInfo" - which includes Layout??
-#TODO: Sort out this w/h vs h/v confusion.
-mutable struct Layout
-	htitle::Float64 #Title allocation
-	waxlabel::Float64 #Vertical axis label allocation (width)
-	haxlabel::Float64 #Horizontal axis label allocation (height)
-	wnolabels::Float64 #Width to use where no labels are displayed
-	#NOTE: wnolabels needs room for axis scale (ex: ×10⁻²).
-	hstripgap::Float64 #Between graph strips
+mutable struct PlotLayout <: AbstractStyle #Layout/LegendLStyle
+	enable_legend::Bool
+	enable_timestamp::Bool
 
-	wticklabel::Float64 #y-axis values allocation (width)
-	hticklabel::Float64 #x-axis values allocation (height)
-	hlabeloffset::Float64
-	vlabeloffset::Float64
+	valloc_data::Float64 #Suggested height of data (graph) area when exporting.
+	valloc_top::Float64 #Top of plot data area
+	valloc_mid::Float64 #Space betwen strips
+	valloc_bottom::Float64 #Bottom of plot data area
+	valloc_legenditemsp::Float64 #Spacing between items (% of text height).
 
-	wdata::Float64 #Suggested width of data (graph) area
-	hdata::Float64 #Suggested height of data (graph) area
+	halloc_data::Float64 #Suggested width of data (graph) area when exporting.
+	halloc_left::Float64 #Left of data area
+	halloc_right::Float64 #Right of data area - excluding legend area
+	#NOTE: halloc_right needs room for axis scale (ex: ×10⁻²).
+	halloc_legend::Float64
+	halloc_legendlineseg::Float64 #length of line segment to display.
 
-	fnttitle::Font
-	fntaxlabel::Font
-	fntticklabel::Font
-	fnttime::Font #Timestamp
+	#Offsets to center of text:
+	voffset_title::Float64
+	voffset_xaxislabel::Float64 #Centered
+	voffset_xticklabel::Float64
 
-	legend::LegendLStyle
-	xlabelformat::TickLabelStyle
-	ylabelformat::TickLabelStyle
-	frame::AreaAttributes #Area under entire plot
-	framedata::AreaAttributes #Data area
-	showtimestamp::Bool
+	hoffset_yaxislabel::Float64 #Centered
+	hoffset_yticklabel::Float64
+	hoffset_legendtext::Float64 #Spacing between line/symbol and label (% of M character).
+
+	font_title::Font
+	font_axislabel::Font
+	font_ticklabel::Font
+	font_annotation::Font
+	font_time::Font #Timestamp
+	font_legend::Font
+
+	format_xtick::TickLabelStyle
+	format_ytick::TickLabelStyle
+
+	frame_canvas::AreaAttributes #Area under entire plot
+	frame_data::AreaAttributes
+	frame_legend::AreaAttributes
+
+#=TODO:
+ - Legend position (left/right/...)
+ - Legend autosize (auto-compute from text)
+=#
 end
-Layout(;fontname::String=defaults.fontname, fontscale=defaults.fontscale) =
-	Layout(
-	20*fontscale, 20*fontscale, 20*fontscale, 45*fontscale, #Title/main labels
-	20*fontscale,
-	60*fontscale, 15*fontscale, 3, 7, #Ticks/frame
-	defaults.wdata, defaults.hdata,
-	Font(fontname, fontscale*14, bold=true), #Title
-	Font(fontname, fontscale*14), Font(fontname, fontscale*12), #Axis/Tick labels
-	Font(fontname, fontscale*8), #Time stamp
-	LegendLStyle(font=Font(fontname, fontscale*12)),
+
+PlotLayout() = PlotLayout(
+	false, false, #enable
+	0, 0, 0, 0, 0, #valloc
+	0, 0, 0, 0, 0, #halloc
+	0, 0, 0, #voffset
+	0, 0, 0, #hoffset
+	Font(), Font(), Font(), Font(), Font(), Font(),
 	TickLabelStyle(), TickLabelStyle(),
-	AreaAttributes(),
-	AreaAttributes(line=InspectDR.line(style=:solid, color=COLOR_BLACK, width=2)),
-	defaults.showtimestamp
+	AreaAttributes(), AreaAttributes(), AreaAttributes()
 )
+
+const PlotStyle = StyleType{PlotLayout}
 
 #AnnotationGroup: Allows for hierarchical groupings of PlotAnnotation:
 mutable struct AnnotationGroup{T<:PlotAnnotation} <: PlotAnnotation
@@ -219,7 +220,7 @@ GraphStrip() = GraphStrip(AxisScale(:lin, tgtmajor=8, tgtminor=2),
 #2D plot.
 mutable struct Plot2D <: Plot
 	xscale::AxisScale
-	layout::Layout
+	layout::PlotStyle
 	annotation::Annotation
 
 	#Plot extents (access using getextents):
@@ -250,29 +251,45 @@ mutable struct Plot2D <: Plot
 end
 
 Plot2D(;title="") = Plot2D(AxisScale(:lin, tgtmajor=3.5, tgtminor=4),
-	Layout(), Annotation(title=title),
+	StyleType(defaults.plotlayout), Annotation(title=title),
 	PExtents1D(), PExtents1D(), PExtents1D(),
 	nothing, [GraphStrip()], [], [], [], true, [], false, 1000
 )
 
-mutable struct Multiplot
-	title::String
-
-	subplots::Vector{Plot}
+#Style info for multi-plot object:
+mutable struct MultiplotLayout <: AbstractStyle
 	ncolumns::Int
 
-	#Default width/height of plots
-	wplot::Float64
-	hplot::Float64
+	valloc_title::Float64 #Title height allocation (title gets centered)
+	valloc_plot::Float64 #Default height for single plot when saving multi-plot
+	halloc_plot::Float64 #Default width for single plot when saving multi-plot
 
-	htitle::Float64 #Title height allocation
-	fnttitle::Font
-
+	font_title::Font
 	frame::AreaAttributes
 end
-Multiplot(;title="", ncolumns=1, titlefont=Font(defaults.fontname, 20),
-		wplot=defaults.wplot, hplot=defaults.hplot) =
-	Multiplot(title, [], ncolumns, wplot, hplot, 30, titlefont, AreaAttributes())
+MultiplotLayout() = MultiplotLayout(
+	1,
+	0, 0, 0, #h/valloc
+	Font(),
+	AreaAttributes()
+)
+
+const MultiplotStyle = StyleType{MultiplotLayout}
+
+mutable struct Multiplot
+	title::String
+	subplots::Vector{Plot}
+	layout::MultiplotStyle
+end
+#TODO: ok to deprecate titlefont=??
+function Multiplot(;style::MultiplotLayout=defaults.mplotlayout, title="",
+		ncolumns=StyleDefault, valloc_plot=StyleDefault, halloc_plot=StyleDefault)
+	layout = StyleType(style)
+	layout[:ncolumns] = ncolumns
+	layout[:valloc_plot] = valloc_plot
+	layout[:halloc_plot] = halloc_plot
+	return Multiplot(title, [], layout)
+end
 
 
 #==Constructor-like functions
@@ -317,8 +334,6 @@ end
 
 #==Accessors
 ===============================================================================#
-_width(style::LegendLStyle) = style.width
-
 getextents(d::IWaveform) = getextents(d.ds)
 function getextents(dlist::Vector{IWaveform}, strip::Int=1)
 	result = PExtents2D(DNaN, DNaN, DNaN, DNaN)
@@ -457,12 +472,12 @@ function squarebounds(bb::BoundingBox)
 end
 
 #Get bounding box of plot data area:
-function databounds(plotb::BoundingBox, lyt::Layout)
-	xmin = plotb.xmin + lyt.waxlabel + lyt.wticklabel
+function databounds(plotb::BoundingBox, lyt::PlotLayout)
+	xmin = plotb.xmin + lyt.halloc_left
 	xmax = plotb.xmax
-	xmax -= lyt.legend.enabled? _width(lyt.legend): lyt.wnolabels
-	ymin = plotb.ymin + lyt.htitle
-	ymax = plotb.ymax - lyt.haxlabel - lyt.hticklabel
+	xmax -= lyt.enable_legend? lyt.halloc_legend: lyt.halloc_right
+	ymin = plotb.ymin + lyt.valloc_top
+	ymax = plotb.ymax - lyt.valloc_bottom
 
 	#Avoid division by zero, inversions, ...
 	if xmin >= xmax
@@ -480,7 +495,7 @@ function databounds(plotb::BoundingBox, lyt::Layout)
 end
 
 #TODO: Move aspect_square to graphbounds.
-function databounds(plotb::BoundingBox, lyt::Layout, grid::PlotGrid)
+function databounds(plotb::BoundingBox, lyt::PlotLayout, grid::PlotGrid)
 	graphbb = databounds(plotb, lyt)
 	if aspect_square(grid)
 		graphbb = squarebounds(graphbb)
@@ -506,17 +521,16 @@ function _graphbounds(datab::BoundingBox, h::Float64, pitch::Float64, istrip::In
 	return BoundingBox(datab.xmin, datab.xmax, ymin, ymax)
 end
 
-#TODO: Layout->hstripgap??
-function graphbounds(datab::BoundingBox, lyt::Layout, nstrips::Int, istrip::Int)
-	gap = lyt.hstripgap
+function graphbounds(datab::BoundingBox, lyt::PlotLayout, nstrips::Int, istrip::Int)
+	gap = lyt.valloc_mid
 	h = graph_h(datab, gap, nstrips)
 	return _graphbounds(datab, h, h+gap, istrip)
 end
 
 #Get vector of graphbounds:
-function graphbounds_list(datab::BoundingBox, lyt::Layout, nstrips::Int)
+function graphbounds_list(datab::BoundingBox, lyt::PlotLayout, nstrips::Int)
 	result = Vector{BoundingBox}(nstrips)
-	gap = lyt.hstripgap
+	gap = lyt.valloc_mid
 	h = graph_h(datab, gap, nstrips)
 	pitch = h+gap
 
@@ -527,33 +541,33 @@ function graphbounds_list(datab::BoundingBox, lyt::Layout, nstrips::Int)
 end
 
 #Get bounding box of entire plot:
-function plotbounds(lyt::Layout, graphbb::BoundingBox)
-	xmin = graphbb.xmin - lyt.waxlabel - lyt.wticklabel
+function plotbounds(lyt::PlotLayout, graphbb::BoundingBox)
+	xmin = graphbb.xmin - lyt.halloc_left
 	xmax = graphbb.xmax
-	xmax += lyt.legend.enabled? _width(lyt.legend): lyt.wnolabels
-	ymin = graphbb.ymin - lyt.htitle
-	ymax = graphbb.ymax + lyt.haxlabel + lyt.hticklabel
+	xmax += lyt.enable_legend? lyt.halloc_legend: lyt.halloc_right
+	ymin = graphbb.ymin - lyt.valloc_top
+	ymax = graphbb.ymax + lyt.valloc_bottom
 	return BoundingBox(xmin, xmax, ymin, ymax)
 end
 
-function plotbounds(lyt::Layout, graphw::Float64, graphh::Float64)
+function plotbounds(lyt::PlotLayout, graphw::Float64, graphh::Float64)
 	bb = plotbounds(lyt, BoundingBox(0, graphw, 0, graphh))
 	return BoundingBox(0, width(bb), 0, height(bb))
 end
 
 #Get suggested plot bounds:
-function plotbounds(lyt::Layout, grid::PlotGrid)
-	wdata = lyt.wdata; hdata = lyt.hdata
+function plotbounds(lyt::PlotLayout, grid::PlotGrid)
+	halloc_data = lyt.halloc_data; halloc_data = lyt.halloc_data
 	if aspect_square(grid)
-		wdata = hdata = min(wdata, hdata)
+		halloc_data = halloc_data = min(halloc_data, halloc_data)
 	end
-	return plotbounds(lyt, wdata, hdata)
+	return plotbounds(lyt, halloc_data, halloc_data)
 end
 
 #Grid dimensions using Multiplot auto layout
 function griddims_auto(mplot::Multiplot)
 	nplots = length(mplot.subplots)
-	ncols = mplot.ncolumns
+	ncols = mplot.layout.values.ncolumns
 	nrows = div(nplots-1, ncols) + 1
 	return (nrows, ncols)
 end
@@ -562,8 +576,9 @@ end
 function size_auto(mplot::Multiplot)
 	#TODO: Compute more accurate size from Plot2D.plotbb
 	nrows, ncols = griddims_auto(mplot)
-	yoffset = mplot.htitle
-	w = Float64(mplot.wplot*ncols); h = Float64(mplot.hplot*nrows+yoffset)
+	yoffset = mplot.layout.values.valloc_title
+	w = Float64(mplot.layout.values.halloc_plot*ncols)
+	h = Float64(mplot.layout.values.valloc_plot*nrows+yoffset)
 	return (w, h)
 end
 

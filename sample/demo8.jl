@@ -28,13 +28,13 @@ _colors = Colors.distinguishable_colors(length(_glyphs))
 #==Generate plot
 ===============================================================================#
 mplot = InspectDR.Multiplot(title="Glyph Tests")
-mplot.ncolumns = 1
+mplot.layout[:ncolumns] = 1
 
 plot = add(mplot, InspectDR.Plot2D())
 	strip = plot.strips[1]
 	plot.xext_full = InspectDR.PExtents1D(min=0, max=11)
 	strip.yext_full = InspectDR.PExtents1D(min=0, max=length(_glyphs)+1)
-	plot.layout.legend.enabled=true
+	plot.layout[:enable_legend] = true
 
 	a = plot.annotation
 #	a.title = "Glyph Test"
