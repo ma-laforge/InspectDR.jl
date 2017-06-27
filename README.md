@@ -43,9 +43,9 @@ The following highlights a few interesting features of InspectDR:
   - Fast & simple way to pan/zoom into data.
   - In line with other similar tools.
   - Create drag & drop &Delta;-markers.
-- [Layout & Stylesheets](Layout_Stylesheets).
+- [Layout & Stylesheets](#Layout_Stylesheets).
   - See [demo targeting IEEE publications @300 dpi](sample/demo12.jl)
-  - Add custom stylesheets by extending `InspectDR.getstyle()` - as done in [stylesheets.jl](src/stylesheets.jl) (Search: `StyleID{:screen}` & `StyleID{:IEEE}`).
+  - Add custom stylesheets.
 
 See following subsections for more information.
 
@@ -191,6 +191,36 @@ NOTE: X/Y-axis scales are specified using one of the following `::Symbols`:
 <a name="Layout_Stylesheets"></a>
 ### Layout & Stylesheets
 
+The appearance of InspectDR plots is configured through the `.layout` properties of `::Plot2D` & `::Multiplot` objects.  Until better documentation is available, one is encouraged to look at the fields of the `PlotLayout` & `MultiplotLayout` for more information:
+```
+#To control apperance of Plot2D elements:
+?InspectDR.PlotLayout
+
+#To control apperance of Multiplot elements:
+?InspectDR.MultiplotLayout
+```
+
+The `.layout` properties should be accessed using the `[]` operators, using the field names names of `PlotLayout` / `MultiplotLayout` as arguments:
+
+```
+plot.layout[:valloc_top] = 20 #Modify space above data area
+```
+
+#### Pre-defined Stylesheets
+
+InspectDR uses "Stylesheets" to control the default values of plot elements.  To apply a different stylesheet to a given plot, use the `setstyle!` methods:
+
+```
+InspectDR.setstyle!(::Plot2D, stylesheet::Symbol; kwargs...)
+InspectDR.setstyle!(::Multiplot, stylesheet::Symbol; kwargs...)
+```
+
+Currently supported values for `stylesheet` include:
+- `:screen`
+- `:IEEE`
+
+Custom stylesheets are added by extending `InspectDR.getstyle()`, as done in [stylesheets.jl](src/stylesheets.jl) (Search for: `StyleID{:screen}` & `StyleID{:IEEE}`).
+
 #### Legends
 
 At this point in time, legends have limited configurability.  When displayed, legends will consume fixed horizontal real-estate.  The idea is to display a large number of labels without hiding the data area.
@@ -226,7 +256,7 @@ InspectDR.defaults.mplotlayout[:valloc_plot] = 350
 InspectDR.defaults.mplotlayout[:ncolumns] = 2
 ```
 
-Until a proper API is defined, one is encouraged to look at the `PlotLayout` object to alter how plots are displayed:
+Until better documentation is available, one is encouraged to look at the fields of the `PlotLayout` for more information:
 ```
 ?InspectDR.PlotLayout
 ```
@@ -239,8 +269,8 @@ DEFAULTS_INSPECTDR = Dict(
 	#Special options available @ initialization:
 	:notation_x => :SI,   #Change x-axis notation
 	:notation_y => :SI,   #Change y-axis notation
-	:fontname => "Sans", #Change default font family
-	:fontscale => 1.2,   #Scale up/down font default sizes
+	:fontname => "Sans",  #Change default font family
+	:fontscale => 1.2,    #Scale up/down font default sizes
 
 	#Basic plot options:
 	:enable_timestamp => true,
@@ -253,10 +283,6 @@ DEFAULTS_INSPECTDR = Dict(
 	:valloc_plot => 350,
 )
 ```
-
-#### Pre-defined Stylesheets
-
-Future work: `{:screen, :IEEE}`
 
 <a name="SampleUsage"></a>
 ## Sample Usage
