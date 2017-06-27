@@ -1,6 +1,12 @@
 #InspectDR: Defines stylesheets & presets
 #-------------------------------------------------------------------------------
 
+#==Important notes
+***IEEE Plots***
+  - Write out/export `Multiplot` object instead of `Plot` in order to control
+    full plot dimensions instead of just dimensions of data area.
+==#
+
 
 #==Constants: Initial default values
 ===============================================================================#
@@ -15,6 +21,9 @@ const DEFAULT_PLOT_HEIGHT = DEFAULT_PLOT_WIDTH / φ #Use golden ratio
 
 #==Types
 ===============================================================================#
+type StyleID{T}; end
+StyleID(T::Symbol) = StyleID{T}()
+
 type PlotSylesheet
 	plotlayout::PlotLayout
 	mplotlayout::MultiplotLayout
@@ -26,31 +35,32 @@ end
 #Try to size allocations & offsets appropriately for font selections:
 function autofit2font!(lyt::PlotLayout)
 	#Allocations for different elements:
-	h_title = lyt.font_title._size * (20/14)
-	h_xaxislabel = lyt.font_axislabel._size * (20/14)
-	h_xticklabel = lyt.font_ticklabel._size * (15/12)
-	w_yaxislabel = lyt.font_axislabel._size * (20/14)
-	w_yticklabel = lyt.font_ticklabel._size * (60/12)
+	h_title = lyt.font_title._size
+	h_axislabel = lyt.font_axislabel._size
+	h_ticklabel = lyt.font_ticklabel._size
+	w_axislabel = lyt.font_axislabel._size
+	w_ticklabel = lyt.font_ticklabel._size
 
+	lyt.valloc_top = h_title + h_ticklabel/2
+	lyt.valloc_mid = h_ticklabel * 1.5
+	lyt.valloc_bottom = h_axislabel + 1.75*h_ticklabel
 
-	lyt.valloc_top = h_title
-	lyt.valloc_mid = lyt.font_ticklabel._size * (20/12)
-	lyt.valloc_bottom = h_xaxislabel + h_xticklabel
+	lyt.halloc_left = w_axislabel + 4.25*w_ticklabel
+	lyt.halloc_right = w_ticklabel * 3.75 #Room for x10^EXP
 
-	lyt.halloc_left = w_yaxislabel + w_yticklabel
-	lyt.halloc_right = lyt.font_ticklabel._size * (45/12) #Room for x10^EXP
+	lyt.voffset_title = h_title*0.5
+	lyt.voffset_xticklabel = h_ticklabel*0.5
+	lyt.hoffset_yticklabel = w_ticklabel*0.25
+	lyt.voffset_xaxislabel = h_axislabel*0.5
+	lyt.hoffset_yaxislabel = w_axislabel*0.5
+
 	lyt.halloc_legend = lyt.font_legend._size * (100/12)
-
-	lyt.voffset_title = h_title/2
-	lyt.voffset_xaxislabel = h_xaxislabel/2
-	lyt.hoffset_yaxislabel = w_yaxislabel/2
-
 	return lyt
 end
 
 #Try to size allocations & offsets appropriately for font selections:
 function autofit2font!(lyt::MultiplotLayout)
-	lyt.valloc_title = lyt.font_title._size * (30/20)
+	lyt.valloc_title = lyt.font_title._size * 1.5
 	return lyt
 end
 
@@ -75,22 +85,26 @@ function overwritefont!(lyt::PlotStyle; fontname=nothing, fontscale=1.0, autofit
 end
 
 
-#==Default layouts
+#==Preset Stylesheets
 ===============================================================================#
-function build_default_plot_layout(fontname::String, fontscale::Float64,
-		notation_x::Symbol, notation_y::Symbol)
-	font = Font(fontname, 10) #default
+
+#Default ":screen" stylesheet:
+#-------------------------------------------------------------------------------
+
+#Default ":screen" PlotLayout stylesheet:
+function getstyle(::Type{PlotLayout}, ::StyleID{:screen}, fontname::String, fontscale::Float64,
+		notation_x::Symbol, notation_y::Symbol, enable_legend::Bool)
 	lyt = PlotLayout()
 
-	lyt.enable_legend = false
+	lyt.enable_legend = enable_legend
 	lyt.enable_timestamp = false
 
-	lyt.font_title = Font(font, _size = 14*fontscale, bold=true)
-	lyt.font_axislabel = Font(font, _size = 14*fontscale)
-	lyt.font_ticklabel = Font(font, _size = 12*fontscale)
-	lyt.font_annotation = Font(font, _size = 12*fontscale)
-	lyt.font_time = Font(font, _size = 8*fontscale)
-	lyt.font_legend = Font(font, _size = 12*fontscale)
+	lyt.font_title = Font(DEFAULT_FONTNAME, 14*fontscale, bold=true)
+	lyt.font_axislabel = Font(DEFAULT_FONTNAME, 14*fontscale)
+	lyt.font_ticklabel = Font(DEFAULT_FONTNAME, 12*fontscale)
+	lyt.font_annotation = Font(DEFAULT_FONTNAME, 12*fontscale)
+	lyt.font_time = Font(DEFAULT_FONTNAME, 8*fontscale)
+	lyt.font_legend = Font(DEFAULT_FONTNAME, 12*fontscale)
 
 	lyt.valloc_data = DEFAULT_DATA_HEIGHT
 	lyt.halloc_data = DEFAULT_DATA_WIDTH
@@ -121,12 +135,13 @@ function build_default_plot_layout(fontname::String, fontscale::Float64,
 	return autofit2font!(lyt) #Compute offsets
 end
 
-function build_default_multiplot_layout(fontname::String, fontscale::Float64)
-	font = Font(fontname, 10) #default
+#Default ":screen" MultiplotLayout stylesheet:
+function getstyle(::Type{MultiplotLayout}, ::StyleID{:screen}, fontname::String, fontscale::Float64,
+		notation_x::Symbol, notation_y::Symbol, enable_legend::Bool)
 	lyt = MultiplotLayout()
 
 	lyt.ncolumns = 1
-	lyt.font_title = Font(font, _size = 20*fontscale, bold=true)
+	lyt.font_title = Font(DEFAULT_FONTNAME, 20*fontscale, bold=true)
 
 	lyt.valloc_plot = DEFAULT_PLOT_HEIGHT
 	lyt.halloc_plot = DEFAULT_PLOT_WIDTH
@@ -134,14 +149,94 @@ function build_default_multiplot_layout(fontname::String, fontscale::Float64)
 	return autofit2font!(lyt) #Compute offsets
 end
 
+#":screen" stylesheet: High-level interface:
+getstyle{T}(::Type{T}, ID::StyleID{:screen}; fontname::String=DEFAULT_FONTNAME, fontscale::Real=1.0,
+		notation_x::Symbol=:ENG, notation_y::Symbol=:ENG, enable_legend::Bool=true) =
+	getstyle(T, ID, fontname, Float64(fontscale), notation_x, notation_y, enable_legend)
 
-#==Preset style sheets
-===============================================================================#
-#=
-#Includes default fontname
-function add_preset_stylesheets(plotsheets::Dict, multiplotsheets::Dict,
-	ref_plotlayout::PlotLayout, ref_mplotlayout::MultiplotLayout)
+
+#":IEEE" stylesheet:
+#-------------------------------------------------------------------------------
+#":IEEE" MultiplotLayout stylesheet:
+function getstyle(::Type{PlotLayout}, ::StyleID{:IEEE}, ppi::Float64, fontscale::Float64, enable_legend::Bool)
+	const pt2px = ppi/DTPPOINTS_PER_INCH
+	lyt = PlotLayout()
+
+	#IEEE Plot: Must ensure readable axis & tick labels
+
+	fntaxis = Font(DEFAULT_FONTNAME, fontscale*7*pt2px)
+	fnttick = fntaxis
+	fntannot = Font(DEFAULT_FONTNAME, fontscale*5*pt2px)
+	lyt.font_title = fntaxis
+	lyt.font_axislabel = fntaxis
+	lyt.font_ticklabel = fnttick
+	lyt.font_annotation = fntannot
+	lyt.font_time = fntannot
+	lyt.font_legend = fntannot
+
+	#Allocations for different elements:
+	h_title = lyt.font_title._size
+	h_axislabel = lyt.font_axislabel._size
+	h_ticklabel = lyt.font_ticklabel._size
+	w_axislabel = lyt.font_axislabel._size
+	w_ticklabel = lyt.font_ticklabel._size
+
+	#Optimize plot for maximum data area:
+	lyt.valloc_top = h_ticklabel/2
+	lyt.valloc_mid = h_ticklabel
+	lyt.valloc_bottom = h_axislabel + 1.75*h_ticklabel
+	lyt.halloc_left = w_axislabel + 2.5*h_ticklabel
+	lyt.halloc_right = w_ticklabel * 3.75 #Room for x10^EXP
+
+	lyt.voffset_title = 0
+	lyt.voffset_xticklabel = h_ticklabel*0.5
+	lyt.hoffset_yticklabel = w_ticklabel*0.25
+	lyt.voffset_xaxislabel = h_axislabel*0.5
+	lyt.hoffset_yaxislabel = w_axislabel*0.5
+
+	lyt.enable_legend = enable_legend
+	lyt.halloc_legend = 50*pt2px
+	lyt.halloc_legendlineseg = 10*pt2px
+	lyt.valloc_legenditemsp = 0.25
+	lyt.hoffset_legendtext = 0.5
+
+	lyt.frame_data.line = line(style=:solid, color=COLOR_BLACK, width=1*pt2px)
+	return lyt
 end
-=#
+
+#":IEEE" MultiplotLayout stylesheet:
+#(Write/export `Multiplot` instead of `Plot` to control full plot dimensions - not just data area)
+function getstyle(::Type{MultiplotLayout}, ::StyleID{:IEEE}, ppi::Float64, fontscale::Float64, enable_legend::Bool)
+	const pt2px = ppi/DTPPOINTS_PER_INCH
+	const wplot = 3.5*ppi #Inches => Pixels
+
+	lyt = MultiplotLayout()
+	lyt.ncolumns = 1
+	lyt.font_title = Font(DEFAULT_FONTNAME, 20*fontscale, bold=true)
+
+	lyt.valloc_title = 0
+	lyt.halloc_plot = wplot
+	lyt.valloc_plot = wplot/φ #Golden ratio
+	return lyt
+end
+
+#":IEEE" stylesheet: High-level interface:
+getstyle{T}(::Type{T}, ID::StyleID{:IEEE}; ppi::Real=300, fontscale::Real=1.0, enable_legend::Bool=true) =
+	getstyle(T, ID, Float64(ppi), Float64(fontscale), enable_legend)
+
+
+#==Preset Stylesheets: high-level interface
+===============================================================================#
+getstyle{T}(::Type{T}, styleid::Symbol; kwargs...) =
+	getstyle(T, StyleID(styleid); kwargs...)
+
+function setstyle!(p::Plot, styleid::Symbol; refresh::Bool=true, kwargs...)
+	s = getstyle(PlotLayout, StyleID(styleid); kwargs...)
+	setstyle!(p.layout, s, refresh=refresh)
+end
+function setstyle!(p::Multiplot, styleid::Symbol; refresh::Bool=true, kwargs...)
+	s = getstyle(MultiplotLayout, StyleID(styleid); kwargs...)
+	setstyle!(p.layout, s, refresh=refresh)
+end
 
 #Last line

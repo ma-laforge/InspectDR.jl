@@ -39,10 +39,10 @@ function overwrite!(s::StyleType, key::Symbol, value)
 	overwritestyleattrib(s.overwrite, key, value)
 end
 
-function refresh(s::StyleType)
-	proplist = fieldnames(s)
+function refresh!(s::StyleType)
+	proplist = fieldnames(s.defaults)
 	for key in proplist
-		if !(p in s.overwrite)
+		if !(key in s.overwrite)
 			value = getfield(s.defaults, key)
 			setfield!(s.values, key, value)
 		end
@@ -50,10 +50,10 @@ function refresh(s::StyleType)
 	return
 end
 
-function setstyle{T<:AbstractStyle}(s::StyleType{T}, value::T; refresh::Bool=true)
+function setstyle!{T<:AbstractStyle}(s::StyleType{T}, value::T; refresh::Bool=true)
 	s.defaults = value
 	if refresh
-		refresh(s)
+		refresh!(s)
 	end
 	return
 end

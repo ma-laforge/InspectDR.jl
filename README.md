@@ -35,13 +35,17 @@ The following highlights a few interesting features of InspectDR:
 - Designed with larger datasets in mind:
   - Responsive even with moderate (>200k points) datasets.
   - Confirmed to handle 2GB datsets with reasonable speed on older desktop running Windows 7 (drag+pan of data area highly discouraged).
-- Support for Smith charts (admittance & impedance).
+- Support for Smith charts (admittance & impedance - see [Plot Templates](#Templates_Scales)).
 - Support for various types of annotation:
   - User-programmable text, polyline, vertical & horizontal bars.
   - Drag & drop &Delta;-markers (Measures/displays &Delta;x, &Delta;y & slope).
-- Interactive mouse/keybindings.
+- Interactive [mouse/keybindings](#Bindings).
   - Fast & simple way to pan/zoom into data.
   - In line with other similar tools.
+  - Create drag & drop &Delta;-markers.
+- [Layout & Stylesheets](Layout_Stylesheets).
+  - See [demo targeting IEEE publications @300 dpi](sample/demo12.jl)
+  - Add custom stylesheets by extending `InspectDR.getstyle()` - as done in [stylesheets.jl](src/stylesheets.jl) (Search: `StyleID{:screen}` & `StyleID{:IEEE}`).
 
 See following subsections for more information.
 
@@ -152,6 +156,7 @@ Similarly, to display `mplot::Multiplot` object, one calls:
 display(InspectDR.GtkDisplay(), mplot)
 ```
 
+<a name="Templates_Scales"></a>
 ### Plot Templates/Axis Scales
 
 In order to support stacked graphs with independent y-axes (tied to the same x-axis), specifying axis scales is a bit involved:
@@ -183,7 +188,8 @@ NOTE: X/Y-axis scales are specified using one of the following `::Symbols`:
 - `:ln`, `:log2`: Grid lines might need improvement here.
 - `:dB20`, `:dB10`
 
-### Layout/Stylesheets
+<a name="Layout_Stylesheets"></a>
+### Layout & Stylesheets
 
 #### Legends
 
@@ -250,7 +256,7 @@ DEFAULTS_INSPECTDR = Dict(
 
 #### Pre-defined Stylesheets
 
-Future work: `{:default, :screen, :publication}`
+Future work: `{:screen, :IEEE}`
 
 <a name="SampleUsage"></a>
 ## Sample Usage

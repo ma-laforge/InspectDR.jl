@@ -34,6 +34,8 @@ end
 
 #==Constants: Initial default values
 ===============================================================================#
+const DTPPOINTS_PER_INCH = 72 #Typography (desktop publishing) "points per inch"
+
 #Default font:
 const DEFAULT_FONTNAME = (@static is_windows()? "Cambria": "Serif")
 #Cairo "built-in": Serif, Sans, Serif, Fantasy, Monospace
