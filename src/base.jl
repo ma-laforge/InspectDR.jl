@@ -557,11 +557,11 @@ end
 
 #Get suggested plot bounds:
 function plotbounds(lyt::PlotLayout, grid::PlotGrid)
-	halloc_data = lyt.halloc_data; halloc_data = lyt.halloc_data
+	graphw = lyt.halloc_data; graphh = lyt.valloc_data
 	if aspect_square(grid)
-		halloc_data = halloc_data = min(halloc_data, halloc_data)
+		graphw = graphh = min(graphw, graphh)
 	end
-	return plotbounds(lyt, halloc_data, halloc_data)
+	return plotbounds(lyt, graphw, graphh)
 end
 
 #Grid dimensions using Multiplot auto layout
