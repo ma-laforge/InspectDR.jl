@@ -51,7 +51,7 @@ end
 #ZC: Characteristic impedance (not currently modelling f-dependence)
 #ZL: Load impendance (termination)
 function Zline(ZC::Number, γ::VecOrNum; ZL::VecOrNum=Inf64, ℓ::Real=0.0)
-	tanh_γℓ = tanh(γ*ℓ)
+	tanh_γℓ = tanh.(γ*ℓ)
 	return ZC*(ZL+ZC*tanh_γℓ)./(ZC+ZL.*tanh_γℓ)
 end
 
@@ -98,7 +98,7 @@ function update(mplot::InspectDR.Multiplot, fmin, fmax, ltype::Symbol, R, L, C, 
 
 	#Add some frequency dependence to α (makes plot more interesting):
 	const fref = 10e9; αref = 2*αDC
-	fdepα(f, αDC) = αDC + (αref/sqrt(fref))*sqrt(f)
+	fdepα(f, αDC) = αDC + (αref/sqrt(fref))*sqrt.(f)
 
 	#How to compute load impedance:
 	Zload_shunt(jω,R,L,C) = 1./(1./R+1./(jω*L)+jω*C)

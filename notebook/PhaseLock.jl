@@ -85,10 +85,10 @@ function step_err(s::Sys2, t::Vector)
 	const ζ = s.ζ
 	csqrt(x) = sqrt(complex(x))
 	ζroot = csqrt(ζ^2-1)
-	herr(f) = (ζ*(2α-1)/ζroot+f*1)*exp(-ωn*t*(ζ+f*ζroot))
+	herr(f) = (ζ*(2α-1)/ζroot+f*1)*exp.(-ωn*t*(ζ+f*ζroot))
 
 	if ζroot == 0 # ζ = 1
-		return (1+(1-2α)*(ωn*t)).*exp(-ωn*t)
+		return (1+(1-2α)*(ωn*t)).*exp.(-ωn*t)
 	else
 		return (herr(1)-herr(-1)) / 2
 	end
@@ -131,7 +131,7 @@ function newplot()
 #		plot_step.layout.grid = grid(vmajor=true, vminor=true, hmajor=false)
 
 	a = plot_stepnorm.annotation; lyt = plot_stepnorm.layout
-		a.title = ""; lyt.layout[:valloc_top] = 8 #subtitle/space
+		a.title = ""; lyt[:valloc_top] = 8 #subtitle/space
 		a.xlabel = "ωn*t (rad)"
 		a.ylabels = ["Amplitude"]
 	plot_stepnorm.strips[1].yext_full = yext_step
@@ -150,7 +150,7 @@ function update_step(plot::InspectDR.Plot2D, t::Vector, y::Vector)
 	plot.xext = InspectDR.PExtents1D()
 	plot.strips[1].yext = InspectDR.PExtents1D()
 
-	wfrm = add(plot, t, mag(y))
+	wfrm = add(plot, t, mag.(y))
 		wfrm.line = ldata
 
 	return plot
@@ -166,10 +166,10 @@ function update_bodeannot(plot_bode::Plot2D, G::Xf1, ωn)
 	const fn = ωn/(2pi)
 	const ω0 = ω_0(G)
 	const f0 = ω0/(2pi)
-	const phase0 = phase(xf_ol([ω0], G)[1]) #Unity gain phase
+	const phase0 = phase.(xf_ol([ω0], G)[1]) #Unity gain phase
 
 	#Add specialized annotation
-	afont = plot.layout[:font_annotation]
+	afont = plot_bode.layout[:font_annotation]
 
 	#Add annotation to Magnitude plot:
 #	add(plot_bode, atext("0dB", y=0, xoffset_rel=0.5, yoffset=3, font=afont, align=:bc, strip=1))
@@ -222,14 +222,14 @@ function update(mplot::InspectDR.Multiplot, fmin, fmax, tmax, ωnperiods, G::Xf1
 	#Absolute step:
 	tstep = tmax/npts
 	t = collect(0:tstep:tmax)
-	y = abs(step_resp(sys, t))
+	y = abs.(step_resp(sys, t))
 	update_step(plot_step, t, y)
 
 	#Relative step:
 	xstep = ωnperiods/npts
 	x = collect(0:xstep:ωnperiods)
 	t = x./(sys.ωn/2pi)
-	y = abs(step_resp(sys, t))
+	y = abs.(step_resp(sys, t))
 	update_step(plot_stepnorm, x, y)
 
 	return mplot
