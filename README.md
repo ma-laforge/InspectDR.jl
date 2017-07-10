@@ -11,6 +11,12 @@
 
 [![Build Status](https://travis-ci.org/ma-laforge/InspectDR.jl.svg?branch=master)](https://travis-ci.org/ma-laforge/InspectDR.jl)
 
+| <img src="https://github.com/ma-laforge/FileRepo/blob/master/InspectDR/sampleplots/demo11.png" width="425"> | <img src="https://github.com/ma-laforge/FileRepo/blob/master/InspectDR/sampleplots/demo2.png" width="425"> |
+| :---: | :---: |
+
+| <img src="https://github.com/ma-laforge/FileRepo/blob/master/SignalProcessing/sampleplots/demo15.png" width="850"> |
+| :---: |
+
 ## Description
 
 InspectDR is a fast plotting tool with a responsive GUI, targeting quick navigation of simulation results.  In design applications, InspectDR allows for efficient, interactive data exploration, thus shortening each iteration of the design cycle.
@@ -309,7 +315,7 @@ Sample IJulia (Jupyter) notebooks can be found [here](notebook/).
 
 Extensive compatibility testing of InspectDR.jl has not been performed.  The module has been tested using the following environment(s):
 
-- Windows / Linux / Julia-0.6.0-rc1 / Gtk 0.13.0 (GTK+ 3) / Cairo 0.3.0
+- Windows / Linux / Julia-0.6.0 / Gtk 0.13.0 (GTK+ 3) / Cairo 0.3.0
 
 ## Disclaimer
 
