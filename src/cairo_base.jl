@@ -389,7 +389,7 @@ function render(canvas::PCanvas2D, wfrm::DWaveform)
 
 	if length(ds) < 1; return; end
 
-if wfrm.line.style != :none
+if hasline(wfrm)
 	setlinestyle(ctx, LineStyle(wfrm.line))
 	newsegment = true
 	for i in 1:length(ds)

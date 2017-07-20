@@ -59,6 +59,7 @@ See following subsections for more information.
 
 Quick to first plot, and easy to navigate data using supported [mouse/keybindings](#Bindings)
 
+<a name="F1Accel"></a>
 #### "F1" Acceleration
 
 InspectDR.jl includes specialized algorithms to accellerate plotting of large "F1" datasets (functions of 1 argument) in order to maintain a good "real-time" (interactive) user experience.
@@ -68,6 +69,12 @@ A dataset is defined as a function of 1 argument ("F1") if it satisfies:
 	y = f(x), where x: sorted, real vector
 
 Examples of "F1" datasets include **time domain** (`y(x=time)`) and **frequncy domain** (`X(w)`) data.
+
+"F1" acceleration is obtained by dropping points in order to speed up the rendering process.
+
+***IMPORTANT:*** "F1" acceleration tends to generate erroneous-looking plots whenever glyphs are displayed.  This is because the dropped points may become very noticeable.  Consequently, InspectDR will, by default, only apply "F1" acceleration on datasets drawn without glyphs (lines only).
+
+To change when InspectDR applies "F1" acceleration to drop points, look for the `:droppoints` entry in the [Configuration/Defaults](#Config_Defaults) section.
 
 #### 2D Plot Support
 
@@ -246,6 +253,10 @@ Default InspectDR.jl settings can be overwritten once the module is loaded by ed
 #Dissalow SVG MIME output for performance reasons:
 InspectDR.defaults.rendersvg = false
 
+#Change when plots drop points to enable "F1"-acceleration:
+#(One of: {:always, :never, :noglyph, :hasline})
+InspectDR.defaults.pointdropmatrix = InspectDR.PDM_DEFAULTS[:always]
+
 #Enable time stamp & legend:
 InspectDR.defaults.plotlayout[:enable_timestamp] = true
 InspectDR.defaults.plotlayout[:enable_legend] = true
@@ -270,9 +281,10 @@ Until better documentation is available, one is encouraged to look at the fields
 Defaults can also be specified *before* importing InspectDR.jl with the help of `Main.DEFAULTS_INSPECTDR::Dict`.  Simply create the variable in your `~/.juliarc.jl` file, using the following pattern:
 ```
 DEFAULTS_INSPECTDR = Dict(
-	:rendersvg = false,
+	:rendersvg => false,
 
 	#Special options available @ initialization:
+	:droppoints => :always, #One of: {:always, :never, :noglyph, :hasline}
 	:notation_x => :SI,   #Change x-axis notation
 	:notation_y => :SI,   #Change y-axis notation
 	:fontname => "Sans",  #Change default font family
@@ -304,12 +316,14 @@ Sample IJulia (Jupyter) notebooks can be found [here](notebook/).
 - API is still a bit rough.  User often has to manipulate data structures directly.
   - Workaround: Use [JuliaPlots/Plots.jl](https://github.com/JuliaPlots/Plots.jl) as a "frontend" (increases plot times).
 - Font control is not ideal.  The default font might not be available on all platforms - and the fallback font might not have Unicode characters to display exponent values (ex: `10⁻¹⁵`).  Some Greek characters might also be missing.
-  - Workaround: Overwrite default font, as described in [Defaults](#Config_Defaults).
+  - Workaround: Overwrite default font, as described in [Configuration/Defaults](#Config_Defaults).
 - Legends not very configurable (currently optimized to display many labels @ cost of horizontal real-estate).
 - Does not yet render plot data in separate thread (will improve interactive experience with large datasets).
 - Mouse events currently function even outside data area (a bit odd).
 - Significant slowdowns observed when zooming **deep** into non-F1 data... Can likely be solved by discarding data outside plot extents.
   - Workaround: make sure x-values are sorted (F1-acceleration discards data & is less prone to slowdowns).
+- By default, "F1"-acceleration is only applied to datasets drawn without glyphs (lines only).
+  - Look for the `:droppoints` entry in the [Configuration/Defaults](#Config_Defaults) section to change this behaviour.
 
 ### Compatibility
 

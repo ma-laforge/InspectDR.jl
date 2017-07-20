@@ -2,10 +2,26 @@
 #-------------------------------------------------------------------------------
 
 
+#==Constants
+===============================================================================#
+#Identifies whether a plot should apply f1 acceleration to drop points:
+const PDM_NEVER = PointDropMatrix([false false; false false])
+const PDM_ALWAYS = PointDropMatrix([true true; true true])
+const PDM_NOGLYPH = PointDropMatrix([false false; true false])
+const PDM_HASLINE = PointDropMatrix([false false; true true])
+const PDM_DEFAULTS = Dict(
+	:never => PDM_NEVER,
+	:always => PDM_ALWAYS,
+	:noglyph => PDM_NOGLYPH,
+	:hasline => PDM_HASLINE,
+)
+
+
 #==Types
 ===============================================================================#
 mutable struct Defaults
 	rendersvg::Bool #Might want to dissalow SVG renderings for performance reasons
+	pointdropmatrix::PointDropMatrix
 
 	plotlayout::PlotLayout
 	mplotlayout::MultiplotLayout
@@ -40,6 +56,8 @@ function initialize_defaults()
 	rendersvg = condget(userdefaults, :rendersvg, Bool, true)
 	notation_x = condget(userdefaults, :notation_x, Symbol, :ENG)
 	notation_y = condget(userdefaults, :notation_y, Symbol, :ENG)
+	droppoints = condget(userdefaults, :droppoints, Symbol, :noglyph)
+	pointdropmatrix = PDM_DEFAULTS[droppoints]
 
 	fontname = condget(userdefaults, :fontname, String, DEFAULT_FONTNAME)
 	fontscale = condget(userdefaults, :fontscale, Float64, 1.0)
@@ -67,7 +85,7 @@ function initialize_defaults()
 		end
 	end
 
-	global const defaults = Defaults(rendersvg, plotlayout, mplotlayout)
+	global const defaults = Defaults(rendersvg, pointdropmatrix, plotlayout, mplotlayout)
 	return
 end
 

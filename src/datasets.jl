@@ -32,12 +32,12 @@ end
 
 #_reduce: Obtain reduced dataset by limiting to the extents & max resolution:
 #-------------------------------------------------------------------------------
-#Generic algorithm... Just transfer all data for now
+#Reduce data without dropping points (Just transfering all data for now)
 #    xres_max: Max number of x-points in data window.
 #returns: Vector{Point2D}
 #TODO: clip data beyond extents.
 #WARNING: not clipping might cause display issues when applying the transform
-function _reduce(input::IDataset, xext::PExtents1D, xres_max::Integer)
+function _reduce_nodrop(input::IDataset, xext::PExtents1D, xres_max::Integer)
 	x = input.x; y = input.y
 	n_ds = length(x) #numer of points of input dataset
 	result = Array{Point2D}(n_ds)
@@ -46,6 +46,10 @@ function _reduce(input::IDataset, xext::PExtents1D, xres_max::Integer)
 	end
 	return result
 end
+
+#Generic algorithm when not dealing with functions of 1 argument:
+_reduce(input::IDataset, xext::PExtents1D, xres_max::Integer) =
+	_reduce_nodrop(input, xext, xres_max)
 
 #Optimized for functions of 1 argument (F1-acceleration):
 #    xres_max: Max number of x-points in data window.

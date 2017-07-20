@@ -18,6 +18,13 @@ abstract type PlotAnnotation end
 be broken down to lower-level structures later on.
 =#
 
+#Specifies whether plot should apply F1 acceleration to drop points:
+mutable struct PointDropMatrix
+	m::Array{Bool,2} #Indices: (has_line, has_glyph)
+end
+droppoints(m::PointDropMatrix, has_line::Bool, has_glyph::Bool) =
+	m.m[has_line+1, has_glyph+1]
+
 #Don't want immutable like LineStyle (modified by user):
 mutable struct LineAttributes <: AttributeList
 	style
@@ -244,6 +251,7 @@ mutable struct Plot2D <: Plot
 	display_data::Vector{DWaveform} #Clipped to current extents
 
 	displayNaN::Bool #Costly (time) on large datasets
+	pointdropmatrix::PointDropMatrix
 
 	#Maximum # of x-pts in display:
 	#TODO: move to layout?
@@ -253,7 +261,8 @@ end
 Plot2D(;title="") = Plot2D(AxisScale(:lin, tgtmajor=3.5, tgtminor=4),
 	StyleType(defaults.plotlayout), Annotation(title=title),
 	PExtents1D(), PExtents1D(), PExtents1D(),
-	nothing, [GraphStrip()], [], [], [], true, [], false, 1000
+	nothing, [GraphStrip()], [], [], [], true, [],
+	false, defaults.pointdropmatrix, 1000
 )
 
 #Style info for multi-plot object:
@@ -344,6 +353,9 @@ function getextents(dlist::Vector{IWaveform}, strip::Int=1)
 	end
 	return result
 end
+
+hasline(w::Waveform) = (w.line.style != :none)
+hasglyph(w::Waveform) = isglyph(w.glyph.shape)
 
 
 #==Mutators
@@ -586,12 +598,15 @@ end
 #==Pre-processing display data
 ===============================================================================#
 
-function _reduce(input::IWaveform, xext::PExtents1D, xres_max::Integer)
-	return DWaveform(input.id, _reduce(input.ds, xext, xres_max), input.line, input.glyph, input.ext, input.strip)
+function _reduce(input::IWaveform, xext::PExtents1D, pdm::PointDropMatrix, xres_max::Integer)
+	ds = droppoints(pdm, hasline(input), hasglyph(input))?
+		_reduce(input.ds, xext, xres_max): _reduce_nodrop(input.ds, xext, xres_max)
+
+	return DWaveform(input.id, ds, input.line, input.glyph, input.ext, input.strip)
 end
 
-_reduce(inputlist::Vector{IWaveform}, xext::PExtents1D, xres_max::Integer) =
-	map((input)->_reduce(input, xext, xres_max::Integer), inputlist)
+_reduce(inputlist::Vector{IWaveform}, xext::PExtents1D, pdm::PointDropMatrix, xres_max::Integer) =
+	map((input)->_reduce(input, xext, pdm, xres_max), inputlist)
 
 #Rescale input dataset:
 #-------------------------------------------------------------------------------
@@ -656,7 +671,7 @@ function preprocess_data(plot::Plot2D)
 
 	#Reduce data:
 	xext = getxextents_axis(plot) #Read back extents, in transformed coordinates
-	plot.display_data = _reduce(wfrmlist, xext, plot.xres)
+	plot.display_data = _reduce(wfrmlist, xext, plot.pointdropmatrix, plot.xres)
 	plot.invalid_ddata = false
 
 	#NOTE: Rescaling before data reduction is somewhat inefficient, but makes

@@ -171,6 +171,7 @@ const GLYPH_OCTAGON = _polygongenerator(8, scale=0.6)
 
 #==Scaling functions
 ===============================================================================#
+isglyph(s::Symbol) = (s != :none) #Not necessarily a valid glyph id
 function Glyph(s::Symbol)
 	#TODO: use Map instead?  precompile issues?
 	s == :o && return GLYPH_CIRCLE
@@ -210,7 +211,7 @@ function Glyph(s::Symbol)
 	s == :hline && return GLYPH_HLINE
 	s == :vline && return GLYPH_VLINE
 
-	if :none != s
+	if isglyph(s) #Glyph requested, but not supported
 		warn("Glyph shape not supported: $s")
 	end
 	return nothing
