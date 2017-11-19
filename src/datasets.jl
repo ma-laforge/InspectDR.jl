@@ -47,14 +47,10 @@ function _reduce_nodrop(input::IDataset, xext::PExtents1D, xres_max::Integer)
 	return result
 end
 
-#Generic algorithm when not dealing with functions of 1 argument:
-_reduce(input::IDataset, xext::PExtents1D, xres_max::Integer) =
-	_reduce_nodrop(input, xext, xres_max)
-
 #Optimized for functions of 1 argument (F1-acceleration):
 #    xres_max: Max number of x-points in data window.
 #returns: Vector{Point2D}
-function _reduce(input::IDataset{true}, xext::PExtents1D, xres_max::Integer)
+function _reduce_droppts(input::IDataset{true}, xext::PExtents1D, xres_max::Integer)
 	const xres = (xext.max - xext.min)/ xres_max
 	const min_lookahead = 3 #number of xres windows to potentially collapse
 	const thresh_xres = min_lookahead*xres #maximum x-distance to look ahead for reduction
@@ -146,6 +142,24 @@ function _reduce(input::IDataset{true}, xext::PExtents1D, xres_max::Integer)
 
 	resize!(result, n)
 	return result
+end
+
+#Call generic algorithm when not dealing with functions of 1 argument:
+_reduce(input::IDataset, xext::PExtents1D, xres_max::Integer) =
+	_reduce_nodrop(input, xext, xres_max)
+
+#Call data-reduction algorithm when dealing with functions of 1 argument:
+function _reduce(input::IDataset{true}, xext::PExtents1D, xres_max::Integer)
+	try
+		return _reduce_droppts(input, xext, xres_max)
+	catch
+		msg = "Failed to perform data reduction on function of 1 argument.\n"
+		msg *= "Algorithm needs to be made more robust.\n"
+		msg *= "Defaulting to slower, naive solution (drawing all points).\n"
+		warn(msg)
+
+		return _reduce_nodrop(input, xext, xres_max)
+	end
 end
 
 #Last line
