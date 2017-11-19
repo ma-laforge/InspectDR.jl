@@ -176,34 +176,34 @@ end
 
 #==Render grid
 ===============================================================================#
-render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, xlines::AbstractGridLines) = nothing
-function render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, xlines::GridLines)
+render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, xlines::AbstractGridLines) = nothing
+function render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, xlines::GridLines)
 	if xlines.displaymajor
-		setlinestyle(ctx, GRID_MAJOR_LINE)
+		setlinestyle(ctx, lyt.line_gridmajor)
 		for xline in xlines.major
 			x = map2dev(xf, Point2D(xline, 0)).x
 			drawline(ctx, Point2D(x, graphbb.ymin), Point2D(x, graphbb.ymax))
 		end
 	end
 	if xlines.displayminor
-		setlinestyle(ctx, GRID_MINOR_LINE)
+		setlinestyle(ctx, lyt.line_gridminor)
 		for xline in xlines.minor
 			x = map2dev(xf, Point2D(xline, 0)).x
 			drawline(ctx, Point2D(x, graphbb.ymin), Point2D(x, graphbb.ymax))
 		end
 	end
 end
-render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, ylines::AbstractGridLines) = nothing
-function render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, ylines::GridLines)
+render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, ylines::AbstractGridLines) = nothing
+function render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, ylines::GridLines)
 	if ylines.displaymajor
-		setlinestyle(ctx, GRID_MAJOR_LINE)
+		setlinestyle(ctx, lyt.line_gridmajor)
 		for yline in ylines.major
 			y = map2dev(xf, Point2D(0, yline)).y
 			drawline(ctx, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
 		end
 	end
 	if ylines.displayminor
-		setlinestyle(ctx, GRID_MINOR_LINE)
+		setlinestyle(ctx, lyt.line_gridminor)
 		for yline in ylines.minor
 			y = map2dev(xf, Point2D(0, yline)).y
 			drawline(ctx, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
@@ -214,8 +214,8 @@ end
 function render_grid(canvas::PCanvas2D, lyt::PlotLayout, grid::GridRect)
 	const ctx = canvas.ctx
 	Cairo.save(ctx) #-----
-	render_vlines(ctx, canvas.graphbb, canvas.xf, grid.xlines)
-	render_hlines(ctx, canvas.graphbb, canvas.xf, grid.ylines)
+	render_vlines(ctx, canvas.graphbb, canvas.xf, lyt, grid.xlines)
+	render_hlines(ctx, canvas.graphbb, canvas.xf, lyt, grid.ylines)
 	Cairo.restore(ctx) #-----
 end
 
@@ -262,11 +262,11 @@ function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 		if ticklabels
 			render_ticklabel(ctx, xtick, Point2D(x, ylabel), lyt.font_ticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, xs)
 		end
-		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
+		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-lyt.length_tickmajor))
 	end
 	for xtick in xlines.minor
 		x = map2dev(xf, Point2D(xtick, 0)).x
-		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MINOR_LEN))
+		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-lyt.length_tickminor))
 	end
 	if fmt.splitexp && ticklabels
 		xlabel = graphbb.xmax + tframe
@@ -281,11 +281,11 @@ function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	for ytick in ylines.major
 		y = map2dev(xf, Point2D(0, ytick)).y
 		render_ticklabel(ctx, ytick, Point2D(xlabel, y), lyt.font_ticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, ys)
-		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
+		drawline(ctx, Point2D(xframe, y), Point2D(xframe+lyt.length_tickmajor, y))
 	end
 	for ytick in ylines.minor
 		y = map2dev(xf, Point2D(0, ytick)).y
-		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MINOR_LEN, y))
+		drawline(ctx, Point2D(xframe, y), Point2D(xframe+lyt.length_tickminor, y))
 	end
 	if fmt.splitexp
 		ylabel = graphbb.ymin - tframe
@@ -303,7 +303,7 @@ function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 		if ticklabels
 			render_ticklabel(ctx, xlabel, Point2D(x, ylabel), lyt.font_ticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, LinScale())
 		end
-		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-TICK_MAJOR_LEN))
+		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-lyt.length_tickmajor))
 	end
 end
 function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, ylines::UndefinedGridLines, ys::AxisScale)
@@ -312,7 +312,7 @@ function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	xlabel = graphbb.xmin - lyt.hoffset_yticklabel
 	for (y, ylabel) in [(graphbb.ymax, ylines.minline), (graphbb.ymin, ylines.maxline)]
 		render_ticklabel(ctx, ylabel, Point2D(xlabel, y), lyt.font_ticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, LinScale())
-		drawline(ctx, Point2D(xframe, y), Point2D(xframe+TICK_MAJOR_LEN, y))
+		drawline(ctx, Point2D(xframe, y), Point2D(xframe+lyt.length_tickmajor, y))
 	end
 end
 

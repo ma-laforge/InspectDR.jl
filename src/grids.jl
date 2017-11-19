@@ -3,22 +3,6 @@
 
 #==Constants
 ===============================================================================#
-#TODO: make the following user-configurable:
-const GRID_MAJOR_LINE = LineStyle(
-	:dash, Float64(2), RGB24(.7, .7, .7)
-)
-const GRID_MINOR_LINE = LineStyle(
-	:dash, Float64(1), RGB24(.7, .7, .7)
-)
-const SMITH_MAJOR_LINE = LineStyle(
-	:solid, Float64(2), COLOR_BLACK
-)
-const SMITH_MINOR_LINE = LineStyle(
-	:solid, Float64(1), RGB24(.7, .7, .7)
-)
-const TICK_MAJOR_LEN = Float64(5)
-const TICK_MINOR_LEN = Float64(3)
-
 
 #Allowed mantissa values for grid step size:
 const GRID_MANTSTEPS = DReal[1, 2, 2.5, 5, 10]

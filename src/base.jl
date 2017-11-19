@@ -134,6 +134,14 @@ mutable struct PlotLayout <: AbstractStyle #Layout/LegendLStyle
 	hoffset_yticklabel::Float64
 	hoffset_legendtext::Float64 #Spacing between line/symbol and label (% of M character).
 
+	length_tickmajor::Float64
+	length_tickminor::Float64
+
+	line_gridmajor::LineStyle
+	line_gridminor::LineStyle
+	line_smithmajor::LineStyle
+	line_smithminor::LineStyle
+
 	font_title::Font
 	font_axislabel::Font
 	font_ticklabel::Font
@@ -160,6 +168,11 @@ PlotLayout() = PlotLayout(
 	0, 0, 0, 0, 0, #halloc
 	0, 0, 0, #voffset
 	0, 0, 0, #hoffset
+	Float64(5), Float64(3), #length_tick*
+	LineStyle(:dash, Float64(2), RGB24(.7, .7, .7)), #line_gridmajor
+	LineStyle(:dash, Float64(1), RGB24(.7, .7, .7)), #line_gridminor
+	LineStyle(:solid, Float64(2), COLOR_BLACK), #line_smithmajor
+	LineStyle(:solid, Float64(1), RGB24(.7, .7, .7)), #line_smithminor
 	Font(), Font(), Font(), Font(), Font(), Font(),
 	TickLabelStyle(), TickLabelStyle(),
 	AreaAttributes(), AreaAttributes(), AreaAttributes()

@@ -129,10 +129,10 @@ Cairo.save(ctx) #-----
 	if xflip
 		Cairo.scale(ctx, -1, 1)
 	end
-	setlinestyle(ctx, SMITH_MINOR_LINE)
+	setlinestyle(ctx, lyt.line_smithminor)
 		render_rcircles(ctx, grid.minorR)
 		render_xcircles(ctx, grid.minorX)
-	setlinestyle(ctx, SMITH_MAJOR_LINE)
+	setlinestyle(ctx, lyt.line_smithmajor)
 		render_rcircles(ctx, grid.majorR)
 Cairo.restore(ctx) #-----
 
@@ -140,7 +140,7 @@ Cairo.save(ctx) #-----
 	setclip(ctx, graphbb)
 
 	#Draw X=0 line:
-	setlinestyle(ctx, SMITH_MINOR_LINE)
+	setlinestyle(ctx, lyt.line_smithminor)
 	y = map2dev(canvas.xf, Point2D(0, 0)).y
 	drawline(ctx::CairoContext, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
 
