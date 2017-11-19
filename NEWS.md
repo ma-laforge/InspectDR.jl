@@ -13,4 +13,5 @@ The following grid contains select pairings of Plots.jl and InspectDR.jl.  Not a
 | &check; | `v0.11.2` | `v0.1.7` |  |
 | &check; | `v0.12.0` | `v0.2.0` | Julia v0.6 |
 | &cross; | `v0.12.0` | `v0.2.1` | InspectDR PlotLayout/PlotStyle re-structuring. |
+| &check; | `v0.13.1` | `v0.2.4` |  |
 
