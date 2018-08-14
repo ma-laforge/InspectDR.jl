@@ -89,7 +89,7 @@ function _setlinestyle(ctx::CairoContext, style::Symbol, linewidth::Float64)
 	elseif :dashdot == style
 		dashes = Float64[4,2,1,2]
 	elseif :solid != style
-		warn("Unrecognized line style: $style")
+		@warn("Unrecognized line style: $style")
 	end
 
 	Cairo.set_line_width(ctx, linewidth);

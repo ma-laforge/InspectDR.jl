@@ -212,7 +212,7 @@ function Glyph(s::Symbol)
 	s == :vline && return GLYPH_VLINE
 
 	if isglyph(s) #Glyph requested, but not supported
-		warn("Glyph shape not supported: $s")
+		@warn("Glyph shape not supported: $s")
 	end
 	return nothing
 end

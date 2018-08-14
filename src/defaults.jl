@@ -82,7 +82,7 @@ function initialize_defaults()
 		try
 			plotlayout[k] = v
 		catch
-			warn("Cannot set default PlotLayout.$k = $v.")
+			@warn("Cannot set default PlotLayout.$k = $v.")
 		end
 	end
 

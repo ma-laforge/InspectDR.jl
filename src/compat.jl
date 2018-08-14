@@ -55,12 +55,12 @@ function checkcompat_plots()
 		msg *= "Latest known compatible versions:\n"
 		msg *= "    " * compatstr(inspectverkeys[end]) * ".\n"
 		msg *= compatinfomsg
-		info(msg)
+		@info(msg)
 		return
 	end
 
 	ifirst = findfirst(v->(v >= vInspect), inspectverkeys)
-	if ifirst < 1
+	if nothing==ifirst
 		#This version appears newer than latest known compatible....
 		lastknowncompat = inspectverkeys[end]
 		msg  = "InspectDR not known to be compatible with current version of Plots.jl.\n\n"
@@ -71,7 +71,7 @@ function checkcompat_plots()
 		msg *= "...don't forget to free to enable future updates:\n"
 		msg *= "    julia> Pkg.free(\"InspectDR\")\n"
 		msg *= compatinfomsg
-		info(msg)
+		@info(msg)
 	else
 		#InspectDR version probably not smaller than latest known good (so probably equal)...
 		#Don't bother user for no reason.

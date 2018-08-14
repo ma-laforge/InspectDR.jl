@@ -7,7 +7,7 @@ TAGS:
 
 if false
 __precompile__(false)
-warn("Development mode - precompile deactivated.")
+@warn("Development mode - precompile deactivated.")
 end
 module InspectDR
 
@@ -32,7 +32,7 @@ try
 	eval(:(const _Gtk = Gtk.ShortNames))
 	GtkAvailable = true
 catch
-	warn("InspectDR: Error loading Gtk.  GUI-based features are unavailable.")
+	@warn("InspectDR: Error loading Gtk.  GUI-based features are unavailable.")
 end
 =#
 

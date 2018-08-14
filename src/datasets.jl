@@ -156,7 +156,7 @@ function _reduce(input::IDataset{true}, xext::PExtents1D, xres_max::Integer)
 		msg = "Failed to perform data reduction on function of 1 argument.\n"
 		msg *= "Algorithm needs to be made more robust.\n"
 		msg *= "Defaulting to slower, naive solution (drawing all points).\n"
-		warn(msg)
+		@warn(msg)
 
 		return _reduce_nodrop(input, xext, xres_max)
 	end

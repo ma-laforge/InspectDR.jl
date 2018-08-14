@@ -122,7 +122,7 @@ function getstyle(::Type{PlotLayout}, ::StyleID{:screen}, fontname::String, font
 		elseif :SI == notation
 			TickLabelStyle(NumericIO.UEXPONENT_SI)
 		else
-			warn("Unsupported tick label style: :$notation")
+			@warn("Unsupported tick label style: :$notation")
 		end
 	end
 	lyt.format_xtick = getticklabelstyle(notation_x)
