@@ -39,7 +39,7 @@ end
 ===============================================================================#
 #TODO: move somewhere else?
 function render_ctrlpoint(canvas::PCanvas2D, pt::Point2D, ixf::InputXfrm2D)
-	const ctx = canvas.ctx
+	ctx = canvas.ctx #WANTCONST
 	pt = read2axis(pt, ixf)
 	pt = map2dev(canvas.xf, pt)
 	setlinestyle(ctx, LineStyle(CTRLPOINT_ATTR.line))
@@ -66,12 +66,12 @@ end
 
 function render_Δinfo(canvas::PCanvas2D, p1::Point2D, p2::Point2D, Δinfo::Vector2D,
 	font::Font, xfmt::NumericFormatting, yfmt::NumericFormatting, ixf::InputXfrm2D, strip::Int)
-	const align = ALIGN_TOP | ALIGN_LEFT
-	const mfmt = number_fmt(ndigits=4, decfloating=true)
-	const boxattr = AreaAttributes(
+	align = ALIGN_TOP | ALIGN_LEFT #WANTCONST
+	mfmt = number_fmt(ndigits=4, decfloating=true) #WANTCONST
+	boxattr = AreaAttributes(
 		line(style=:solid, width=1.5, color=COLOR_BLACK), COLOR_WHITE
-	)
-	const ctx = canvas.ctx
+	) #WANTCONST
+	ctx = canvas.ctx #WANTCONST
 	Δx = p2.x - p1.x; Δy = p2.y - p1.y
 	m = Δy/Δx
 	Δxstr = formatted(Δx, xfmt); Δxstr = "Δx=$Δxstr"
@@ -104,9 +104,9 @@ function render_Δinfo(canvas::PCanvas2D, p1::Point2D, p2::Point2D, Δinfo::Vect
 end
 
 function render(canvas::PCanvas2D, mg::CtrlMarkerGroup, graphinfo::Graph2DInfo, strip::Int)
-	const xfmt = hoverfmt(graphinfo.xfmt)
-	const yfmt = hoverfmt(graphinfo.yfmt)
-	const ixf = graphinfo.ixf
+	xfmt = hoverfmt(graphinfo.xfmt) #WANTCONST
+	yfmt = hoverfmt(graphinfo.yfmt) #WANTCONST
+	ixf = graphinfo.ixf #WANTCONST
 	for elem in mg.elem
 		mstrip = elem.prop.strip
 		if 0 == mstrip || mstrip == strip
@@ -142,7 +142,7 @@ end
 #==Helper functions
 ===============================================================================#
 function hittest(marker::CtrlMarker, xf::Transform2D, ixf::InputXfrm2D, x::Float64, y::Float64)
-	const Δhit = Float64(CTRLPOINT_RADIUS+CTRLPOINT_ATTR.line.width/2)
+	Δhit = Float64(CTRLPOINT_RADIUS+CTRLPOINT_ATTR.line.width/2) #WANTCONST
 
 	pt = read2axis(marker.prop.pos, ixf)
 	pt = map2dev(xf, pt)

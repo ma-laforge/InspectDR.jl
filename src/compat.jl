@@ -4,11 +4,11 @@
 
 #Check compatibility with Plots.jl:
 function checkcompat_plots()
-	const compatinfomsg = "See NEWS.md for more details on compatibility."
+	compatinfomsg = "See NEWS.md for more details on compatibility." #WANTCONST
 
 	#InspectDR => latest compatible version Plots.jl:
 	#Keep updating latest known version of InspectDR/Plots.jl.
-	const compatlist = Dict(
+	compatlist = Dict(
 		#v"0.1.3" => v"0.10.3",
 		#v"0.1.7" => v"0.11.2",
 		#v"0.2.0" => v"0.12.0",
@@ -18,8 +18,8 @@ function checkcompat_plots()
 		v"0.2.4" => v"0.13.1",
 		#Reminder for tagged releases:
 			#Update InspectDR version / Latest version of Plots.jl.
-	)
-	const inspectverkeys = sort(collect(keys(compatlist)))
+	) #WANTCONST
+	inspectverkeys = sort(collect(keys(compatlist))) #WANTCONST
 
 	function compatstr(vinspect::VersionNumber)
 		vplots = compatlist[vinspect]
@@ -28,14 +28,17 @@ function checkcompat_plots()
 
 	vPlots = nothing
 	vInspect = nothing
+	pkglist = Pkg.installed()
 
 	try
 		#Adds to load up time... try not to do this...
-		vPlots = Pkg.installed("Plots")
+		vPlots = get(pkglist, "Plots", nothing)
+	finally
 	end
 	try
 		#Adds to load up time... try not to do this...
-		vInspect = Pkg.installed("InspectDR")
+		vInspect = get(pkglist, "InspectDR", nothing)
+	finally
 	end
 
 	#Debug:

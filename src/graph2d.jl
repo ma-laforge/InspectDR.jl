@@ -87,7 +87,7 @@ end
 
 #bb: bounding box of entire plot
 function Plot2DInfo(plot::Plot2D, bb::BoundingBox)
-	const dfltfmt = TickLabelFormatting(NoRangeDisplayInfo())
+	dfltfmt = TickLabelFormatting(NoRangeDisplayInfo()) #WANTCONST
 	result = Plot2DInfo(plot)
 	databb = databounds(bb, plot.layout.values, grid1(plot))
 	nstrips = length(plot.strips)

@@ -329,7 +329,7 @@ Sample IJulia (Jupyter) notebooks can be found [here](notebook/).
 
 Extensive compatibility testing of InspectDR.jl has not been performed.  The module has been tested using the following environment(s):
 
-- Windows / Linux / Julia-0.6.0 / Gtk 0.13.0 (GTK+ 3) / Cairo 0.3.0
+- Windows / Linux / Julia-0.7.0 / Gtk 0.16.1 (GTK+ 3) / Cairo 0.5.3
 
 ## Disclaimer
 

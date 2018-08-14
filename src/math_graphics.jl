@@ -126,8 +126,8 @@ Base.:-(p::Point2D, v::Vector2D) = Point2D(p.x-v.x, p.y-v.y)
 Base.:+(v::Vector2D, p::Point2D) = p+v
 
 function union(e1::PExtents1D, e2::PExtents1D)
-	umin(v1, v2) = isnan(v1)? v2: min(v1, v2)
-	umax(v1, v2) = isnan(v1)? v2: max(v1, v2)
+	umin(v1, v2) = isnan(v1) ? v2 : min(v1, v2)
+	umax(v1, v2) = isnan(v1) ? v2 : max(v1, v2)
 	return PExtents1D(
 		umin(e1.min, e2.min),
 		umax(e1.max, e2.max),
@@ -142,8 +142,8 @@ function union(elist::Vector{PExtents1D})
 end
 
 function union(e1::PExtents2D, e2::PExtents2D)
-	umin(v1, v2) = isnan(v1)? v2: min(v1, v2)
-	umax(v1, v2) = isnan(v1)? v2: max(v1, v2)
+	umin(v1, v2) = isnan(v1) ? v2 : min(v1, v2)
+	umax(v1, v2) = isnan(v1) ? v2 : max(v1, v2)
 	return PExtents2D(
 		umin(e1.xmin, e2.xmin),
 		umax(e1.xmax, e2.xmax),
@@ -162,14 +162,14 @@ end
 #Overwrite with new extents, if defined
 #-------------------------------------------------------------------------------
 function Base.merge(base::PExtents1D, new::PExtents1D)
-	baseifnan(bv, nv) = isnan(nv)? bv: nv
+	baseifnan(bv, nv) = isnan(nv) ? bv : nv
 	emin = baseifnan(base.min, new.min)
 	emax = baseifnan(base.max, new.max)
 	return PExtents1D(emin, emax)
 end
 
 function Base.merge(base::PExtents2D, new::PExtents2D)
-	baseifnan(bv, nv) = isnan(nv)? bv: nv
+	baseifnan(bv, nv) = isnan(nv) ? bv : nv
 	xmin = baseifnan(base.xmin, new.xmin)
 	xmax = baseifnan(base.xmax, new.xmax)
 	ymin = baseifnan(base.ymin, new.ymin)

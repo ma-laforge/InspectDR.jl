@@ -84,11 +84,11 @@ function scalectrl_enabled(pwidget::PlotWidget, v::Bool)
 end
 #Apply current scale/position scrollbar values to plot extents:
 function scalectrl_apply(pwidget::PlotWidget)
-	xscale = getproperty(pwidget.xscale, :value, Int)
-	xpos = getproperty(pwidget.xpos, :value, Float64)
+	xscale = get_gtk_property(pwidget.xscale, :value, Int)
+	xpos = get_gtk_property(pwidget.xpos, :value, Float64)
 
-	const plot = pwidget.src
-	const ixf = InputXfrm1D(plot.xscale)
+	plot = pwidget.src #WANTCONST
+	ixf = InputXfrm1D(plot.xscale) #WANTCONST
 
 	#Use transformed coordinate system:
 	xext_full = read2axis(getxextents_full(plot), ixf)
@@ -183,9 +183,9 @@ function zoom_full(pwidget::PlotWidget, hallowed::Bool, vallowed::Bool, istrip::
 	end
 
 	if hallowed
-		scalectrl_enabled(pwidget, false) #Suppress updates from setproperty!
-		setproperty!(pwidget.xscale, :value, Int(1))
-		setproperty!(pwidget.xpos, :value, Float64(0))
+		scalectrl_enabled(pwidget, false) #Suppress updates from set_gtk_property!
+		set_gtk_property!(pwidget.xscale, :value, Int(1))
+		set_gtk_property!(pwidget.xpos, :value, Float64(0))
 		scalectrl_enabled(pwidget, true)
 		scalectrl_apply(pwidget)
 		#Will refresh

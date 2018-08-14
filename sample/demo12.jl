@@ -2,6 +2,7 @@
 #-------------------------------------------------------------------------------
 using InspectDR
 using Colors
+using Random
 import InspectDR: DTPPOINTS_PER_INCH
 
 
@@ -28,10 +29,10 @@ glyph_meas = glyph(shape=:o, size=3*pt2px)
 #-------------------------------------------------------------------------------
 x = collect(0:100)
 xmax = maximum(x)
-ymodel = 0.5*x+25
+ymodel = 0.5*x .+ 25
 
 #Generate "Measured" data:
-srand(11) #Reseed
+Random.seed!(11) #Reseed
 ymeas = randn(length(x))*(xmax/10) .+ ymodel
 
 

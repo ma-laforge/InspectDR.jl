@@ -387,7 +387,7 @@ function _add(mp::Multiplot, plot::Plot2D)
 	push!(mp.subplots, plot)
 	return plot
 end
-_add{T<:Plot}(mp::Multiplot, ::Type{T}) = _add(mp, T())
+_add(mp::Multiplot, ::Type{T}) where T<:Plot = _add(mp, T())
 
 
 #Set dataf1=false to overwrite optimizations for functions of 1 argument.
@@ -500,7 +500,7 @@ end
 function databounds(plotb::BoundingBox, lyt::PlotLayout)
 	xmin = plotb.xmin + lyt.halloc_left
 	xmax = plotb.xmax
-	xmax -= lyt.enable_legend? lyt.halloc_legend: lyt.halloc_right
+	xmax -= lyt.enable_legend ? lyt.halloc_legend : lyt.halloc_right
 	ymin = plotb.ymin + lyt.valloc_top
 	ymax = plotb.ymax - lyt.valloc_bottom
 
@@ -554,7 +554,7 @@ end
 
 #Get vector of graphbounds:
 function graphbounds_list(datab::BoundingBox, lyt::PlotLayout, nstrips::Int)
-	result = Vector{BoundingBox}(nstrips)
+	result = Vector{BoundingBox}(undef, nstrips)
 	gap = lyt.valloc_mid
 	h = graph_h(datab, gap, nstrips)
 	pitch = h+gap
@@ -569,7 +569,7 @@ end
 function plotbounds(lyt::PlotLayout, graphbb::BoundingBox)
 	xmin = graphbb.xmin - lyt.halloc_left
 	xmax = graphbb.xmax
-	xmax += lyt.enable_legend? lyt.halloc_legend: lyt.halloc_right
+	xmax += lyt.enable_legend ? lyt.halloc_legend : lyt.halloc_right
 	ymin = graphbb.ymin - lyt.valloc_top
 	ymax = graphbb.ymax + lyt.valloc_bottom
 	return BoundingBox(xmin, xmax, ymin, ymax)
@@ -612,8 +612,8 @@ end
 ===============================================================================#
 
 function _reduce(input::IWaveform, xext::PExtents1D, pdm::PointDropMatrix, xres_max::Integer)
-	ds = droppoints(pdm, hasline(input), hasglyph(input))?
-		_reduce(input.ds, xext, xres_max): _reduce_nodrop(input.ds, xext, xres_max)
+	ds = droppoints(pdm, hasline(input), hasglyph(input)) ?
+		_reduce(input.ds, xext, xres_max) : _reduce_nodrop(input.ds, xext, xres_max)
 
 	return DWaveform(input.id, ds, input.line, input.glyph, input.ext, input.strip)
 end
@@ -624,7 +624,7 @@ _reduce(inputlist::Vector{IWaveform}, xext::PExtents1D, pdm::PointDropMatrix, xr
 #Rescale input dataset:
 #-------------------------------------------------------------------------------
 
-map2axis{T<:IDataset}(input::T, x::InputXfrm1DSpec, y::InputXfrm1DSpec) =
+map2axis(input::T, x::InputXfrm1DSpec, y::InputXfrm1DSpec) where T<:IDataset =
 	T(map2axis(input.x, x), map2axis(input.y, y))
 
 function map2axis(input::IWaveform, x::InputXfrm1DSpec, y::InputXfrm1DSpec)
@@ -633,10 +633,10 @@ function map2axis(input::IWaveform, x::InputXfrm1DSpec, y::InputXfrm1DSpec)
 end
 
 function map2axis(inputlist::Vector{IWaveform}, xflist::Vector{InputXfrm2D})
-	const n = length(inputlist)
-	const nstrips = length(xflist)
-	const emptyds = IDataset{true}([], [])
-	result = Vector{IWaveform}(n)
+	n = length(inputlist) #WANTCONST
+	nstrips = length(xflist) #WANTCONST
+	emptyds = IDataset{true}([], []) #WANTCONST
+	result = Vector{IWaveform}(undef, n)
 
 	for i in 1:n
 		input = inputlist[i]
@@ -655,10 +655,10 @@ end
 #   (Updates display_data)
 function preprocess_data(plot::Plot2D)
 	#TODO: Find a way to preprocess x-vectors referencing same data only once?
-	const nstrips = length(plot.strips)
+	nstrips = length(plot.strips) #WANTCONST
 
 	#Figure out required input data tranform for each strip:
-	xflist = Vector{InputXfrm2D}(nstrips)
+	xflist = Vector{InputXfrm2D}(undef, nstrips)
 	for i in 1:nstrips
 		strip = plot.strips[i]
 

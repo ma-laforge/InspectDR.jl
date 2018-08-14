@@ -29,7 +29,7 @@ abstract type AxisScale end #Note: "Scale" too generic a name
 struct LinScale{T} <: AxisScale
 	tgtmajor::DReal #Targeted number of major grid lines
 	tgtminor::Int   #Targeted number of minor grid lines
-	(t::Type{LinScale{T}}){T}(a1, a2) = error("$t not supported")
+	(t::Type{LinScale{_T}})(a1, a2) where _T = error("$t not supported")
 	(::Type{LinScale{1}})(a1, a2) = new{1}(a1, a2) #Default linear
 	(::Type{LinScale{:dB10}})(a1, a2) = new{:dB10}(a1, a2)
 	(::Type{LinScale{:dB20}})(a1, a2) = new{:dB20}(a1, a2)
@@ -38,7 +38,7 @@ LinScale(t=1; tgtmajor=3.5, tgtminor=4) = LinScale{t}(tgtmajor, tgtminor)
 
 struct LogScale{T} <: AxisScale
 	#TODO: Configure how many major/minor lines are desired?
-	(t::Type{LogScale{T}}){T}() = error("$t not supported")
+	(t::Type{LogScale{_T}})() where _T = error("$t not supported")
 	(::Type{LogScale{:e}})() = new{:e}()
 	(::Type{LogScale{2}})() = new{2}()
 	(::Type{LogScale{10}})() = new{10}()
@@ -96,32 +96,32 @@ end
 #==Mapping/interpolation functions
 ===============================================================================#
 #Map input data to axis coordinates:
-map2axis{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:lin}) = (x::T)->DReal(x)
-map2axis{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:dB10}) = (x::T)->(5*log10(DReal(abs2(x))))
-map2axis{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:dB20}) = (x::T)->(10*log10(DReal(abs2(x))))
-map2axis{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:ln}) =
-	(x::T)->(x<0? DNaN: log(DReal(x)))
-map2axis{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:log2}) =
-	(x::T)->(x<0? DNaN: log2(DReal(x)))
-map2axis{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:log10}) =
-	(x::T)->(x<0? DNaN: log10(DReal(x)))
+map2axis(::Type{T}, ::InputXfrm1DSpec{:lin}) where T<:Number = (x::T)->DReal(x)
+map2axis(::Type{T}, ::InputXfrm1DSpec{:dB10}) where T<:Number = (x::T)->(5*log10(DReal(abs2(x))))
+map2axis(::Type{T}, ::InputXfrm1DSpec{:dB20}) where T<:Number = (x::T)->(10*log10(DReal(abs2(x))))
+map2axis(::Type{T}, ::InputXfrm1DSpec{:ln}) where T<:Number =
+	(x::T)->(x<0 ? DNaN : log(DReal(x)))
+map2axis(::Type{T}, ::InputXfrm1DSpec{:log2}) where T<:Number =
+	(x::T)->(x<0 ? DNaN : log2(DReal(x)))
+map2axis(::Type{T}, ::InputXfrm1DSpec{:log10}) where T<:Number =
+	(x::T)->(x<0 ? DNaN : log10(DReal(x)))
 #TODO: find a way to show negative values for log10?
 
 #Map axis coord --> user-readable coord (Typically reverse of map2axis):
-axis2read{T<:Number}(::Type{T}, ::InputXfrm1DSpec) = (x::T)->DReal(x) #NOTE: lin/dB values remain as-is - for readability
-axis2read{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:ln}) = (x::T)->(exp(x))
-axis2read{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:log2}) = (x::T)->(2.0^x)
-axis2read{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:log10}) = (x::T)->(10.0^x)
+axis2read(::Type{T}, ::InputXfrm1DSpec) where T<:Number = (x::T)->DReal(x) #NOTE: lin/dB values remain as-is - for readability
+axis2read(::Type{T}, ::InputXfrm1DSpec{:ln}) where T<:Number = (x::T)->(exp(x))
+axis2read(::Type{T}, ::InputXfrm1DSpec{:log2}) where T<:Number = (x::T)->(2.0^x)
+axis2read(::Type{T}, ::InputXfrm1DSpec{:log10}) where T<:Number = (x::T)->(10.0^x)
 
-axis2read{T<:Number}(v::T, s::InputXfrm1DSpec) = axis2read(T,s)(v) #One-off conversion
+axis2read(v::T, s::InputXfrm1DSpec) where T<:Number = axis2read(T,s)(v) #One-off conversion
 
 #Map user-readable coord --> axis coord (Typically same as map2axis):
-read2axis{T<:Number}(::Type{T}, ixf::InputXfrm1DSpec) = map2axis(T, ixf)
+read2axis(::Type{T}, ixf::InputXfrm1DSpec) where T<:Number = map2axis(T, ixf)
 #Exception: "Readable" coordinates match axis coordinates when in dB:
-read2axis{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:dB10}) = (x::DReal)->x
-read2axis{T<:Number}(::Type{T}, ::InputXfrm1DSpec{:dB20}) = (x::DReal)->x
+read2axis(::Type{T}, ::InputXfrm1DSpec{:dB10}) where T<:Number = (x::DReal)->x
+read2axis(::Type{T}, ::InputXfrm1DSpec{:dB20}) where T<:Number = (x::DReal)->x
 
-read2axis{T<:Number}(v::T, s::InputXfrm1DSpec) = read2axis(T,s)(v) #One-off conversion
+read2axis(v::T, s::InputXfrm1DSpec) where T<:Number = read2axis(T,s)(v) #One-off conversion
 
 
 #Map Point2D:
@@ -140,18 +140,18 @@ read2axis(pt::Point2D, ixf::InputXfrm2D) = read2axis(pt, ixf.x, ixf.y)
 
 #Map entire data vector:
 #-------------------------------------------------------------------------------
-function map2axis{T<:Number}(d::Vector{T}, xf::InputXfrm1DSpec)
+function map2axis(d::Vector{T}, xf::InputXfrm1DSpec) where T<:Number
 	#Apparently, passing functions as arguments is not efficient in Julia.
 	#-->Specializing on InputXfrm1DSpec, hoping to improve efficiency on dmap:
 	dmap = map2axis(T, xf)
 
-	result = Array{DReal}(length(d))
+	result = Array{DReal}(undef, length(d))
 	for i in 1:length(d)
 		result[i] = dmap(d[i])
 	end
 	return result
 end
-map2axis{T<:Number}(d::Vector{T}, ::InputXfrm1DSpec{:lin}) = d #Optimization: Linear scale does not need re-scaling
+map2axis(d::Vector{T}, ::InputXfrm1DSpec{:lin}) where T<:Number = d #Optimization: Linear scale does not need re-scaling
 
 
 #Extents mapping functions, depending on axis type:

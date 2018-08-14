@@ -45,8 +45,8 @@ render_xcircles(ctx::CairoContext, clist::Vector{DReal}) =
 
 #xflip: Mirror x-direction for admittance(Y)-labels
 function render_rcirclelabel(ctx::CairoContext, xf::Transform2D, pt::Point2D, xflip::Bool, lbl::String)
-	xscale = xflip? -1: 1
-	xalign = xflip? ALIGN_LEFT: ALIGN_RIGHT
+	xscale = xflip ? -1 : 1
+	xalign = xflip ? ALIGN_LEFT : ALIGN_RIGHT
 	pt = map2dev(xf, Point2D(xscale*pt.x, pt.y))
 	render(ctx, lbl, Point2D(pt.x-xscale*SMITHLABEL_OFFSET, pt.y+SMITHLABEL_OFFSET),
 		align=ALIGN_TOP|xalign
@@ -65,10 +65,10 @@ render_rcirclelabels(ctx::CairoContext, xf::Transform2D, xflip::Bool, refscale::
 
 #xflip: Mirror x-direction for admittance(Y)-labels
 function render_xcirclelabel(ctx::CairoContext, xf::Transform2D, pt::Point2D, xflip::Bool, lbl::String)
-	xscale = xflip? -1: 1
+	xscale = xflip ? -1 : 1
 	corr = -xscale*xf.xs/xf.ys #Correct for aspect ratio
 	#Compute text angle:
-	Θ = atan2(pt.x, pt.y*corr)
+	Θ = atan(pt.x, pt.y*corr)
 	if xflip; Θ+=pi; end
 
 	#Compute text position, including offset:
@@ -98,9 +98,9 @@ render_xcirclelabels(ctx::CairoContext, xf::Transform2D, xflip::Bool, refscale::
 ===============================================================================#
 
 #Split complex input data into real/imag components:
-function getrealimag{T<:Number}(d::Vector{T})
-	x = Array{DReal}(length(d))
-	y = Array{DReal}(length(d))
+function getrealimag(d::Vector{T}) where T<:Number
+	x = Array{DReal}(undef, length(d))
+	y = Array{DReal}(undef, length(d))
 	for i in 1:length(d)
 		x[i] = convert(DReal, real(d[i]))
 		y[i] = convert(DReal, imag(d[i]))
@@ -108,7 +108,7 @@ function getrealimag{T<:Number}(d::Vector{T})
 	return (x, y)
 end
 
-function map2axis{T<:IDataset}(input::T, x::InputXfrm1DSpec{:real}, y::InputXfrm1DSpec{:imag})
+function map2axis(input::T, x::InputXfrm1DSpec{:real}, y::InputXfrm1DSpec{:imag}) where T<:IDataset
 	(x, y) = getrealimag(input.y)
 	return IDataset{false}(x, y) #Assume new re/im data is not sorted.
 end
@@ -117,9 +117,9 @@ end
 #==High-level rendering functions
 ===============================================================================#
 function render_grid(canvas::PCanvas2D, lyt::PlotLayout, grid::GridSmith)
-	const ctx = canvas.ctx
-	const graphbb = canvas.graphbb
-	const xflip = !grid.zgrid #Flip x-axis for admittance(Y)-grid lines
+	ctx = canvas.ctx #WANTCONST
+	graphbb = canvas.graphbb #WANTCONST
+	xflip = !grid.zgrid #WANTCONST Flip x-axis for admittance(Y)-grid lines
 
 Cairo.save(ctx) #-----
 	setclip(ctx, graphbb)

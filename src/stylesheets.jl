@@ -12,19 +12,19 @@
 ===============================================================================#
 #Default values for data area dimensions (used to save single plot):
 const DEFAULT_DATA_WIDTH = 500.0
-const DEFAULT_DATA_HEIGHT = DEFAULT_DATA_WIDTH / φ #Use golden ratio
+const DEFAULT_DATA_HEIGHT = DEFAULT_DATA_WIDTH / MathConstants.φ #Use golden ratio
 
 #Default values for plot dimensions (used to save multi-plot):
 const DEFAULT_PLOT_WIDTH = 600.0
-const DEFAULT_PLOT_HEIGHT = DEFAULT_PLOT_WIDTH / φ #Use golden ratio
+const DEFAULT_PLOT_HEIGHT = DEFAULT_PLOT_WIDTH / MathConstants.φ #Use golden ratio
 
 
 #==Types
 ===============================================================================#
-type StyleID{T}; end
+mutable struct StyleID{T}; end
 StyleID(T::Symbol) = StyleID{T}()
 
-type PlotSylesheet
+mutable struct PlotSylesheet
 	plotlayout::PlotLayout
 	mplotlayout::MultiplotLayout
 end
@@ -150,8 +150,8 @@ function getstyle(::Type{MultiplotLayout}, ::StyleID{:screen}, fontname::String,
 end
 
 #":screen" stylesheet: High-level interface:
-getstyle{T}(::Type{T}, ID::StyleID{:screen}; fontname::String=DEFAULT_FONTNAME, fontscale::Real=1.0,
-		notation_x::Symbol=:ENG, notation_y::Symbol=:ENG, enable_legend::Bool=true) =
+getstyle(::Type{T}, ID::StyleID{:screen}; fontname::String=DEFAULT_FONTNAME, fontscale::Real=1.0,
+		notation_x::Symbol=:ENG, notation_y::Symbol=:ENG, enable_legend::Bool=true) where T =
 	getstyle(T, ID, fontname, Float64(fontscale), notation_x, notation_y, enable_legend)
 
 
@@ -159,7 +159,7 @@ getstyle{T}(::Type{T}, ID::StyleID{:screen}; fontname::String=DEFAULT_FONTNAME, 
 #-------------------------------------------------------------------------------
 #":IEEE" MultiplotLayout stylesheet:
 function getstyle(::Type{PlotLayout}, ::StyleID{:IEEE}, ppi::Float64, fontscale::Float64, enable_legend::Bool)
-	const pt2px = ppi/DTPPOINTS_PER_INCH
+	pt2px = ppi/DTPPOINTS_PER_INCH #WANTCONST
 	lyt = PlotLayout()
 
 	#IEEE Plot: Must ensure readable axis & tick labels
@@ -207,8 +207,8 @@ end
 #":IEEE" MultiplotLayout stylesheet:
 #(Write/export `Multiplot` instead of `Plot` to control full plot dimensions - not just data area)
 function getstyle(::Type{MultiplotLayout}, ::StyleID{:IEEE}, ppi::Float64, fontscale::Float64, enable_legend::Bool)
-	const pt2px = ppi/DTPPOINTS_PER_INCH
-	const wplot = 3.5*ppi #Inches => Pixels
+	pt2px = ppi/DTPPOINTS_PER_INCH #WANTCONST
+	wplot = 3.5*ppi #Inches => Pixels #WANTCONST
 
 	lyt = MultiplotLayout()
 	lyt.ncolumns = 1
@@ -216,18 +216,18 @@ function getstyle(::Type{MultiplotLayout}, ::StyleID{:IEEE}, ppi::Float64, fonts
 
 	lyt.valloc_title = 0
 	lyt.halloc_plot = wplot
-	lyt.valloc_plot = wplot/φ #Golden ratio
+	lyt.valloc_plot = wplot/MathConstants.φ #Golden ratio
 	return lyt
 end
 
 #":IEEE" stylesheet: High-level interface:
-getstyle{T}(::Type{T}, ID::StyleID{:IEEE}; ppi::Real=300, fontscale::Real=1.0, enable_legend::Bool=true) =
+getstyle(::Type{T}, ID::StyleID{:IEEE}; ppi::Real=300, fontscale::Real=1.0, enable_legend::Bool=true) where T =
 	getstyle(T, ID, Float64(ppi), Float64(fontscale), enable_legend)
 
 
 #==Preset Stylesheets: high-level interface
 ===============================================================================#
-getstyle{T}(::Type{T}, styleid::Symbol; kwargs...) =
+getstyle(::Type{T}, styleid::Symbol; kwargs...) where T =
 	getstyle(T, StyleID(styleid); kwargs...)
 
 function setstyle!(p::Plot, styleid::Symbol; refresh::Bool=true, kwargs...)

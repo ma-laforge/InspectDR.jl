@@ -39,11 +39,13 @@ plot = add(mplot, InspectDR.Plot2D())
 	a = plot.annotation
 #	a.title = "Glyph Test"
 
+let wfrm #HIDEWARN_0.7
 	for (i, g) in enumerate(_glyphs)
-		wfrm = add(plot, x, y0+(length(_glyphs)+1-i), id="$g")
+		wfrm = add(plot, x, y0 .+ (length(_glyphs)+1-i), id="$g")
 		wfrm.line = line(style=:solid, color=_colors[i], width=2)
 		wfrm.glyph = glyph(shape=g, size=10, color=black, fillcolor=_colors[i])
 	end
+end
 
 gplot = display(InspectDR.GtkDisplay(), mplot)
 

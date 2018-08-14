@@ -49,7 +49,7 @@ TickLabelStyle(expdisplay::ExponentFormatting=UEXPONENT; ndigits=nothing,
 
 #==Helper functions
 ===============================================================================#
-finiteornan(x::Float64) = isfinite(x)? x: NaN
+finiteornan(x::Float64) = isfinite(x) ? x : NaN
 
 base10exp(v::Float64) = floor(log10(abs(v)))
 

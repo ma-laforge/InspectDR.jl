@@ -1,9 +1,12 @@
 #InspectDR:
 #-------------------------------------------------------------------------------
+#=
+TAGS:
+	#WANTCONST, HIDEWARN_0.7
+=#
 
-if true
-__precompile__()
-else
+if false
+__precompile__(false)
 warn("Development mode - precompile deactivated.")
 end
 module InspectDR
@@ -11,6 +14,8 @@ module InspectDR
 using Colors
 using Graphics
 using NumericIO
+using Pkg
+import Printf: @sprintf
 import Cairo
 import Cairo: CairoContext
 
@@ -37,14 +42,14 @@ end
 const DTPPOINTS_PER_INCH = 72 #Typography (desktop publishing) "points per inch"
 
 #Default font:
-const DEFAULT_FONTNAME = (@static is_windows()? "Cambria": "Serif")
+const DEFAULT_FONTNAME = (@static Sys.iswindows() ? "Cambria" : "Serif")
 #Cairo "built-in": Serif, Sans, Serif, Fantasy, Monospace
 #NOTE: "Serif" does not work well in Windows.
 
 
 #==Aliases
 ===============================================================================#
-NullOr{T} = Union{Void, T}
+NullOr{T} = Union{Nothing, T}
 
 include("codegen.jl")
 include("styles.jl")

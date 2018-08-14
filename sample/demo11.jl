@@ -2,6 +2,8 @@
 #-------------------------------------------------------------------------------
 using InspectDR
 using Colors
+using Random
+
 
 #==Input
 ===============================================================================#
@@ -25,27 +27,27 @@ VSUPPLY = 1.0
 tbit = 1e-9 #Bit period
 osr = 40 #samples per bit
 
-srand(1234) #Generate consistent "random" patterns
+Random.seed!(1234) #Generate consistent "random" patterns
 #pat = rand(Bool, 8)*1 #Random bit pattern
 pat = [0,0,1,1,0,0,0,1,0,1,0]
 
 nsamples = length(pat)
-t = collect(linspace(0, nsamples*tbit, nsamples*osr+1)[1:end-1]) #Time
+t = collect(range(0, stop=nsamples*tbit, length=nsamples*osr+1)[1:end-1]) #Time
 t_1bit = t[1:osr] #Time for 1 bit
 
 
 #=="Simulation" (really rudimentary to keep things simple)
 ===============================================================================#
-expdecay(Δt::Vector, V0, V∞, τ) = V∞+(V0-V∞)*exp.(-Δt/τ)
+expdecay(Δt::Vector, V0, V∞, τ) = V∞ .+ (V0-V∞)*exp.(-Δt/τ)
 
 function EmulDigtialWfrm(pat::Vector, τrise, τfall)
 	vrise = expdecay(t_1bit, 0, VSUPPLY, τrise)
 	vfall = expdecay(t_1bit, VSUPPLY, 0, τfall)
-	vsup_1bit = VSUPPLY*ones(t_1bit)
+	vsup_1bit = VSUPPLY*fill(1, size(t_1bit))
 	nsamples = length(pat)
 
 	#Generate waveform:
-	result = Vector{Float64}(nsamples*osr)
+	result = Vector{Float64}(undef, nsamples*osr)
 	padpat = prepend!(copy(pat), [0])
 	delta = padpat[2:end] - padpat[1:end-1] #Difference between consecutive bits (i.e. transitions)
 	for ibit in 1:length(pat)
@@ -71,7 +73,7 @@ vpath1 = EmulDigtialWfrm(pat, tbit/8, tbit/20)
 vpath2 = EmulDigtialWfrm(pat, tbit/20, tbit/20)
 
 vgnd = 0*t
-vsup = vgnd+VSUPPLY
+vsup = vgnd .+ VSUPPLY
 
 
 #==Generate plot
@@ -94,7 +96,7 @@ plot = add(mplot, InspectDR.transientplot([:lin for i in siginfolist],
 plot.layout[:enable_legend] = true
 #plot.layout[:halloc_legend] = 150
 
-
+let wfrm #HIDEWARN_0.7
 	for (i, siginfo) in enumerate(siginfolist)
 		id, sig, ext = siginfo
 		plot.strips[i].yext_full = ext
@@ -115,6 +117,7 @@ plot.layout[:enable_legend] = true
 		add(plot, hmarker(v10, line_thresh, strip=i))
 		add(plot, hmarker(v90, line_thresh, strip=i))
 	end
+end
 
 gplot = display(InspectDR.GtkDisplay(), mplot)
 

@@ -103,7 +103,7 @@ end
 
 #Conditionnaly render fill (preserve path for stroke)
 #-------------------------------------------------------------------------------
-renderfill(ctx::CairoContext, fill::Void) = nothing
+renderfill(ctx::CairoContext, fill::Nothing) = nothing
 function renderfill(ctx::CairoContext, fill::Colorant)
 	Cairo.save(ctx) #-----
 	Cairo.set_source(ctx, fill)
@@ -180,8 +180,8 @@ text_dims(t_ext::Array{Float64}) = tuple(t_ext[3], t_ext[4]) #w, h
 #Set active font on a CairoContext
 #-------------------------------------------------------------------------------
 function setfont(ctx::CairoContext, font::Font)
-	const weight = font.bold? Cairo.FONT_WEIGHT_BOLD: Cairo.FONT_WEIGHT_NORMAL
-	const noitalic = Cairo.FONT_SLANT_NORMAL
+	weight = font.bold ? Cairo.FONT_WEIGHT_BOLD : Cairo.FONT_WEIGHT_NORMAL #WANTCONST
+	noitalic = Cairo.FONT_SLANT_NORMAL #WANTCONST
 	Cairo.set_source(ctx, font.color)
 	Cairo.select_font_face(ctx, font.name, noitalic, weight)
 	Cairo.set_font_size(ctx, font._size)
@@ -227,8 +227,8 @@ end
 #Draws number as base, raised to a power (ex: 10^9):
 #-------------------------------------------------------------------------------
 function render_power(ctx::CairoContext, tbase::String, val::DReal, pt::Point2D, font::Font, align::CAlignment)
-	const EXP_SCALE = 0.75
-	const EXP_SHIFT = 0.5
+	EXP_SCALE = 0.75 #WANTCONST
+	EXP_SHIFT = 0.5 #WANTCONST
 	fontexp = deepcopy(font)
 	fontexp._size = font._size*EXP_SCALE
 

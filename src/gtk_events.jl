@@ -30,7 +30,7 @@ modifiers_pressed(eventstate, modmask) = (modmask == (MODIFIERS_SUPPORTED & even
 #Returns 0 or strip index:
 #TODO: refer to graphbblist only - instead of pwidget???
 function hittest(pwidget::PlotWidget, x::Float64, y::Float64)
-	const infolist = pwidget.plotinfo.strips
+	infolist = pwidget.plotinfo.strips #WANTCONST
 	for i = 1:length(infolist)
 		if isinside(infolist[i].graphbb, x, y)
 			return i

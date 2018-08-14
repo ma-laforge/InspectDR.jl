@@ -19,7 +19,7 @@ blue = RGB24(0, 0, 1)
 #-------------------------------------------------------------------------------
 npts = 1000
 T=.1e-6 #Clock period
-x = collect(linspace(0, 1e-6, npts))
+x = collect(range(0, stop=1e-6, length=npts))
 y = sin.(2pi*(x./T))
 
 #Invalidate some data points:

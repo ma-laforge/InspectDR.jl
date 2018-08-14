@@ -31,15 +31,15 @@ _colors = [blue, red, green]
 
 #==Equations
 ===============================================================================#
-Γ(Z; Zref::Real=50.0) = (Z - Zref) ./ (Z + Zref)
+Γ(Z; Zref::Real=50.0) = (Z .- Zref) ./ (Z .+ Zref)
 #ZC: Characteristic impedance
 #ZL: Load impendance (termination)
 function Zline(ℓ::Real, f::Vector, ZL::Number; ZC::Number=50.0, α::Real=0, μ::Real=μ0, ϵ::Real=ϵ0)
 	j = im
 	β = f*(2pi*sqrt(μ*ϵ))
-	γ = α+j*β
+	γ = α .+ j*β
 	tanh_γℓ = tanh.(γ*ℓ)
-	return ZC*(ZL+ZC*tanh_γℓ)./(ZC+ZL*tanh_γℓ)
+	return ZC*(ZL .+ ZC*tanh_γℓ)./(ZC .+ ZL*tanh_γℓ)
 end
 function Γline(ℓ::Real, f::Vector, ZL::Number; ZC::Number=50.0, Zref::Number=50.0, α::Real=0, μ::Real=μ0, ϵ::Real=ϵ0)
 	return Γ(Zline(ℓ, f, ZL; ZC=ZC, α=α, μ=μ, ϵ=ϵ), Zref=Zref)
@@ -82,17 +82,20 @@ plot_zsmith = InspectDR.smithchart(:Z, ref=50, title="Z-Smith Chart")
 	graph_zsmith.yext_full = smithext
 	plot_zsmith.layout[:enable_legend] = true
 
+let plot, a #HIDEWARN_0.7
 for plot in [plot_linf, plot_logf]
 	a = plot.annotation
 	a.title = "Reflection Coefficient (Γ)"
 	a.xlabel = "Frequency (Hz)"
 	a.ylabels = ["Magnitude (dB)"]
 end
+end
 
 #Select which plots to actually display:
 plotlist = [plot_linf, plot_logf, plot_ysmith, plot_zsmith]
 #plotlist = [plot_zsmith]
 
+let plot, wfrm #HIDEWARN_0.7
 for plot in plotlist
 	for i in 1:length(Γload)
 		wfrm = add(plot, f, Γload[i], id="ZL=$(ZL[i])")
@@ -100,6 +103,7 @@ for plot in plotlist
 	end
 
 	add(mplot, plot)
+end
 end
 
 gplot = display(InspectDR.GtkDisplay(), mplot)

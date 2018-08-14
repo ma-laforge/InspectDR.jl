@@ -5,7 +5,7 @@
 #-------------------------------------------------------------------------------
 function render_baseannotation(canvas::PCanvas2D, graphinfo::Graph2DInfo,
 		xticklabels::Bool, plot::Plot2D, istrip::Int)
-	const strip = plot.strips[istrip]
+	strip = plot.strips[istrip] #WANTCONST
 	if plot.layout.values.enable_legend
 		legend_render(canvas, plot, istrip)
 	end
@@ -86,9 +86,9 @@ end
 #TODO: Should base API be written such that user provides databb, and have
 #      InspectDR calculate outwards instead?
 function render(ctx::CairoContext, plot::Plot2D, bb::BoundingBox)
-	const lyt = plot.layout.values
-	const databb = databounds(bb, lyt, grid1(plot))
-	const nstrips = length(plot.strips)
+	lyt = plot.layout.values #WANTCONST
+	databb = databounds(bb, lyt, grid1(plot)) #WANTCONST
+	nstrips = length(plot.strips) #WANTCONST
 
 	graphbblist = graphbounds_list(databb, lyt, nstrips)
 	refreshed = update_ddata(plot) #Also computes new extents
@@ -107,9 +107,9 @@ end
 #TODO: split in parts so that GUI can be refreshed before refreshing data
 #TODO: Or maybe send in final context so it can be done here.
 function render(bplot::CairoBufferedPlot, plot::Plot2D, bb::BoundingBox, refreshdata::Bool)
-	const lyt = plot.layout.values
-	const databb = databounds(bb, lyt, grid1(plot))
-	const nstrips = length(plot.strips)
+	lyt = plot.layout.values #WANTCONST
+	databb = databounds(bb, lyt, grid1(plot)) #WANTCONST
+	nstrips = length(plot.strips) #WANTCONST
 	refreshed = false
 
 	graphbblist = graphbounds_list(databb, lyt, nstrips)

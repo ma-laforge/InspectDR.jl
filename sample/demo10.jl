@@ -42,7 +42,7 @@ end
 
 #Compute info for a single cycle:
 #-------------------------------------------------------------------------------
-t = collect(linspace(0, T, ppcycle+1)[1:end-1]) #Time
+t = collect(range(0, stop=T, length=ppcycle+1)[1:end-1]) #Time
 npts = length(t); hpts = div(npts, 2) #npts should match ppcycle
 
 mains = mains_fn(t)
@@ -63,19 +63,19 @@ vrect = rectactive_sig*VRECT #Voltage @ rectifier
 
 #Extend data for multiple cycles:
 #-------------------------------------------------------------------------------
-t = collect(linspace(0, ncycles*T, ncycles*ppcycle+1)[1:end-1]) #Time
+t = collect(range(0, stop=ncycles*T, length=ncycles*ppcycle+1)[1:end-1]) #Time
 mains = repeat(mains, outer=ncycles)
 mains_rect = repeat(mains_rect, outer=ncycles)
 vrect = repeat(vrect, outer=ncycles)
 rectactive_sig = repeat(rectactive_sig, outer=ncycles)
 
 gaterange_list = [4.6:6.1, 9.4:12.9] #In # of cycles
-gate_b = 1.0+zeros(t) #Active low
+gate_b = 1.0 .+ zero(t) #Active low
 for gaterange in gaterange_list
 	irange = ppcycle*gaterange
 	istart = round(Int, minimum(irange))
 	istop = round(Int, maximum(irange))
-	gate_b[istart:istop] = 0
+	gate_b[istart:istop] .= 0
 end
 vrect_gated = vrect.*gate_b
 
@@ -102,6 +102,7 @@ plot = add(mplot, InspectDR.transientplot([:lin for i in siginfolist],
 plot.layout[:enable_legend] = true
 plot.layout[:halloc_legend] = 150
 
+let wfrm #HIDEWARN_0.7
 	for (i, siginfo) in enumerate(siginfolist)
 		id, sig, ext = siginfo
 		plot.strips[i].yext_full = ext
@@ -109,9 +110,10 @@ plot.layout[:halloc_legend] = 150
 			wfrm.line = line_default
 #			wfrm.glyph = InspectDR.glyph(shape=:o, size=3)
 	end
+end
 
 	#Overlay threshold onto |mains|, for convenience
-	wfrm = add(plot, t, zeros(t)+VRECT, id="thresh", strip=3)
+	wfrm = add(plot, t, zero(t) .+ VRECT, id="thresh", strip=3)
 		wfrm.line = line_overlay
 
 	#Overlay gate onto gated output:

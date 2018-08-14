@@ -34,8 +34,8 @@ end
 ===============================================================================#
 
 function render(canvas::PCanvas2D, mkr::HVMarker, graphinfo::Graph2DInfo)
-	const ctx = canvas.ctx
-	const graphbb = canvas.graphbb
+	ctx = canvas.ctx #WANTCONST
+	graphbb = canvas.graphbb #WANTCONST
 	if :none == mkr.line.style
 		return
 	end
@@ -58,7 +58,7 @@ end
 #==Rendering polyline for annotation
 ===============================================================================#
 function render(canvas::PCanvas2D, a::PolylineAnnotation, graphinfo::Graph2DInfo)
-	const ctx = canvas.ctx
+	ctx = canvas.ctx #WANTCONST
 
 	x = a.x; y = a.y
 	setlinestyle(ctx, LineStyle(a.line))
@@ -95,7 +95,7 @@ function render(canvas::PCanvas2D, a::PlotAnnotation, graphinfo::Graph2DInfo, st
 	return
 end
 
-function render{T<:PlotAnnotation}(canvas::PCanvas2D, alist::Vector{T}, graphinfo::Graph2DInfo, strip::Int)
+function render(canvas::PCanvas2D, alist::Vector{T}, graphinfo::Graph2DInfo, strip::Int) where T<:PlotAnnotation
 	for a in alist
 		render(canvas, a, graphinfo, strip)
 	end

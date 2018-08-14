@@ -2,6 +2,9 @@
 #-------------------------------------------------------------------------------
 using InspectDR
 using Colors
+import Printf: @sprintf
+
+
 
 #==Input
 ===============================================================================#
@@ -43,7 +46,7 @@ function roots(a,b,c)
 	return (result[1], result[2])
 end
 xf_o2(f, G, f_z, f_p1, f_p2) = #2nd order transfer function
-	G*(1+j*(f./f_z))./( (1+j*(f./f_p1)).*(1+j*(f./f_p2)) )
+	G*(1 .+ j*(f./f_z))./( (1 .+ j*(f./f_p1)).*(1 .+ j*(f./f_p2)) )
 function f_unitygain_f(f, G, f_z, f_p1, f_p2) #Compute unity gain frequency
 	invsq(x) = (result = 1/x; return result*result)
 	_z² = invsq(f_z); G² = G*G

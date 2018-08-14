@@ -44,11 +44,11 @@ graph = plot.strips[1]
 graph.grid = InspectDR.GridRect(vmajor=true, vminor=true, hmajor=true)
 
 style = :dashdot #solid/dashdot/...
-wfrm = add(plot, t, y+1, id="sin(2πt)+1")
+wfrm = add(plot, t, y .+1, id="sin(2πt)+1")
 	wfrm.line = line(color=blue, width=1, style=style)
-wfrm = add(plot, t, y-1, id="sin(2πt)-1")
+wfrm = add(plot, t, y .-1, id="sin(2πt)-1")
 	wfrm.line = line(color=red, width=5, style=style)
-wfrm = add(plot, t_lres, -2+4*(t_lres./tmax), id="-2+4t/tmax")
+wfrm = add(plot, t_lres, -2 .+4*(t_lres./tmax), id="-2+4t/tmax")
 	wfrm.line = line(color=blue, width=3, style=:dash)
 	wfrm.glyph = glyph(shape=:*, size=10)
 
@@ -56,11 +56,13 @@ a = plot.annotation
 	a.xlabel = "Time (s)"
 	a.ylabels = ["Signal Voltage (V)"]
 
+let wfrm #HIDEWARN_0.7
 #Show if uses f1 acceleration:
 for wfrm in plot.data
 	id = wfrm.id
 	f1accel = isa(wfrm.ds, InspectDR.IDataset{true})
 	@show id, f1accel
+end
 end
 
 gplot = display(InspectDR.GtkDisplay(), plot)

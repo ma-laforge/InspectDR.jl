@@ -43,6 +43,7 @@ function initialize_defaults()
 	local userdefaults = Dict{Symbol, Any}()
 	try
 		userdefaults = copy(Main.DEFAULTS_INSPECTDR)
+	finally
 	end
 
 	function condget(dict, key::Symbol, T::Type, default)
@@ -85,7 +86,8 @@ function initialize_defaults()
 		end
 	end
 
-	global const defaults = Defaults(rendersvg, pointdropmatrix, plotlayout, mplotlayout)
+	#WANTCONST:
+	global defaults = Defaults(rendersvg, pointdropmatrix, plotlayout, mplotlayout)
 	return
 end
 

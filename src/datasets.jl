@@ -40,7 +40,7 @@ end
 function _reduce_nodrop(input::IDataset, xext::PExtents1D, xres_max::Integer)
 	x = input.x; y = input.y
 	n_ds = length(x) #numer of points of input dataset
-	result = Array{Point2D}(n_ds)
+	result = Array{Point2D}(undef, n_ds)
 	for i in 1:n_ds
 		result[i] = Point2D(x[i], y[i])
 	end
@@ -51,15 +51,15 @@ end
 #    xres_max: Max number of x-points in data window.
 #returns: Vector{Point2D}
 function _reduce_droppts(input::IDataset{true}, xext::PExtents1D, xres_max::Integer)
-	const xres = (xext.max - xext.min)/ xres_max
-	const min_lookahead = 3 #number of xres windows to potentially collapse
-	const thresh_xres = min_lookahead*xres #maximum x-distance to look ahead for reduction
+	xres = (xext.max - xext.min)/ xres_max #WANTCONST
+	min_lookahead = 3 #WANTCONST number of xres windows to potentially collapse
+	thresh_xres = min_lookahead*xres #WANTCONST maximum x-distance to look ahead for reduction
 	x = input.x; y = input.y
 	n_ds = length(x) #numer of points of input dataset
 	#FIXME: improve algorithm
 	#Algorithm succeptible to cumulative errors (esp w large x-values & large xres_max):
 	sz = min(n_ds, xres_max)+1+2*min_lookahead #Allow extra points in case
-	result = Array{Point2D}(sz)
+	result = Array{Point2D}(undef, sz)
 	n = 0 #Number of points in reduced dataset
 	i = 1 #Index into input dataset
 
@@ -106,7 +106,7 @@ function _reduce_droppts(input::IDataset{true}, xext::PExtents1D, xres_max::Inte
 			#Add points representing "internal limits"
 			#(if they exceed external):
 			ywnd = view(y, i:ifin) #y-window ~within 1 xres.
-			i_ymin = i-1+indmin(ywnd); i_ymax = i-1+indmax(ywnd)
+			i_ymin = i-1+argmin(ywnd); i_ymax = i-1+argmax(ywnd)
 			ymin_wnd = y[i_ymin]; ymax_wnd = y[i_ymax]
 			xint = [x[i_ymin], x[i_ymax]]
 			yint = [ymin_wnd, ymax_wnd]
@@ -116,8 +116,8 @@ function _reduce_droppts(input::IDataset{true}, xext::PExtents1D, xres_max::Inte
 #ysel = Bool[true, true] #Debug: add points no matter what
 #@show ilahead-i
 			#offset: Decide whether to display min or max first - improves look of minres "glitch"
-			offset = prevy < pfin.y ?0 :1 #Depending if trend is increasing or decreasing
-			for j in (offset+(1:2))
+			offset = prevy < pfin.y ? 0 : 1 #Depending if trend is increasing or decreasing
+			for j in (offset .+ (1:2))
 				idx = 1+(j&0x1)
 				if !ysel[idx]; continue; end #Only add points if desired
 				n+=1;

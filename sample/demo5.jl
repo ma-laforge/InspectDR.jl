@@ -38,9 +38,11 @@ plot = add(mplot, InspectDR.Plot2D(:lin, [:lin, :log10],
 	#Define extents & scales:
 	strip_logy.grid = InspectDR.GridRect(vmajor=true, hmajor=true, hminor=true)
 
+let wfrm #HIDEWARN_0.7
 for i in 1:length(plot.strips)
 	wfrm = add(plot, x, b.^(k*x), strip=i)
 		wfrm.line = default_line
+end
 end
 
 gplot = display(InspectDR.GtkDisplay(), mplot)

@@ -21,8 +21,8 @@ Cairo.restore(ctx)
 end
 
 function legend_render(canvas::PCanvas2D, plot::Plot2D, istrip::Int)
-	const ctx = canvas.ctx
-	const lyt = plot.layout.values
+	ctx = canvas.ctx #WANTCONST
+	lyt = plot.layout.values #WANTCONST
 
 	xleft = canvas.bb.xmax - lyt.halloc_legend
 	bb = BoundingBox(xleft, canvas.bb.xmax, canvas.graphbb.ymin, canvas.graphbb.ymin)

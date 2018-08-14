@@ -50,9 +50,9 @@ GlyphLineSegments(x1::Vector, x2, y1, y2; scale::DReal=1.0) =
 #==Generator functions
 ===============================================================================#
 function _stargenerator(n::Int, webscale::DReal; scale::DReal=1.0)
-	x = Vector{DReal}(2*n)
-	y = Vector{DReal}(2*n)
-	ϕ = linspace(0, 2*pi, 2*n+1)
+	x = Vector{DReal}(undef, 2*n)
+	y = Vector{DReal}(undef, 2*n)
+	ϕ = range(0, stop=2*pi, length=2*n+1)
 
 	for i in 1:2:length(x)
 		x[i] = sin(ϕ[i])
@@ -65,9 +65,9 @@ function _stargenerator(n::Int, webscale::DReal; scale::DReal=1.0)
 end
 
 function _polygongenerator(n::Int; scale::DReal=1.0)
-	x = Vector{DReal}(n)
-	y = Vector{DReal}(n)
-	ϕ = linspace(0, 2*pi, n+1)
+	x = Vector{DReal}(undef, n)
+	y = Vector{DReal}(undef, n)
+	ϕ = range(0, stop=2*pi, length=n+1)
 
 	for i in 1:length(x)
 		x[i] = sin(ϕ[i])
@@ -78,7 +78,7 @@ function _polygongenerator(n::Int; scale::DReal=1.0)
 end
 
 function ptmap_rotate(g::GlyphPolyline, Θ::Float64)
-	const cosΘ = cos(Θ); const sinΘ = sin(Θ)
+	cosΘ = cos(Θ); sinΘ = sin(Θ) #WANTCONST
 	x = similar(g.x); y = similar(g.y)
 	for i in 1:length(g.x)
 		xi = g.x[i]; yi = g.y[i]

@@ -2,6 +2,7 @@
 #-------------------------------------------------------------------------------
 using InspectDR
 using Colors
+using Random
 
 red = RGB24(1, 0, 0)
 green = RGB24(0, 1, 0)
@@ -11,7 +12,7 @@ blue = RGB24(0, 0, 1)
 #==Input
 ===============================================================================#
 x = collect(0:100) #Must vectorize using collect - ranges not yet supported
-srand(11) #Reseed
+Random.seed!(11) #Reseed
 y = randn(length(x))
 
 

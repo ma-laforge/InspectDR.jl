@@ -68,7 +68,7 @@ transientplot(yscale::Symbol=:lin; kwargs...) = transientplot([yscale]; kwargs..
 #Generate empty Smith chart:
 function smithchart(t::Symbol=:Z; ref::Number=1.0, title="Smith Chart",
 	xlabel = "Real(Γ)", ylabels = ["Imaginary(Γ)"], kwargs...)
-	const smithext = InspectDR.PExtents1D(min=-1.1,max=1.1) #A bit of padding
+	smithext = InspectDR.PExtents1D(min=-1.1,max=1.1) #WANTCONST A bit of padding
 	plot = InspectDR.Plot2D(:lin, :lin, title=title, xlabel=xlabel, ylabels=ylabels; kwargs...)
 	graph = plot.strips[1]
 	graph.grid = InspectDR.GridSmith(t, ref=ref)

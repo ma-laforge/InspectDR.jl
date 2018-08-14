@@ -133,7 +133,7 @@ end
 #-------------------------------------------------------------------------------
 function render(ctx::CairoContext, a::Annotation,
 	bb::BoundingBox, databb::BoundingBox, graphbblist::Vector{BoundingBox}, lyt::PlotLayout)
-	const TIMESTAMP_OFFSET = 3
+	TIMESTAMP_OFFSET = 3 #WANTCONST
 
 	#Title
 #	xcenter = (bb.xmin+bb.xmax)/2 #Entire plot BB.
@@ -165,7 +165,7 @@ end
 #Render frame around graph
 #-------------------------------------------------------------------------------
 function render_graphframe(canvas::PCanvas2D, aa::AreaAttributes)
-	const ctx = canvas.ctx
+	ctx = canvas.ctx #WANTCONST
 Cairo.save(ctx)
 	setlinestyle(ctx, LineStyle(aa.line))
 	Cairo.rectangle(ctx, canvas.graphbb)
@@ -212,7 +212,7 @@ function render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 end
 
 function render_grid(canvas::PCanvas2D, lyt::PlotLayout, grid::GridRect)
-	const ctx = canvas.ctx
+	ctx = canvas.ctx #WANTCONST
 	Cairo.save(ctx) #-----
 	render_vlines(ctx, canvas.graphbb, canvas.xf, lyt, grid.xlines)
 	render_hlines(ctx, canvas.graphbb, canvas.xf, lyt, grid.ylines)
@@ -253,7 +253,7 @@ end
 #Render ticks: Well-defined GridLines
 #-------------------------------------------------------------------------------
 function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, xlines::GridLines, xs::AxisScale, ticklabels::Bool)
-	const tframe = DReal(lyt.frame_data.line.width) #TODO: Fix LineAttributes to have concrete type
+	tframe = DReal(lyt.frame_data.line.width) #WANTCONST TODO: Fix LineAttributes to have concrete type
 	fmt = TickLabelFormatting(lyt.format_xtick, xlines.rnginfo)
 	yframe = graphbb.ymax
 	ylabel = graphbb.ymax + lyt.voffset_xticklabel
@@ -274,7 +274,7 @@ function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	end
 end
 function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, ylines::GridLines, ys::AxisScale)
-	const tframe = DReal(lyt.frame_data.line.width) #TODO: Fix LineAttributes to have concrete type
+	tframe = DReal(lyt.frame_data.line.width) #WANTCONST TODO: Fix LineAttributes to have concrete type
 	fmt = TickLabelFormatting(lyt.format_ytick, ylines.rnginfo)
 	xframe = graphbb.xmin
 	xlabel = graphbb.xmin - lyt.hoffset_yticklabel
@@ -335,13 +335,13 @@ end
 #Render NaNs on plot:
 #-------------------------------------------------------------------------------
 function rendernans(canvas::PCanvas2D, wfrm::IWaveform)
-	const NAN_LINE = LineStyle(
+	NAN_LINE = LineStyle(
 		:solid, Float64(4), ARGB32(1, 0, 0, 0.5)
-	)
-	const ctx = canvas.ctx
-	const graphbb = canvas.graphbb
-	const x = wfrm.ds.x
-	const y = wfrm.ds.y
+	) #WANTCONST
+	ctx = canvas.ctx #WANTCONST
+	graphbb = canvas.graphbb #WANTCONST
+	x = wfrm.ds.x #WANTCONST
+	y = wfrm.ds.y #WANTCONST
 
 	if length(x) != length(y)
 		error("x & y - vector length mismatch.")
@@ -384,8 +384,8 @@ end
 #Render an actual waveform
 #-------------------------------------------------------------------------------
 function render(canvas::PCanvas2D, wfrm::DWaveform)
-	const ctx = canvas.ctx
-	const ds = wfrm.ds
+	ctx = canvas.ctx #WANTCONST
+	ds = wfrm.ds #WANTCONST
 
 	if length(ds) < 1; return; end
 

@@ -22,7 +22,7 @@ function isincreasing(v::Vector)
 	return true
 end
 
-isincreasing(r::Range) = (step(r) > 0)
+isincreasing(r::AbstractRange) = (step(r) > 0)
 
 #==Basic operations
 ===============================================================================#

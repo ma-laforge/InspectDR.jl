@@ -83,8 +83,8 @@ InputXfrm2D(xs::AxisScale, ys::AxisScale, g::PlotGrid) = InputXfrm2D(xs, ys) #Gr
 InputXfrm2D(xs::AxisScale, ys::AxisScale, g::GridSmith) = InputXfrm2D(InputXfrm1DSpec{:real}(), InputXfrm1DSpec{:imag}())
 
 function GridSmith(zgrid::Bool, ref::Float64)
-	const labelbase = DReal[0.2, 0.4, 0.6, 2, 4, 10]
-	const minorextra = DReal[0.8, 1.5, 3, 6, 20]
+	labelbase = DReal[0.2, 0.4, 0.6, 2, 4, 10] #WANTCONST
+	minorextra = DReal[0.8, 1.5, 3, 6, 20] #WANTCONST
 	#TODO: change with ext??
 	majorR = DReal[0, 1]
 	minorR = vcat(labelbase, minorextra)
@@ -175,7 +175,7 @@ function gridlines(scale::AxisScale, min::DReal, max::DReal, displaymajor::Bool,
 	else #Just in case
 		npts = 0
 	end
-	grd.minor = Array{DReal}(npts)
+	grd.minor = Array{DReal}(undef, npts)
 
 	nextmajor = major_i1
 	j = 1
@@ -208,10 +208,10 @@ function gridlines(scale::LogScale{10}, logmin::DReal, logmax::DReal, displaymaj
 	offsets = collect(log10.(2:1:9))
 
 	if length(grd.major) > 0
-		minor = (grd.major[1]-1)+offsets
+		minor = (grd.major[1]-1) .+ offsets
 
 		for curline in grd.major
-			append!(minor, curline+offsets)
+			append!(minor, curline .+ offsets)
 		end
 
 		#Strip out values beyond specified range:

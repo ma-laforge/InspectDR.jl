@@ -20,7 +20,7 @@ end
 
 #==Functions
 ===============================================================================#
-raiseevent(::Void, source, args...) = nothing
+raiseevent(::Nothing, source, args...) = nothing
 
 function raiseevent(info::HandlerInfo, source, args...)
 	eventhandler = info.fn

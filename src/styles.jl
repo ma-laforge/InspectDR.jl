@@ -14,7 +14,7 @@ mutable struct StyleType{T<:AbstractStyle}
 	defaults::T #Defaults for this style
 	overwrite::Set{Symbol} #Masks out which elements user wishes to overwrite
 end
-StyleType{T<:AbstractStyle}(defaults::T) =
+StyleType(defaults::T) where T<:AbstractStyle =
 	StyleType(deepcopy(defaults), defaults, Set{Symbol}([]))
 
 
@@ -40,7 +40,7 @@ function overwrite!(s::StyleType, key::Symbol, value)
 end
 
 function refresh!(s::StyleType)
-	proplist = fieldnames(s.defaults)
+	proplist = fieldnames(typeof(s.defaults))
 	for key in proplist
 		if !(key in s.overwrite)
 			value = getfield(s.defaults, key)
@@ -50,7 +50,7 @@ function refresh!(s::StyleType)
 	return
 end
 
-function setstyle!{T<:AbstractStyle}(s::StyleType{T}, value::T; refresh::Bool=true)
+function setstyle!(s::StyleType{T}, value::T; refresh::Bool=true) where T<:AbstractStyle
 	s.defaults = value
 	if refresh
 		refresh!(s)

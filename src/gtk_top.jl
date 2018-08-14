@@ -20,27 +20,27 @@ const COORDSTAT_NONE = "$TEXTH_HACK_STR(x, y) = ( , )"
 =#
 @guarded function cb_keypress(w::Ptr{Gtk.GObject}, event::Gtk.GdkEventKey, pwidget::PlotWidget)
 	handleevent_keypress(pwidget.state, pwidget, event)
-	nothing #Void signature
+	nothing #Known value
 end
 @guarded function cb_scalechanged(w::Ptr{Gtk.GObject}, pwidget::PlotWidget)
 	handleevent_scalechanged(pwidget.state, pwidget)
-	nothing #Void signature
+	nothing #Known value
 end
 @guarded function cb_mousepress(w::Ptr{Gtk.GObject}, event::Gtk.GdkEventButton, pwidget::PlotWidget)
 	handleevent_mousepress(pwidget.state, pwidget, event)
-	nothing #Void signature
+	nothing #Known value
 end
 @guarded function cb_mouserelease(w::Ptr{Gtk.GObject}, event::Gtk.GdkEventButton, pwidget::PlotWidget)
 	handleevent_mouserelease(pwidget.state, pwidget, event)
-	nothing #Void signature
+	nothing #Known value
 end
 @guarded function cb_mousemove(w::Ptr{Gtk.GObject}, event::Gtk.GdkEventMotion, pwidget::PlotWidget)
 	handleevent_mousemove(pwidget.state, pwidget, event)
-	nothing #Void signature
+	nothing #Known value
 end
 @guarded function cb_mousescroll(w::Ptr{Gtk.GObject}, event::Gtk.GdkEventScroll, pwidget::PlotWidget)
 	handleevent_mousescroll(pwidget.state, pwidget, event)
-	nothing #Void signature
+	nothing #Known value
 end
 
 
@@ -48,7 +48,7 @@ end
 ===============================================================================#
 @guarded function cb_wnddestroyed(w::Ptr{Gtk.GObject}, gplot::GtkPlot)
 	gplot.destroyed = true
-	nothing #Void signature
+	nothing #Known value
 end
 @guarded function cb_mnufileexport(w::Ptr{Gtk.GObject}, gplot::GtkPlot)
 	filepath = Gtk.save_dialog("Export plot...", _Gtk.Null(),
@@ -68,11 +68,11 @@ end
 	catch
 		Gtk.warn_dialog("Write failed: '$filepath'")
 	end
-	nothing #Void signature
+	nothing #Known value
 end
 @guarded function cb_mnufileclose(w::Ptr{Gtk.GObject}, gplot::GtkPlot)
 	window_close(gplot.wnd)
-	nothing #Void signature
+	nothing #Known value
 end
 
 
@@ -81,7 +81,7 @@ end
 #plothover event: show plot coordinates under mouse.
 #-------------------------------------------------------------------------------
 function handleevent_plothover(gplot::GtkPlot, pwidget::PlotWidget, x::Float64, y::Float64)
-	const plotinfo = pwidget.plotinfo
+	plotinfo = pwidget.plotinfo #WANTCONST
 
 	istrip = pwidget.mouseover.istrip
 	pos = pwidget.mouseover.pos
@@ -95,7 +95,7 @@ function handleevent_plothover(gplot::GtkPlot, pwidget::PlotWidget, x::Float64, 
 		statstr = COORDSTAT_NONE
 	end
 
-	setproperty!(gplot.status, :label, statstr)
+	set_gtk_property!(gplot.status, :label, statstr)
 	nothing
 end
 
@@ -122,18 +122,18 @@ end
 function PlotWidget(plot::Plot)
 	vbox = _Gtk.Box(true, 0)
 		can_focus(vbox, true)
-#		setproperty!(vbox, "focus-on-click", true)
-#		setproperty!(vbox, :focus_on_click, true)
+#		set_gtk_property!(vbox, "focus-on-click", true)
+#		set_gtk_property!(vbox, :focus_on_click, true)
 	canvas = Gtk.Canvas()
-		setproperty!(canvas, :vexpand, true)
+		set_gtk_property!(canvas, :vexpand, true)
 	w_xscale = _Gtk.Scale(false, 1:XAXIS_SCALEMAX)
 		xscale = _Gtk.Adjustment(w_xscale)
-		setproperty!(xscale, :value, 1)
+		set_gtk_property!(xscale, :value, 1)
 #		draw_value(w_xscale, false)
 		value_pos(w_xscale, Int(GtkPositionType.GTK_POS_RIGHT))
 	w_xpos = _Gtk.Scale(false, -.5:XAXIS_POS_STEPRES:.5)
 		xpos = _Gtk.Adjustment(w_xpos)
-		setproperty!(xpos, :value, 0)
+		set_gtk_property!(xpos, :value, 0)
 #		draw_value(w_xpos, false)
 		value_pos(w_xpos, Int(GtkPositionType.GTK_POS_RIGHT))
 
@@ -164,13 +164,13 @@ function PlotWidget(plot::Plot)
 	plot.parentannot = [pwidget.markers]
 
 	#Register callback functions:
-	signal_connect(cb_scalechanged, xscale, "value-changed", Void, (), false, pwidget)
-	signal_connect(cb_scalechanged, xpos, "value-changed", Void, (), false, pwidget)
-	signal_connect(cb_keypress, vbox, "key-press-event", Void, (Ref{Gtk.GdkEventKey},), false, pwidget)
-	signal_connect(cb_mousepress, vbox, "button-press-event", Void, (Ref{Gtk.GdkEventButton},), false, pwidget)
-	signal_connect(cb_mouserelease, vbox, "button-release-event", Void, (Ref{Gtk.GdkEventButton},), false, pwidget)
-	signal_connect(cb_mousemove, vbox, "motion-notify-event", Void, (Ref{Gtk.GdkEventMotion},), false, pwidget)
-	signal_connect(cb_mousescroll, vbox, "scroll-event", Void, (Ref{Gtk.GdkEventScroll},), false, pwidget)
+	signal_connect(cb_scalechanged, xscale, "value-changed", Nothing, (), false, pwidget)
+	signal_connect(cb_scalechanged, xpos, "value-changed", Nothing, (), false, pwidget)
+	signal_connect(cb_keypress, vbox, "key-press-event", Nothing, (Ref{Gtk.GdkEventKey},), false, pwidget)
+	signal_connect(cb_mousepress, vbox, "button-press-event", Nothing, (Ref{Gtk.GdkEventButton},), false, pwidget)
+	signal_connect(cb_mouserelease, vbox, "button-release-event", Nothing, (Ref{Gtk.GdkEventButton},), false, pwidget)
+	signal_connect(cb_mousemove, vbox, "motion-notify-event", Nothing, (Ref{Gtk.GdkEventMotion},), false, pwidget)
+	signal_connect(cb_mousescroll, vbox, "scroll-event", Nothing, (Ref{Gtk.GdkEventScroll},), false, pwidget)
 
 	#Register event: draw function
 	Gtk.@guarded Gtk.draw(pwidget.canvas) do canvas
@@ -223,7 +223,7 @@ function sync_subplots(gplot::GtkPlot)
 	for i in length(gplot.grd):-1:1
 		Gtk.delete!(gplot.grd, gplot.grd[i]) #Does not destroy existing child widgets
 	end
-	const ncols = gplot.src.layout.values.ncolumns
+	ncols = gplot.src.layout.values.ncolumns #WANTCONST
 	for (i, w) in enumerate(wlist)
 		row = div(i-1, ncols)+1
 		col = i - ((row-1)*ncols)
@@ -231,8 +231,8 @@ function sync_subplots(gplot::GtkPlot)
 
 		#FIXME/HACK: rebuilding grd appears to inhibit the redraw mechanism.
 		#Toggling w.canvas -> visible unclogs refresh algorithm somehow.
-		Gtk.setproperty!(w.canvas, :visible, false)
-		Gtk.setproperty!(w.canvas, :visible, true)
+		set_gtk_property!(w.canvas, :visible, false)
+		set_gtk_property!(w.canvas, :visible, true)
 	end
 	return
 end
@@ -247,15 +247,15 @@ function GtkPlot(mp::Multiplot)
 		push!(mnufile, _Gtk.SeparatorMenuItem())
 		mnuquit = Gtk_addmenuitem(mnufile, "_Quit")
 	grd = Gtk.Grid() #Main grid with different subplots.
-		setproperty!(grd, :column_homogeneous, true)
-		#setproperty!(grd, :column_spacing, 15) #Gap between
+		set_gtk_property!(grd, :column_homogeneous, true)
+		#set_gtk_property!(grd, :column_spacing, 15) #Gap between
 	status = _Gtk.Label("")#"(x,y) =")
-		setproperty!(status, :hexpand, true)
-		setproperty!(status, :ellipsize, PANGO_ELLIPSIZE_END)
-		setproperty!(status, :xalign, 0.0)
-		setproperty!(status, :label, COORDSTAT_NONE)
+		set_gtk_property!(status, :hexpand, true)
+		set_gtk_property!(status, :ellipsize, PANGO_ELLIPSIZE_END)
+		set_gtk_property!(status, :xalign, 0.0)
+		set_gtk_property!(status, :label, COORDSTAT_NONE)
 		sbar_frame = _Gtk.Frame(status)
-			setproperty!(sbar_frame, "shadow-type", GtkShadowType.GTK_SHADOW_ETCHED_IN)
+			set_gtk_property!(sbar_frame, "shadow-type", GtkShadowType.GTK_SHADOW_ETCHED_IN)
 
 	vbox = _Gtk.Box(true, 0)
 		push!(vbox, mb) #Menu bar
@@ -272,9 +272,9 @@ function GtkPlot(mp::Multiplot)
 	end
 
 	showall(wnd)
-	signal_connect(cb_wnddestroyed, wnd, "destroy", Void, (), false, gplot)
-	signal_connect(cb_mnufileexport, mnuexport, "activate", Void, (), false, gplot)
-	signal_connect(cb_mnufileclose, mnuquit, "activate", Void, (), false, gplot)
+	signal_connect(cb_wnddestroyed, wnd, "destroy", Nothing, (), false, gplot)
+	signal_connect(cb_mnufileexport, mnuexport, "activate", Nothing, (), false, gplot)
+	signal_connect(cb_mnufileclose, mnuquit, "activate", Nothing, (), false, gplot)
 
 	return gplot
 end
@@ -302,10 +302,10 @@ end
 function refresh(gplot::GtkPlot)
 	if !gplot.destroyed
 		settitle(gplot.wnd, gplot.src.title)
-		setproperty!(gplot.grd, :visible, false) #Suppress gliching
+		set_gtk_property!(gplot.grd, :visible, false) #Suppress gliching
 			sync_subplots(gplot)
 			map(refresh, gplot.subplots) #Is this necessary?
-		setproperty!(gplot.grd, :visible, true)
+		set_gtk_property!(gplot.grd, :visible, true)
 		showall(gplot.grd)
 		#TODO: find a way to force GUI to updates here... Animations don't refresh...
 		sleep(eps(0.0)) #Ugly Hack: No guarantee this works... There must be a better way.
