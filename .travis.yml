@@ -5,8 +5,8 @@ os:
   - osx
 julia:
   - 0.7
-  - 1.0
-  - nightly
+#  - 1.0
+#  - nightly
 matrix:
   allow_failures:
     - julia: nightly
@@ -23,4 +23,4 @@ script:
   - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - TESTCMD="xvfb-run julia"
   - if [[ "$(uname)" != "Linux" ]]; then TESTCMD="julia"; fi
-  - $TESTCMD -e 'Pkg.clone(pwd()); Pkg.build("InspectDR"); Pkg.test("InspectDR"; coverage=true)'
+  - $TESTCMD -e 'using Pkg; Pkg.clone(pwd()); Pkg.build("InspectDR"); Pkg.test("InspectDR"; coverage=true)'
