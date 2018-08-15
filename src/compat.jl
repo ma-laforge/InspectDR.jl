@@ -33,12 +33,12 @@ function checkcompat_plots()
 	try
 		#Adds to load up time... try not to do this...
 		vPlots = get(pkglist, "Plots", nothing)
-	finally
+	catch
 	end
 	try
 		#Adds to load up time... try not to do this...
 		vInspect = get(pkglist, "InspectDR", nothing)
-	finally
+	catch
 	end
 
 	#Debug:

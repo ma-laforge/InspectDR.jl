@@ -43,7 +43,7 @@ function initialize_defaults()
 	local userdefaults = Dict{Symbol, Any}()
 	try
 		userdefaults = copy(Main.DEFAULTS_INSPECTDR)
-	finally
+	catch
 	end
 
 	function condget(dict, key::Symbol, T::Type, default)
