@@ -127,15 +127,15 @@ Base.show(io::IO, mime::MIMEall, plot::Plot) =
 	_show(io, mime, plot)
 
 
-#=="mimewritable" interface
+#=="showable" interface
 ===============================================================================#
-Base.mimewritable(mime::MIME"text/plain", mplot::Multiplot) = true
-Base.mimewritable(mime::MIME, mplot::Multiplot) = false #Default
-Base.mimewritable(mime::MIMEall, mplot::Multiplot) = true #Supported
-Base.mimewritable(mime::MIMEsvg, mplot::Multiplot) = defaults.rendersvg #depends
+Base.showable(mime::MIME"text/plain", mplot::Multiplot) = true
+Base.showable(mime::MIME, mplot::Multiplot) = false #Default
+Base.showable(mime::MIMEall, mplot::Multiplot) = true #Supported
+Base.showable(mime::MIMEsvg, mplot::Multiplot) = defaults.rendersvg #depends
 
-Base.mimewritable(mime::MIME"text/plain", p::Plot) = true
-Base.mimewritable(mime::MIME, p::Plot) = Base.mimewritable(mime::MIME, Multiplot())
+Base.showable(mime::MIME"text/plain", p::Plot) = true
+Base.showable(mime::MIME, p::Plot) = Base.showable(mime::MIME, Multiplot())
 
 
 #=="write" interface

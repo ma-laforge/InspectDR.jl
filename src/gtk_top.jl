@@ -271,7 +271,7 @@ function GtkPlot(mp::Multiplot)
 		focus(wnd, gplot.subplots[end].widget)
 	end
 
-	showall(wnd)
+	Gtk.showall(wnd)
 	signal_connect(cb_wnddestroyed, wnd, "destroy", Nothing, (), false, gplot)
 	signal_connect(cb_mnufileexport, mnuexport, "activate", Nothing, (), false, gplot)
 	signal_connect(cb_mnufileclose, mnuquit, "activate", Nothing, (), false, gplot)
@@ -306,7 +306,7 @@ function refresh(gplot::GtkPlot)
 			sync_subplots(gplot)
 			map(refresh, gplot.subplots) #Is this necessary?
 		set_gtk_property!(gplot.grd, :visible, true)
-		showall(gplot.grd)
+		Gtk.showall(gplot.grd)
 		#TODO: find a way to force GUI to updates here... Animations don't refresh...
 		sleep(eps(0.0)) #Ugly Hack: No guarantee this works... There must be a better way.
 	end
