@@ -317,42 +317,6 @@ end
 #==Constructor-like functions
 ===============================================================================#
 
-#axes function:
-#TODO: deprecate axes()... left for reference
-#Interface is a bit irregular, but should be easy to use...
-#-------------------------------------------------------------------------------
-function axes(a1::Symbol)
-	if :smith == a1
-		return :smith_Z
-	elseif :polar == a1
-		return :polar
-	else
-		throw(MethodError(axes, (a1,)))
-	end
-end
-
-function axes(a1::Symbol, a2::Symbol; ref = nothing)
-	if :smith == a1
-		return Symbol("smith_$(a2)_$(ref)")
-	elseif ref != nothing
-		error("cannot set ref for axes(:$a1, :$a2)")
-	end
-
-	if :polar == a1
-		return Symbol("polar_$(a2)")
-	else
-		return Symbol("rect_$(a1)_$(a2)")
-	end
-end
-
-function axes(a1::Symbol, a2::Symbol, a3::Symbol)
-	if :polar == a1
-		return Symbol("polar_$(a2)_$(a3)")
-	else
-		throw(MethodError(axes, (a1,a2,a3)))
-	end
-end
-
 
 #==Accessors
 ===============================================================================#
