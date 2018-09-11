@@ -47,6 +47,11 @@ GlyphLineSegments(x1::Vector, x2, y1, y2; scale::DReal=1.0) =
 	GlyphLineSegments(x1*scale, x2*scale, y1*scale, y2*scale)
 
 
+#==Helper functions
+===============================================================================#
+isglyph(::Glyph) = true
+isglyph(s::Symbol) = (s != :none) #Not necessarily a valid glyph id
+
 #==Generator functions
 ===============================================================================#
 function _stargenerator(n::Int, webscale::DReal; scale::DReal=1.0)
@@ -169,9 +174,9 @@ const GLYPH_OCTAGON = _polygongenerator(8, scale=0.6)
 #	GlyphPolyline(p.x*_size, p.y*_size, p.closepath)
 
 
-#==Scaling functions
+#==Accessors
 ===============================================================================#
-isglyph(s::Symbol) = (s != :none) #Not necessarily a valid glyph id
+Glyph(g::Glyph) = g #Passthrough.
 function Glyph(s::Symbol)
 	#TODO: use Map instead?  precompile issues?
 	s == :o && return GLYPH_CIRCLE
