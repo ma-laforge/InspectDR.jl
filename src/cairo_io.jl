@@ -62,10 +62,6 @@ end
 #==MIME interface
 ===============================================================================#
 
-#Maintain text/plain MIME support (Is this ok?).
-Base.show(io::IO, ::MIME"text/plain", plot::Plot) = Base.showcompact(io, plot)
-Base.show(io::IO, ::MIME"text/plain", mplot::Multiplot) = Base.showcompact(io, mplot)
-
 #w, h: w/h of entire figure.
 function _show(stream::IO, mime::MIME, mplot::Multiplot, w::Float64, h::Float64)
 	yoffset = mplot.layout.values.valloc_title
@@ -119,6 +115,10 @@ Base.show(io::IO, mime::MIME, mplot::Multiplot) =
 	throw(MethodError(show, (io, mime, mplot)))
 Base.show(io::IO, mime::MIME, plot::Plot) =
 	throw(MethodError(show, (io, mime, plot)))
+
+#Maintain text/plain MIME support (Is this ok?).
+Base.show(io::IO, ::MIME"text/plain", plot::Plot) = Base.show(io, plot)
+Base.show(io::IO, ::MIME"text/plain", mplot::Multiplot) = Base.show(io, mplot)
 
 #show() Plot/Multiplot: Supported MIMEs:
 Base.show(io::IO, mime::MIMEall, mplot::Multiplot) =
