@@ -1,5 +1,5 @@
 
-if !isdefined(:BodePlots)
+if !@isdefined(BodePlots)
 include("BodePlots.jl")
 end
 
@@ -10,6 +10,7 @@ import BodePlots
 
 using InspectDR
 import InspectDR: Plot2D
+import Printf: @sprintf
 using NumericIO
 using Colors
 
@@ -67,7 +68,7 @@ function ω_0(G::Xf1)
 	c = -K²
 	r = BodePlots.roots(a,b,c) #Roots of ω²
 
-	const thresh = deg2rad(1) #1 degree
+	thresh = deg2rad(1) #WANTCONST: 1 degree
 	rvalid = Float64[NaN,NaN]
 	for i in 1:2
 		val = r[i]
@@ -80,9 +81,9 @@ function ω_0(G::Xf1)
 end
 
 function step_err(s::Sys2, t::Vector)
-	const α = s.α
-	const ωn = s.ωn
-	const ζ = s.ζ
+	α = s.α #WANTCONST
+	ωn = s.ωn #WANTCONST
+	ζ = s.ζ #WANTCONST
 	csqrt(x) = sqrt(complex(x))
 	ζroot = csqrt(ζ^2-1)
 	herr(f) = (ζ*(2α-1)/ζroot+f*1)*exp.(-ωn*t*(ζ+f*ζroot))
@@ -99,8 +100,8 @@ step_resp(s::Sys2, t::Vector) = 1-step_err(s, t)
 #==Main functions
 ===============================================================================#
 function newplot()
-	const w = 500; const h = w/1.6 #Select plot width/height
-	const yext_step = InspectDR.PExtents1D(0, 1.6)
+	w = 500; h = w/1.6 #WANTCONST Select plot width/height
+	yext_step = InspectDR.PExtents1D(0, 1.6) #WANTCONST
 
 	mplot = InspectDR.Multiplot(title="PLL Characteristics")
 	Δh = mplot.layout[:valloc_title]
@@ -142,7 +143,7 @@ end
 #Modify previously-generated Bode plot (base algorithm):
 #-------------------------------------------------------------------------------
 function update_step(plot::InspectDR.Plot2D, t::Vector, y::Vector)
-	const ldata = line(color=blue, width=3, style=:solid)
+	ldata = line(color=blue, width=3, style=:solid) #WANTCONST
 
 	plot.data = [] #Clear old data
 
@@ -159,14 +160,14 @@ end
 #Update annotation on Bode plot (enabled=false to clear annotation):
 #-------------------------------------------------------------------------------
 function update_bodeannot(plot_bode::Plot2D, G::Xf1, ωn)
-	const lmarker = line(style=:dash, width=2.5)
-	const lmarker_light = line(style=:solid, width=2.5, color=RGB24(.4,.4,.4))
-	const fp = G.ωp/(2pi)
-	const fz = G.ωz/(2pi)
-	const fn = ωn/(2pi)
-	const ω0 = ω_0(G)
-	const f0 = ω0/(2pi)
-	const phase0 = phase.(xf_ol([ω0], G)[1]) #Unity gain phase
+	lmarker = line(style=:dash, width=2.5) #WANTCONST
+	lmarker_light = line(style=:solid, width=2.5, color=RGB24(.4,.4,.4)) #WANTCONST
+	fp = G.ωp/(2pi) #WANTCONST
+	fz = G.ωz/(2pi) #WANTCONST
+	fn = ωn/(2pi) #WANTCONST
+	ω0 = ω_0(G) #WANTCONST
+	f0 = ω0/(2pi) #WANTCONST
+	phase0 = phase.(xf_ol([ω0], G)[1]) #WANTCONST: Unity gain phase
 
 	#Add specialized annotation
 	afont = plot_bode.layout[:font_annotation]
@@ -203,11 +204,11 @@ end
 #(Frequencies: in Hz; G: Open-loop characteristics)
 #ωnperiods: in # of ωn periods
 function update(mplot::InspectDR.Multiplot, fmin, fmax, tmax, ωnperiods, G::Xf1, annot=true)
-	const npts = 500 #for plots
-	const plot_step = mplot.subplots[1]
-	const plot_bode = mplot.subplots[2]
-	const plot_stepnorm = mplot.subplots[3]
-	const sys = Sys2(G) #Closed-loop response
+	npts = 500 #WANTCONST: for plots
+	plot_step = mplot.subplots[1] #WANTCONST
+	plot_bode = mplot.subplots[2] #WANTCONST
+	plot_stepnorm = mplot.subplots[3] #WANTCONST
+	sys = Sys2(G) #WANTCONST: Closed-loop response
 
 	f = logspace(log10(fmin), log10(fmax), npts)
 	y = xf_ol(2pi*f, G)

@@ -1,4 +1,4 @@
-if !isdefined(:BodePlots)
+if !@isdefined(BodePlots)
 include("BodePlots.jl")
 end
 
@@ -30,7 +30,7 @@ const j = im
 #==Main functions
 ===============================================================================#
 function newplot()
-	const w = 500
+	w = 500 #WANTCONST
 	mplot = InspectDR.Multiplot(title="Filter Response")
 	#Mag/phase plots look better with wider aspect ratio:
 #	mplot.layout[:halloc_plot] = w; mplot.layout[:valloc_plot] = w/2.3 #Not needed with multi-y strips
@@ -54,11 +54,11 @@ end
 #TODO: Look for off by 1 errors (esp. for FFT vector lengths, etc).
 #(Frequencies: in Hz)
 function update(mplot::InspectDR.Multiplot, fmax, filttypeid::Symbol, filtimplid::Symbol, order, fl, fh, passrip, stoprip)
-	const npts = 500
-	const ldata = line(color=blue, width=3, style=:solid)
-	const lspec = line(color=red, width=1, style=:solid) #Spectrum
-	const plot_bode = mplot.subplots[1]
-	const rlow = 1/100; const rhigh = 1-rlow
+	npts = 500 #WANTCONST
+	ldata = line(color=blue, width=3, style=:solid) #WANTCONST
+	lspec = line(color=red, width=1, style=:solid) #WANTCONST: Spectrum
+	plot_bode = mplot.subplots[1] #WANTCONST
+	rlow = 1/100; rhigh = 1-rlow #WANTCONST
 	limfreqr(ratio) = clamp(ratio, rlow, rhigh)
 
 	if fh < fl #Re-order fl/fh:

@@ -2,6 +2,7 @@ module BodePlots
 
 using InspectDR
 import InspectDR: Plot2D
+import Printf: @sprintf
 using NumericIO
 using Colors
 
@@ -28,7 +29,7 @@ end
 
 #2nd order transfer function:
 xf_o2(f, G, f_z, f_p1, f_p2) = #(f_z, f_p1, f_p2: in Hz)
-	G*(1+j*(f./f_z))./( (1+j*(f./f_p1)).*(1+j*(f./f_p2)) )
+	G*(1 .+ j*(f./f_z))./( (1 .+ j*(f./f_p1)).*(1 .+ j*(f./f_p2)) )
 
 #Compute unity gain frequency
 function f_0(f, G, f_z, f_p1, f_p2)
@@ -37,7 +38,7 @@ function f_0(f, G, f_z, f_p1, f_p2)
 	_p1² = invsq(f_p1); _p2² = invsq(f_p2)
 	r = roots(_p1²*_p2², _p1²+_p2²-G²*_z², 1-G²)
 	posroot = max(r...) #Select positive root
-	return posroot < 0? NaN: sqrt(posroot)
+	return posroot < 0 ? NaN : sqrt(posroot)
 end
 
 #Compute 3dB frequency
@@ -61,7 +62,7 @@ function new(::Type{InspectDR.Plot})
 end
 
 function new()
-	const w = 500; const h = w/1.6 #Select plot width/height
+	w = 500; h = w/1.6 #WANTCONST: Select plot width/height
 
 	mplot = InspectDR.Multiplot()
 	mplot.layout[:ncolumns] = 1
@@ -76,7 +77,7 @@ end
 #Modify previously-generated Bode plot (base algorithm):
 #-------------------------------------------------------------------------------
 function update(plot::Plot2D, f::Vector, y::Vector)
-	const ldata = line(color=blue, width=3, style=:solid)
+	ldata = line(color=blue, width=3, style=:solid) #WANTCONST
 	strip_mag, strip_phase = plot.strips
 
 	plot.data = [] #Clear old data
@@ -97,8 +98,8 @@ end
 #Update annotation on Bode plot (enabled=false to clear annotation):
 #-------------------------------------------------------------------------------
 function update_annotation(plot::Plot2D, f0, fBW, phase0, enabled=true)
-	const lmarker = line(style=:dash, width=2.5)
-	const lmarker_light = line(style=:dash, width=2.5, color=RGB24(.4,.4,.4))
+	lmarker = line(style=:dash, width=2.5) #WANTCONST
+	lmarker_light = line(style=:dash, width=2.5, color=RGB24(.4,.4,.4)) #WANTCONST
 
 	plot.userannot = [] #Clear old markers/text annotation
 
@@ -108,8 +109,8 @@ function update_annotation(plot::Plot2D, f0, fBW, phase0, enabled=true)
 	afont = plot.layout[:font_annotation]
 
 	#Add vertical markers to both plots:
-	isfinite(f0)? add(plot, vmarker(f0, lmarker, strip=0)): nothing
-	isfinite(fBW)? add(plot, vmarker(fBW, lmarker, strip=0)): nothing
+	isfinite(f0) ? add(plot, vmarker(f0, lmarker, strip=0)) : nothing
+	isfinite(fBW) ? add(plot, vmarker(fBW, lmarker, strip=0)) : nothing
 
 	#Add annotation to Magnitude plot:
 	add(plot, atext("0dB", y=0, xoffset_rel=0.5, yoffset=3, font=afont, align=:bc, strip=1))
@@ -141,9 +142,10 @@ end
 #-------------------------------------------------------------------------------
 #(fmin, fmax, f_p1: in Hz)
 function update(plot::Plot2D, fmin, fmax, G, f_z, f_p1, f_p2, annot=true)
-	const npts = 100
+	npts = 100 #WANTCONST
 
-	f = logspace(log10(fmin), log10(fmax), npts)
+	_logspace(start, stop, n) = 10 .^ range(start, stop=stop, length=n)
+	f = _logspace(log10(fmin), log10(fmax), npts)
 	y = xf_o2(f, G, f_z, f_p1, f_p2)
 	update(plot, f, y)
 
@@ -159,8 +161,8 @@ end
 #-------------------------------------------------------------------------------
 #(fmin, fmax, f_p1: in Hz)
 function update(mplot::InspectDR.Multiplot, fmin, fmax, GdB, f_z, f_p1, f_p2, annot=true)
-	const plot = mplot.subplots[1]
-	const G = 10.0^(GdB/20)
+	plot = mplot.subplots[1] #WANTCONST
+	G = 10.0^(GdB/20) #WANTCONST
 	update(plot, fmin, fmax, G, f_z, f_p1, f_p2, annot)
 	return mplot
 end

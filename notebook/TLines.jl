@@ -1,4 +1,4 @@
-if !isdefined(:BodePlots)
+if !@isdefined(BodePlots)
 include("BodePlots.jl")
 end
 
@@ -59,8 +59,8 @@ end
 #==Main functions
 ===============================================================================#
 function newplot()
-	const w = 500; const h = w/1.6 #Select plot width/height
-	const smithext = InspectDR.PExtents1D(min=-1.2,max=1.2) #Padded a bit
+	w = 500; h = w/1.6 #WANTCONST: Select plot width/height
+	smithext = InspectDR.PExtents1D(min=-1.2,max=1.2) #WANTCONST: Padded a bit
 
 	mplot = InspectDR.Multiplot(title="Loaded Transmission Line")
 	mplot.layout[:ncolumns] = 2
@@ -90,20 +90,20 @@ end
 #-------------------------------------------------------------------------------
 #(Frequencies: in Hz)
 function update(mplot::InspectDR.Multiplot, fmin, fmax, ltype::Symbol, R, L, C, ℓ, ZC, αdB)
-	const npts_bode = 500
-	const ldata = line(color=blue, width=3, style=:solid)
-	const plot_bode = mplot.subplots[1]
-	const plot_smith = mplot.subplots[2]
-	const αDC = (20/log(10)) * αdB #Nepers/m
+	npts_bode = 500 #WANTCONST
+	ldata = line(color=blue, width=3, style=:solid) #WANTCONST
+	plot_bode = mplot.subplots[1] #WANTCONST
+	plot_smith = mplot.subplots[2] #WANTCONST
+	αDC = (20/log(10)) * αdB #WANTCONST: Nepers/m
 
 	#Add some frequency dependence to α (makes plot more interesting):
-	const fref = 10e9; αref = 2*αDC
+	fref = 10e9; αref = 2*αDC #WANTCONST
 	fdepα(f, αDC) = αDC + (αref/sqrt(fref))*sqrt.(f)
 
 	#How to compute load impedance:
-	Zload_shunt(jω,R,L,C) = 1./(1./R+1./(jω*L)+jω*C)
-	Zload_series(jω,R,L,C) = R+jω*L+1./(jω*C)
-	Zload = :shunt == ltype? Zload_shunt: Zload_series
+	Zload_shunt(jω,R,L,C) = 1 ./ (1 ./ R .+ 1 ./ (jω*L) .+ jω*C)
+	Zload_series(jω,R,L,C) = R .+ jω*L .+ 1 ./ (jω*C)
+	Zload = :shunt == ltype ? Zload_shunt : Zload_series
 
 	#Generate Bode plot:
 	f = logspace(log10(fmin), log10(fmax), npts_bode)
