@@ -135,7 +135,7 @@ end
 
 #==Key bindings
 ===============================================================================#
-function keybindings_setdefaults(bnd::KeyBindings)
+function _setdefaults(bnd::KeyBindings)
 	bnd.nomod = KeyMap(
 		GdkKeySyms.Escape => setstate_normal,
 		GdkKeySyms.Up => pan_up,

@@ -26,6 +26,12 @@ mutable struct Defaults
 	plotlayout::PlotLayout
 	mplotlayout::MultiplotLayout
 end
+Defaults() = Defaults(false, PDM_NEVER, getstyle(PlotLayout, :screen), getstyle(MultiplotLayout, :screen))
+
+
+#==Data
+===============================================================================#
+const global defaults = Defaults()
 
 
 #==Set style of Defaults
@@ -39,7 +45,7 @@ end
 #==Data Initialization
 ===============================================================================#
 #Initialize InspectDR.defaults (To be called in __init__()):
-function initialize_defaults()
+function _initialize(dflt::Defaults)
 	local userdefaults = Dict{Symbol, Any}()
 	try
 		userdefaults = copy(Main.DEFAULTS_INSPECTDR)
@@ -54,11 +60,11 @@ function initialize_defaults()
 		end
 	end
 
-	rendersvg = condget(userdefaults, :rendersvg, Bool, true)
+	dflt.rendersvg = condget(userdefaults, :rendersvg, Bool, true)
 	notation_x = condget(userdefaults, :notation_x, Symbol, :ENG)
 	notation_y = condget(userdefaults, :notation_y, Symbol, :ENG)
 	droppoints = condget(userdefaults, :droppoints, Symbol, :noglyph)
-	pointdropmatrix = PDM_DEFAULTS[droppoints]
+	dflt.pointdropmatrix = PDM_DEFAULTS[droppoints]
 
 	fontname = condget(userdefaults, :fontname, String, DEFAULT_FONTNAME)
 	fontscale = condget(userdefaults, :fontscale, Float64, 1.0)
@@ -72,6 +78,7 @@ function initialize_defaults()
 	condoverwrite(:ncolumns, Int)
 	condoverwrite(:valloc_plot, Float64)
 	condoverwrite(:halloc_plot, Float64)
+	dflt.mplotlayout = mplotlayout
 
 	#Automatically get defaults for Plot layout (seed from :screen):
 	plotlayout = getstyle(PlotLayout, :screen,
@@ -85,9 +92,8 @@ function initialize_defaults()
 			@warn("Cannot set default PlotLayout.$k = $v.")
 		end
 	end
+	dflt.plotlayout = plotlayout
 
-	#WANTCONST:
-	global defaults = Defaults(rendersvg, pointdropmatrix, plotlayout, mplotlayout)
 	return
 end
 

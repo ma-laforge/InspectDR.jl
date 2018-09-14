@@ -84,7 +84,6 @@ include("gtk_zoom.jl")
 include("gtk_markers.jl")
 include("gtk_input.jl")
 include("gtk_top.jl")
-keybindings_setdefaults(keybindings)
 end
 
 include("show.jl")
@@ -197,8 +196,14 @@ for the following MIMEs:
 =#
 
 function __init__()
-	initialize_defaults()
-	initialize_cursors()
+	global defaults
+	_initialize(defaults)
+
+	if GtkAvailable
+		initialize_cursors()
+		_setdefaults(keybindings)
+	end
+
 	checkcompat_plots()
 end
 
