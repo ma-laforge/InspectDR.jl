@@ -12,10 +12,11 @@ function checkcompat_plots()
 		#v"0.1.3" => v"0.10.3",
 		#v"0.1.7" => v"0.11.2",
 		#v"0.2.0" => v"0.12.0",
+		#v"0.2.4" => v"0.13.1",
 		#Keep old versions in code (above) just for reference.
 		#(Never suggest older versions)
 
-		v"0.2.4" => v"0.13.1",
+		v"0.3.3" => v"0.20.4",
 		#Reminder for tagged releases:
 			#Update InspectDR version / Latest version of Plots.jl.
 	) #WANTCONST
