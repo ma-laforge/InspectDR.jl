@@ -305,13 +305,14 @@ DEFAULTS_INSPECTDR = Dict(
 <a name="SampleUsage"></a>
 ## Sample Usage
 
-Sample code to construct InspectDR objects can be found [here](sample/).
-
-Sample IJulia (Jupyter) notebooks can be found [here](notebook/).
+ - Sample code to construct InspectDR objects can be found [here](sample/).
+ - Sample IJulia (Jupyter) notebooks can be found [here](notebook/).
+ - Sample [Blink](https://github.com/JunoLab/Blink.jl) ([Electron](https://github.com/electron/electron) backend) projects can be found [here](Blink/).
 
 <a name="KnownLimitations"></a>
 ## Known Limitations
 
+- Stability of [IJulia (Jupyter) notebooks](notebook/) is not very good at the moment.  Also: many examples are not yet ported to Julia 1.0.
 - Documentation is a bit limited at the moment.  See [Sample Usage](#SampleUsage) to learn from examples.
 - API is still a bit rough.  User often has to manipulate data structures directly.
   - Workaround: Use [JuliaPlots/Plots.jl](https://github.com/JuliaPlots/Plots.jl) as a "frontend" (increases plot times).
