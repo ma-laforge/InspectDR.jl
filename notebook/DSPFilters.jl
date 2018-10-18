@@ -3,12 +3,12 @@ include("BodePlots.jl")
 end
 
 module DSPFilters
-import BodePlots
 
 using DSP
 using InspectDR
 import InspectDR: Plot2D
 using NumericIO
+using FFTW
 using Colors
 
 #Colour constants
@@ -37,7 +37,7 @@ function newplot()
 	mplot.layout[:ncolumns] = 1
 
 	#Initialize as Bode plot:
-	plot_bode = add(mplot, BodePlots.new(InspectDR.Plot))
+	plot_bode = add(mplot, Main.BodePlots.new(InspectDR.Plot))
 	strip_mag, strip_phase = plot_bode.strips
 		strip_mag.yext_full = InspectDR.PExtents1D(-90, 10)
 		strip_phase.yext_full = InspectDR.PExtents1D(-200, 200)
@@ -93,10 +93,10 @@ function update(mplot::InspectDR.Multiplot, fmax, filttypeid::Symbol, filtimplid
 
 	#Generate mag/phase plot of discrete-time system:
 	#TODO: find proper name for frequency variable.
-	fz = collect(linspace(0, pi, npts))
+	fz = collect(range(0, stop=pi, length=npts))
 	tf_graph = freqz(_filt, fz)
 	f = fz*(fmax/pi)
-	BodePlots.update(plot_bode, f, tf_graph)
+	Main.BodePlots.update(plot_bode, f, tf_graph)
 	plot_bode.xext = InspectDR.PExtents1D() #Reset
 	strip_mag, strip_phase = plot_bode.strips
 		strip_mag.yext = InspectDR.PExtents1D() #Reset
@@ -106,7 +106,7 @@ function update(mplot::InspectDR.Multiplot, fmax, filttypeid::Symbol, filtimplid
 	xin = rand(100000)
 	xout = filt(_filt, xin)
 	spec = rfft(xout)/sqrt(length(xin)/2)
-	fz = collect(linspace(0, pi, length(spec)))
+	fz = collect(range(0, stop=pi, length=length(spec)))
 	f = fz*(fmax/pi)
 	wfrm = add(plot_bode, f, spec, strip=1)
 	wfrm.line = lspec

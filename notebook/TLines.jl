@@ -3,7 +3,6 @@ include("BodePlots.jl")
 end
 
 module TLines
-import BodePlots
 
 using InspectDR
 import InspectDR: Plot2D
@@ -45,14 +44,14 @@ end
 
 #Compute reflection coefficient of a given impedance
 #Zref: Reference impedance for the reflection coefficient
-Γ(Z::VecOrNum; Zref::Real=50.0) = (Z - Zref) ./ (Z + Zref)
+Γ(Z::VecOrNum; Zref::Real=50.0) = (Z .- Zref) ./ (Z .+ Zref)
 
 #Compute impedance of a loaded transmission line
 #ZC: Characteristic impedance (not currently modelling f-dependence)
 #ZL: Load impendance (termination)
 function Zline(ZC::Number, γ::VecOrNum; ZL::VecOrNum=Inf64, ℓ::Real=0.0)
 	tanh_γℓ = tanh.(γ*ℓ)
-	return ZC*(ZL+ZC*tanh_γℓ)./(ZC+ZL.*tanh_γℓ)
+	return ZC .* (ZL .+ ZC .* tanh_γℓ) ./ (ZC .+ ZL .* tanh_γℓ)
 end
 
 
@@ -68,7 +67,7 @@ function newplot()
 #	mplot.layout[:halloc_plot] = w; mplot.layout[:valloc_plot] = h/2
 	#... But not Smith chart.
 
-	plot_bode = add(mplot, BodePlots.new(InspectDR.Plot))
+	plot_bode = add(mplot, Main.BodePlots.new(InspectDR.Plot))
 	strip_mag, strip_phase = plot_bode.strips
 		strip_mag.yext_full = InspectDR.PExtents1D(-20, 0)
 		strip_phase.yext_full = InspectDR.PExtents1D(-200, 200)
@@ -98,7 +97,7 @@ function update(mplot::InspectDR.Multiplot, fmin, fmax, ltype::Symbol, R, L, C, 
 
 	#Add some frequency dependence to α (makes plot more interesting):
 	fref = 10e9; αref = 2*αDC #WANTCONST
-	fdepα(f, αDC) = αDC + (αref/sqrt(fref))*sqrt.(f)
+	fdepα(f, αDC) = αDC .+ (αref/sqrt(fref)) .* sqrt.(f)
 
 	#How to compute load impedance:
 	Zload_shunt(jω,R,L,C) = 1 ./ (1 ./ R .+ 1 ./ (jω*L) .+ jω*C)
@@ -106,10 +105,10 @@ function update(mplot::InspectDR.Multiplot, fmin, fmax, ltype::Symbol, R, L, C, 
 	Zload = :shunt == ltype ? Zload_shunt : Zload_series
 
 	#Generate Bode plot:
-	f = logspace(log10(fmin), log10(fmax), npts_bode)
+	f = 10 .^ range(log10(fmin), stop=log10(fmax), length=npts_bode)
 	jω = j*2pi*f
 	y = Γ(Zline(ZC, γline(f, α=fdepα(f, αDC)), ZL=Zload(jω,R,L,C), ℓ=ℓ))
-	BodePlots.update(plot_bode, f, y)
+	Main.BodePlots.update(plot_bode, f, y)
 	strip_mag, strip_phase = plot_bode.strips
 		strip_mag.yext = InspectDR.PExtents1D() #Reset
 		strip_phase.yext = InspectDR.PExtents1D() #Reset
@@ -118,8 +117,8 @@ function update(mplot::InspectDR.Multiplot, fmin, fmax, ltype::Symbol, R, L, C, 
 	plot_smith.data = [] #Clear old data
 	β = imag(γline(fmax))
 	Θ = β * ℓ; nrev = Θ/pi #revs around the chart
-	npts = round(Int, 20*nrev) #Ensure sufficient # of points
-	f = collect(linspace(fmin, fmax, npts))
+	npts = max(round(Int, 20*nrev), 200) #Ensure sufficient # of points
+	f = collect(range(fmin, stop=fmax, length=npts))
 	jω = j*2pi*f
 	y = Γ(Zline(ZC, γline(f, α=fdepα(f, αDC)), ZL=Zload(jω,R,L,C), ℓ=ℓ))
 	wfrm = add(plot_smith, f, y)

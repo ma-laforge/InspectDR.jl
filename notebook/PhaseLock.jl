@@ -6,7 +6,6 @@ end
 module PhaseLock
 
 import Graphics.BoundingBox
-import BodePlots
 
 using InspectDR
 import InspectDR: Plot2D
@@ -57,7 +56,7 @@ end
 
 #Open-loop transfer function, G(s) (including freq->phase integrator):
 xf_ol(ω::Vector, G::Xf1) = (s=j*ω;
-	return G.K*(1+s./G.ωz)./(1+s./G.ωp) ./ s)
+	return G.K .* (1 .+ s ./ G.ωz)./(1 .+ s ./ G.ωp) ./ s)
 
 #Compute unity gain frequency of G(s) (including freq->phase integrator):
 function ω_0(G::Xf1)
@@ -66,10 +65,10 @@ function ω_0(G::Xf1)
 	a = invsq(G.ωp)
 	b = (1-K²*invsq(G.ωz))
 	c = -K²
-	r = BodePlots.roots(a,b,c) #Roots of ω²
+	r = Main.BodePlots.roots(a,b,c) #Roots of ω²
 
 	thresh = deg2rad(1) #WANTCONST: 1 degree
-	rvalid = Float64[NaN,NaN]
+	rvalid = Float64[Inf,Inf]
 	for i in 1:2
 		val = r[i]
 		if abs(angle(val)) < thresh #Positive real root
@@ -77,7 +76,9 @@ function ω_0(G::Xf1)
 		end
 	end
 
-	return min(rvalid...) #Select first crossing of |G|=1
+	x1 = minimum(rvalid) #Select first crossing of |G|=1
+	#Don't return Inf - Likely Inf because roots are complex:
+	return isfinite(x1) ? x1 : NaN
 end
 
 function step_err(s::Sys2, t::Vector)
@@ -95,7 +96,7 @@ function step_err(s::Sys2, t::Vector)
 	end
 end
 
-step_resp(s::Sys2, t::Vector) = 1-step_err(s, t)
+step_resp(s::Sys2, t::Vector) = 1 .- step_err(s, t)
 
 #==Main functions
 ===============================================================================#
@@ -110,7 +111,7 @@ function newplot()
 	mplot.layout[:halloc_plot] = w; mplot.layout[:valloc_plot] = h/2
 
 	plot_step = add(mplot, InspectDR.Plot2D)
-	plot_bode = add(mplot, BodePlots.new(InspectDR.Plot))
+	plot_bode = add(mplot, Main.BodePlots.new(InspectDR.Plot))
 	plot_stepnorm = add(mplot, InspectDR.Plot2D)
 
 	#Control where plots render:
@@ -210,9 +211,9 @@ function update(mplot::InspectDR.Multiplot, fmin, fmax, tmax, ωnperiods, G::Xf1
 	plot_stepnorm = mplot.subplots[3] #WANTCONST
 	sys = Sys2(G) #WANTCONST: Closed-loop response
 
-	f = logspace(log10(fmin), log10(fmax), npts)
+	f = 10 .^ range(log10(fmin), stop=log10(fmax), length=npts)
 	y = xf_ol(2pi*f, G)
-	BodePlots.update(plot_bode, f, y)
+	Main.BodePlots.update(plot_bode, f, y)
 
 	#Reset extents/annotation:
 	plot_bode.xext = InspectDR.PExtents1D()
