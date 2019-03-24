@@ -75,6 +75,11 @@ end
 	nothing #Known value
 end
 
+@guarded function cb_mnudatatraces(w::Ptr{Gtk.GObject}, gplot::GtkPlot)
+	tracedialog_show(gplot)
+	nothing #Known value
+end
+
 
 #==Higher-level event handlers
 ===============================================================================#
@@ -246,6 +251,8 @@ function GtkPlot(mp::Multiplot)
 		mnuexport = Gtk_addmenuitem(mnufile, "_Export")
 		push!(mnufile, _Gtk.SeparatorMenuItem())
 		mnuquit = Gtk_addmenuitem(mnufile, "_Quit")
+	mnudata = Gtk_addmenu(mb, "_Data")
+		mnutraces = Gtk_addmenuitem(mnudata, "_Traces")
 	grd = Gtk.Grid() #Main grid with different subplots.
 		set_gtk_property!(grd, :column_homogeneous, true)
 		#set_gtk_property!(grd, :column_spacing, 15) #Gap between
@@ -262,19 +269,20 @@ function GtkPlot(mp::Multiplot)
 		push!(vbox, grd) #Subplots
 		push!(vbox, sbar_frame) #status bar
 	wnd = Gtk.Window(vbox, "", 640, 480, true)
-	settitle(wnd, mp.title)
 
 	gplot = GtkPlot(false, wnd, grd, [], mp, status)
+	refresh_title(gplot)
 	sync_subplots(gplot)
 
 	if length(gplot.subplots) > 0
-		focus(wnd, gplot.subplots[end].widget)
+		set_focus(wnd, gplot.subplots[end].widget)
 	end
 
 	Gtk.showall(wnd)
 	signal_connect(cb_wnddestroyed, wnd, "destroy", Nothing, (), false, gplot)
 	signal_connect(cb_mnufileexport, mnuexport, "activate", Nothing, (), false, gplot)
 	signal_connect(cb_mnufileclose, mnuquit, "activate", Nothing, (), false, gplot)
+	signal_connect(cb_mnudatatraces, mnutraces, "activate", Nothing, (), false, gplot)
 
 	return gplot
 end
@@ -301,11 +309,13 @@ end
 
 function refresh(gplot::GtkPlot)
 	if !gplot.destroyed
-		settitle(gplot.wnd, gplot.src.title)
+		refresh_title(gplot)
+		active = active_subplot(gplot)
 		set_gtk_property!(gplot.grd, :visible, false) #Suppress gliching
 			sync_subplots(gplot)
 			map(refresh, gplot.subplots) #Is this necessary?
 		set_gtk_property!(gplot.grd, :visible, true)
+		set_focus(gplot.subplots[active].widget) #Restore focus after modifying gplot.grd
 		Gtk.showall(gplot.grd)
 		#TODO: find a way to force GUI to updates here... Animations don't refresh...
 		sleep(eps(0.0)) #Ugly Hack: No guarantee this works... There must be a better way.

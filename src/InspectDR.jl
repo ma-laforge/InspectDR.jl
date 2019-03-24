@@ -82,6 +82,7 @@ include("gtk_base.jl")
 include("gtk_events.jl")
 include("gtk_zoom.jl")
 include("gtk_markers.jl")
+include("gtk_traces.jl")
 include("gtk_input.jl")
 include("gtk_top.jl")
 end

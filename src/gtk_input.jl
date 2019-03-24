@@ -119,7 +119,7 @@ end
 function handleevent_mousepress(::ISNormal, pwidget::PlotWidget, event::Gtk.GdkEventButton)
 #	@show event.state, event.button, event.event_type
 	focus_strip(pwidget, event.x, event.y)
-	focus(pwidget.widget) #In case not in focus
+	set_focus(pwidget) #In case not in focus
 
 	if 3==event.button
 		boxzoom_setstart(pwidget, event.x, event.y) #Changes state

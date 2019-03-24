@@ -69,6 +69,7 @@ mutable struct Waveform{T}
 	glyph::GlyphAttributes
 	ext::PExtents2D
 	strip::UInt8 #Y-strip
+	visible::Bool
 end
 
 #Input waveform:
@@ -355,12 +356,12 @@ _add(mp::Multiplot, ::Type{T}) where T<:Plot = _add(mp, T())
 
 
 #Set dataf1=false to overwrite optimizations for functions of 1 argument.
-function _add(plot::Plot2D, x::Vector, y::Vector; id::String="", dataf1=true, strip=1)
+function _add(plot::Plot2D, x::Vector, y::Vector; id::String="", dataf1=true, strip=1, visible=true)
 	if dataf1
 		dataf1 = isincreasing(x) #Can we use optimizations?
 	end
 	ext = PExtents2D() #Don't care at the moment
-	ds = IWaveform(id, IDataset{dataf1}(x, y), line(), glyph(), ext, strip)
+	ds = IWaveform(id, IDataset{dataf1}(x, y), line(), glyph(), ext, strip, visible)
 	push!(plot.data, ds)
 	return ds
 end
@@ -579,7 +580,7 @@ function _reduce(input::IWaveform, xext::PExtents1D, pdm::PointDropMatrix, xres_
 	ds = droppoints(pdm, hasline(input), hasglyph(input)) ?
 		_reduce(input.ds, xext, xres_max) : _reduce_nodrop(input.ds, xext, xres_max)
 
-	return DWaveform(input.id, ds, input.line, input.glyph, input.ext, input.strip)
+	return DWaveform(input.id, ds, input.line, input.glyph, input.ext, input.strip, input.visible)
 end
 
 _reduce(inputlist::Vector{IWaveform}, xext::PExtents1D, pdm::PointDropMatrix, xres_max::Integer) =
@@ -593,23 +594,25 @@ map2axis(input::T, x::InputXfrm1DSpec, y::InputXfrm1DSpec) where T<:IDataset =
 
 function map2axis(input::IWaveform, x::InputXfrm1DSpec, y::InputXfrm1DSpec)
 	ds = map2axis(input.ds, x, y)
-	return IWaveform(input.id, ds, input.line, input.glyph, getextents(ds), input.strip)
+	return IWaveform(input.id, ds, input.line, input.glyph, getextents(ds), input.strip, input.visible)
 end
 
 function map2axis(inputlist::Vector{IWaveform}, xflist::Vector{InputXfrm2D})
 	n = length(inputlist) #WANTCONST
 	nstrips = length(xflist) #WANTCONST
 	emptyds = IDataset{true}([], []) #WANTCONST
-	result = Vector{IWaveform}(undef, n)
+	result = Vector{IWaveform}()
 
 	for i in 1:n
 		input = inputlist[i]
+		if !input.visible; continue; end #Don't process non-visible waveforms
 		strip = input.strip
 		if strip > 0 && strip <= nstrips
-			result[i] = map2axis(input, xflist[strip].x, xflist[strip].y)
+			wfrm = map2axis(input, xflist[strip].x, xflist[strip].y)
 		else #No scale for this strip... return empty waveform
-			result = IWaveform(input.id, emptyds, input.line, input.glyph, PExtents2D(), strip)
+			wfrm = IWaveform(input.id, emptyds, input.line, input.glyph, PExtents2D(), strip, input.visible)
 		end
+		push!(result, wfrm)
 	end
 	return result
 end

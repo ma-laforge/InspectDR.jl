@@ -33,11 +33,11 @@ function window_close(window::Gtk.GtkWindow)
 	return
 end
 
-function focus(window::Gtk.GtkWindow,widget)
+function set_focus(window::Gtk.GtkWindow,widget::Gtk.GtkWidget)
 	ccall((:gtk_window_set_focus,Gtk.libgtk),Nothing,(Ptr{Gtk.GObject},Ptr{Gtk.GObject}),window,widget)
 	return window
 end
-function focus(widget)
+function set_focus(widget::Gtk.GtkWidget)
 	ccall((:gtk_widget_grab_focus,Gtk.libgtk),Nothing,(Ptr{Gtk.GObject},),widget)
 	return widget
 end
@@ -57,6 +57,11 @@ function gdk_window_set_cursor(wnd, cursor::Ptr{Nothing})
 	wptr = Gtk.GAccessor.window(wnd)
 	ccall((:gdk_window_set_cursor,Gtk.libgdk),Nothing,(Ptr{Nothing},Ptr{Nothing}), wptr, cursor)
 	return
+end
+
+function gtk_tree_path_new_from_string(pstr::Ptr{Cchar})
+	tp = ccall((:gtk_tree_path_new_from_string, Gtk.libgtk), Ptr{_Gtk.TreePath}, (Ptr{Cchar},), pstr)
+	return Gtk.GtkTreePath(tp, true)
 end
 
 
@@ -155,6 +160,19 @@ mutable struct GtkPlot
 end
 
 
+#==Helper functions
+===============================================================================#
+function refresh_title(gplot::GtkPlot)
+	if length(gplot.src.title)> 0
+		title = "InspectDR - $(gplot.src.title)"
+	else
+		title = "InspectDR"
+	end
+	set_gtk_property!(gplot.wnd, :title, title)
+	return
+end
+
+
 #==Accessors
 ===============================================================================#
 function activestrip(w::PlotWidget)
@@ -166,22 +184,33 @@ function activestrip(w::PlotWidget)
 	return istrip
 end
 
+#Tree views that model "ListStore"s can access indicies in a simpler fashion:
+function listindex(treepath::_Gtk.TreePath)
+	_indices = Gtk.GAccessor.indices(treepath)
+	#For arbitrary tres, see: Gtk.depth(treepath)
+	return convert(Int, unsafe_load(_indices, 1))
+end
+
+#Find active subplot by polling which has focus:
+#NOTE: Polling is a bit hacky... might be better to signal when set_focus is used??
+function active_subplot(gplot::GtkPlot)
+	for i in 1:length(gplot.subplots)
+		isactive = Gtk.get_gtk_property(gplot.subplots[i].widget, "is-focus", Bool)
+		if isactive return i; end
+	end
+
+	return 0 #No active subplot
+end
+
 
 #==Mutators
 ===============================================================================#
-function settitle(wnd::_Gtk.Window, title::String)
-	if length(title)> 0
-		title = "InspectDR - $(title)"
-	else
-		title = "InspectDR"
-	end
-	set_gtk_property!(wnd, :title, title)
-end
-
 function settitle(gplot::GtkPlot, title::String)
 	gplot.src.title = title
-	settitle(gplot.wnd, gplot.src.title)
+	refresh_title(gplot)
 end
+
+set_focus(pwidget::PlotWidget) = set_focus(pwidget.widget)
 
 
 #==Main functions
