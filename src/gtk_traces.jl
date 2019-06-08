@@ -1,14 +1,6 @@
 #InspectDR: Trace control for plot widgets
 #-------------------------------------------------------------------------------
 
-#==LibraryHacks
-===============================================================================#
-
-function Base.length(listStore::Gtk.GtkListStore)
-    _len = ccall((:gtk_tree_model_iter_n_children, Gtk.libgtk), Cint, (Ptr{Gtk.GObject}, Ptr{Gtk.GtkTreeIter}), listStore, C_NULL)
-	return convert(Int, _len)
-end
-
 
 #==Constants
 ===============================================================================#
