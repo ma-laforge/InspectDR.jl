@@ -330,4 +330,17 @@ function Base.display(d::GtkDisplay, p::Plot)
 	return GtkPlot(p)
 end
 
+function Base.close(gplot::GtkPlot)
+	window_close(gplot.wnd)
+	return nothing
+end
+
+function clear_data(gplot::GtkPlot; refresh_gui = true)
+	clear_data(gplot.src)
+	if refresh_gui
+		refresh(gplot)
+	end
+	return
+end
+
 #Last line

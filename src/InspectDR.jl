@@ -153,6 +153,7 @@ About bounds:
 add = _add #Danger: high risk of collision (common name)
 export add, line, glyph
 export vmarker, hmarker, atext
+export clear_data
 
 #==Unexported interface
 ================================================================================
@@ -186,6 +187,9 @@ end
 ================================================================================
 #Displaying a plot object:
 	Base.display(d::InspectDR.GtkDisplay, p::Plot) #Gtk mutltiplot window
+
+#Closing a Gtk plot window:
+	Base.close(::GtkPlot)
 
 #Writing plot to IO stream:
 	Base.show(::IO, ::MIME, ::Plot2D)

@@ -371,6 +371,18 @@ function _add(plot::Plot2D, annot::PlotAnnotation)
 	return annot
 end
 
+function clear_data(plot::Plot2D)
+	plot.data = []
+	return
+end
+
+function clear_data(mp::Multiplot)
+	for plot in mp.subplots
+		clear_data(plot)
+	end
+	return
+end
+
 
 #==Plot extents
 ===============================================================================#

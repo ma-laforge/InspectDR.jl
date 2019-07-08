@@ -161,12 +161,17 @@ InspectDR provides the `GtkDisplay` object derived from `Base.Multimedia.Display
 
 To display a single `plot::Plot` object, one simply calls:
 ```
-display(InspectDR.GtkDisplay(), plot)
+gplot = display(InspectDR.GtkDisplay(), plot)
 ```
 
 Similarly, to display `mplot::Multiplot` object, one calls:
 ```
-display(InspectDR.GtkDisplay(), mplot)
+gplot = display(InspectDR.GtkDisplay(), mplot)
+```
+
+To programmatically close a Gtk plot window, the `close()` function can be used:
+```
+close(gplot)
 ```
 
 <a name="Templates_Scales"></a>
