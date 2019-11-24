@@ -83,6 +83,21 @@ typealias DWaveformCplx Waveform{PointComplex}
 to track x-values of complex data??
 =#
 
+#Input heat map data
+mutable struct Heatmap{T}
+	ext::PExtents2D #Desired extents to display, not data extents
+	strip::UInt8 #Y-strip
+	visible::Bool
+	ds::T
+end
+
+#Input heatmap:
+const IHeatmap = Heatmap{IDatasetHeat}
+
+#Display heatmap (Pick concrete colours):
+#TODO: Find way to pick concrete type to optimize for speed wrt data??
+const DHeatmap = Heatmap{IDatasetHeat{ARGB32}}
+
 mutable struct Annotation
 	title::String
 	xlabel::String
@@ -240,7 +255,7 @@ GraphStrip() = GraphStrip(AxisScale(:lin, tgtmajor=8, tgtminor=2),
 
 #2D plot.
 mutable struct Plot2D <: Plot
-	xscale::AxisScale
+	xscale::AxisScale #yscale specified in GraphStrip
 	layout::PlotStyle
 	annotation::Annotation
 
@@ -253,16 +268,18 @@ mutable struct Plot2D <: Plot
 
 	strips::Vector{GraphStrip}
 	data::Vector{IWaveform}
+	data_heat::Vector{IHeatmap}
 
 	#Annotation controlled directly by user (using _add interface):
 	userannot::Vector{PlotAnnotation}
 
-	#Annotation controlled by parent object
+	#Annotation controlled by parent object (ex: GUI-controlled widgets)
 	parentannot::Vector{PlotAnnotation}
 
 	#Display data cache:
 	invalid_ddata::Bool #Is cache of display data invalid?
 	display_data::Vector{DWaveform} #Clipped to current extents
+	display_data_heat::Vector{DHeatmap} #Clipped to current extents
 
 	displayNaN::Bool #Costly (time) on large datasets
 	pointdropmatrix::PointDropMatrix
@@ -275,7 +292,7 @@ end
 Plot2D(;title="") = Plot2D(AxisScale(:lin, tgtmajor=3.5, tgtminor=4),
 	StyleType(defaults.plotlayout), Annotation(title=title),
 	PExtents1D(), PExtents1D(), PExtents1D(),
-	nothing, [GraphStrip()], [], [], [], true, [],
+	nothing, [GraphStrip()], [], [], [], [], true, [], [],
 	false, defaults.pointdropmatrix, 1000
 )
 
@@ -322,8 +339,9 @@ end
 #==Accessors
 ===============================================================================#
 getextents(d::IWaveform) = getextents(d.ds)
-function getextents(dlist::Vector{IWaveform}, strip::Int=1)
-	result = PExtents2D(DNaN, DNaN, DNaN, DNaN)
+getextents(d::IHeatmap) = getextents(d.ds)
+function getextents(dlist::Vector{T}, strip::Int=1) where T<:Union{IWaveform, IHeatmap}
+	result = PExtents2D(xmin=-DInf, xmax=DInf, ymin=-DInf, ymax=DInf)
 	for d in dlist
 		if strip == d.strip
 			result = union(result, d.ext)
@@ -363,6 +381,14 @@ function _add(plot::Plot2D, x::Vector, y::Vector; id::String="", dataf1=true, st
 	ext = PExtents2D() #Don't care at the moment
 	ds = IWaveform(id, IDataset{dataf1}(x, y), line(), glyph(), ext, strip, visible)
 	push!(plot.data, ds)
+	return ds
+end
+
+function addheatmap(plot::Plot2D, x::Vector, y::Vector, data::Array{T,2}; id::String="", strip=1, visible=true) where T<:Number
+	ext = PExtents2D() #Don't care at the moment
+	ensure(isincreasing(x) && isincreasing(x), "Heatmap only supports increasing x/y coordinates")
+	ds = IHeatmap(ext, strip, visible, IDatasetHeat(x, y, data))
+	push!(plot.data_heat, ds)
 	return ds
 end
 
@@ -598,15 +624,34 @@ end
 _reduce(inputlist::Vector{IWaveform}, xext::PExtents1D, pdm::PointDropMatrix, xres_max::Integer) =
 	map((input)->_reduce(input, xext, pdm, xres_max), inputlist)
 
+
+#TODO: Find data reduction method??
+function genheatmap(input::IHeatmap, colormap::Transform1DNormToARGB)
+	ds = IDatasetHeat(input.ds.x, input.ds.y, map2axis(input.ds.data, colormap))
+	return DHeatmap(input.ext, input.strip, input.visible, ds)
+end
+
+genheatmap(inputlist::Vector{IHeatmap}, colormap::Transform1DNormToARGB) =
+	map((input)->genheatmap(input, colormap), inputlist)
+
+
 #Rescale input dataset:
 #-------------------------------------------------------------------------------
 
 map2axis(input::T, x::InputXfrm1DSpec, y::InputXfrm1DSpec) where T<:IDataset =
 	T(map2axis(input.x, x), map2axis(input.y, y))
 
+map2axis(input::T, x::InputXfrm1DSpec, y::InputXfrm1DSpec, z::TransformNormalizeClip) where T<:IDatasetHeat =
+	T(map2axis(input.x, x), map2axis(input.y, y), input.data)
+
 function map2axis(input::IWaveform, x::InputXfrm1DSpec, y::InputXfrm1DSpec)
 	ds = map2axis(input.ds, x, y)
 	return IWaveform(input.id, ds, input.line, input.glyph, getextents(ds), input.strip, input.visible)
+end
+
+function map2axis(input::IHeatmap, x::InputXfrm1DSpec, y::InputXfrm1DSpec, z::TransformNormalizeClip)
+	ds = map2axis(input.ds, x, y, z)
+	return IHeatmap(getextents(ds), input.strip, input.visible, ds)
 end
 
 function map2axis(inputlist::Vector{IWaveform}, xflist::Vector{InputXfrm2D})
@@ -621,8 +666,28 @@ function map2axis(inputlist::Vector{IWaveform}, xflist::Vector{InputXfrm2D})
 		strip = input.strip
 		if strip > 0 && strip <= nstrips
 			wfrm = map2axis(input, xflist[strip].x, xflist[strip].y)
-		else #No scale for this strip... return empty waveform
+		else #No scale for this strip... return empty waveform (still want legend??)
 			wfrm = IWaveform(input.id, emptyds, input.line, input.glyph, PExtents2D(), strip, input.visible)
+		end
+		push!(result, wfrm)
+	end
+	return result
+end
+
+function map2axis(inputlist::Vector{IHeatmap}, xflist::Vector{InputXfrm2D}, zxflist::Vector{TransformNormalizeClip})
+	n = length(inputlist) #WANTCONST
+	nstrips = length(xflist) #WANTCONST
+	emptyds = IDatasetHeat(DReal[], DReal[], Array{DReal}(undef, 0,0)) #WANTCONST
+	result = Vector{IHeatmap}()
+
+	for i in 1:n
+		input = inputlist[i]
+		if !input.visible; continue; end #Don't process non-visible waveforms
+		strip = input.strip
+		if strip > 0 && strip <= nstrips
+			wfrm = map2axis(input, xflist[strip].x, xflist[strip].y, zxflist[strip])
+		else #No scale for this strip... return empty waveform
+			wfrm = IHeatmap(PExtents2D(), strip, input.visible, emptyds)
 		end
 		push!(result, wfrm)
 	end
@@ -638,22 +703,27 @@ function preprocess_data(plot::Plot2D)
 
 	#Figure out required input data tranform for each strip:
 	xflist = Vector{InputXfrm2D}(undef, nstrips)
+	zxflist = Vector{TransformNormalizeClip}(undef, nstrips) #For heatmaps
 	for i in 1:nstrips
 		strip = plot.strips[i]
 
 		#Need to take grid into account:
 		xflist[i] = InputXfrm2D(plot.xscale, strip.yscale, strip.grid)
+		zxflist[i] = TransformNormalizeClip(min=0.0, max=1.0) #Hardcode to values between [0,1] for now
 	end
 
 	#Rescale data
 	wfrmlist = map2axis(plot.data, xflist)
+	heatmaplist = map2axis(plot.data_heat, xflist, zxflist)
 
 	for i in 1:nstrips
 		strip = plot.strips[i]
 		xf = InputXfrm2D(plot.xscale, strip.yscale)
 
 		#Update extents:
-		strip.ext_data = axis2read(getextents(wfrmlist, i), xf)
+		ext_data = getextents(wfrmlist, i)
+		ext_dataheat = getextents(heatmaplist, i)
+		strip.ext_data = axis2read(union(ext_data, ext_dataheat), xf)
 		_setyextents(strip, strip.yext) #Update extents, resolving any NaN fields.
 	end
 
@@ -664,6 +734,8 @@ function preprocess_data(plot::Plot2D)
 	#Reduce data:
 	xext = getxextents_axis(plot) #Read back extents, in transformed coordinates
 	plot.display_data = _reduce(wfrmlist, xext, plot.pointdropmatrix, plot.xres)
+	colormap = Transform1DNormToARGB(1,0, 0,0, 0,0, 0,1)
+	plot.display_data_heat = genheatmap(heatmaplist, colormap)
 	plot.invalid_ddata = false
 
 	#NOTE: Rescaling before data reduction is somewhat inefficient, but makes

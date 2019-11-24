@@ -53,11 +53,27 @@ const DEFAULT_FONTNAME = (@static Sys.iswindows() ? "Cambria" : "Serif")
 ===============================================================================#
 NullOr{T} = Union{Nothing, T}
 
+
+#==Ensure interface (similar to assert)
+===============================================================================#
+#=Similar to assert.  However, unlike assert, "ensure" is not meant for
+debugging.  Thus, ensure is never meant to be compiled out.
+=#
+function ensure(cond::Bool, err)
+	if !cond; throw(err); end
+end
+
+#Conditionnally generate error using "do" syntax:
+function ensure(fn::Function, cond::Bool)
+	if !cond; throw(fn()); end
+end
+
 include("codegen.jl")
 include("styles.jl")
 include("math.jl")
 include("math_graphics.jl")
 include("math_coordinates.jl")
+include("heatmap_tools.jl")
 include("numericfmt.jl")
 include("events.jl")
 include("datasets.jl")
@@ -151,7 +167,7 @@ About bounds:
 #==Exported interface
 ===============================================================================#
 add = _add #Danger: high risk of collision (common name)
-export add, line, glyph
+export add, line, glyph, addheatmap
 export vmarker, hmarker, atext
 export clear_data
 

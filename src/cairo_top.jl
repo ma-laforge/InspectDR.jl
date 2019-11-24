@@ -45,6 +45,7 @@ function render_data(canvas::PCanvas2D, plot::Plot2D, istrip::Int)
 Cairo.save(canvas.ctx)
 	setclip(canvas.ctx, canvas.graphbb)
 
+	render(canvas, plot.display_data_heat, istrip)
 	render(canvas, plot.display_data, istrip)
 	if plot.displayNaN
 		rendernans(canvas, plot.data, istrip)

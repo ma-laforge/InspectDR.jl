@@ -126,12 +126,9 @@ Base.:-(p::Point2D, v::Vector2D) = Point2D(p.x-v.x, p.y-v.y)
 Base.:+(v::Vector2D, p::Point2D) = p+v
 
 function union(e1::PExtents1D, e2::PExtents1D)
-	umin(v1, v2) = isnan(v1) ? v2 : min(v1, v2)
-	umax(v1, v2) = isnan(v1) ? v2 : max(v1, v2)
-	return PExtents1D(
-		umin(e1.min, e2.min),
-		umax(e1.max, e2.max),
-	)
+	(_min, _ign) = extents_finite([e1.min, e2.min])
+	(_ign, _max) = extents_finite([e1.max, e2.max])
+	return PExtents1D(_min, _max)
 end
 function union(elist::Vector{PExtents1D})
 	result = PExtents1D(DNaN, DNaN)
@@ -142,14 +139,12 @@ function union(elist::Vector{PExtents1D})
 end
 
 function union(e1::PExtents2D, e2::PExtents2D)
-	umin(v1, v2) = isnan(v1) ? v2 : min(v1, v2)
-	umax(v1, v2) = isnan(v1) ? v2 : max(v1, v2)
-	return PExtents2D(
-		umin(e1.xmin, e2.xmin),
-		umax(e1.xmax, e2.xmax),
-		umin(e1.ymin, e2.ymin),
-		umax(e1.ymax, e2.ymax),
-	)
+	(xmin, _ign) = extents_finite([e1.xmin, e2.xmin])
+	(_ign, xmax) = extents_finite([e1.xmax, e2.xmax])
+	(ymin, _ign) = extents_finite([e1.ymin, e2.ymin])
+	(_ign, ymax) = extents_finite([e1.ymax, e2.ymax])
+
+	return PExtents2D(xmin, xmax, ymin, ymax)
 end
 function union(elist::Vector{PExtents2D})
 	result = PExtents2D(DNaN, DNaN, DNaN, DNaN)

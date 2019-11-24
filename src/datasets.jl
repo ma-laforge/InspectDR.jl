@@ -7,9 +7,16 @@
 
 #Input dataset data:
 #TODO: make x an immutable (read-only) type so data cannot be changed once identified.
+#TODO: rename IDataset2D??
 mutable struct IDataset{DATAF1} #DATAF1::Bool: Data is function of 1 argument (optimization possible)
 	x::Vector
 	y::Vector
+end
+
+mutable struct IDatasetHeat{T}
+	x::Vector{DReal}
+	y::Vector{DReal}
+	data::Array{T,2} #z values for each (x,y) coord
 end
 
 
@@ -20,7 +27,7 @@ Point(ds::IDataset, i::Int) = Point2D(ds.x[i], ds.y[i])
 Point(ds::Vector{Point2D}, i::Int) = ds[i]
 
 #TODO: Specialize for sorted datasets?
-function getextents(ds::IDataset)
+function getextents(ds::T) where T<:Union{IDataset, IDatasetHeat}
 	(xmin, xmax) = extrema_nan(ds.x)
 	(ymin, ymax) = extrema_nan(ds.y)
 	return PExtents2D(xmin, xmax, ymin, ymax)

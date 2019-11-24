@@ -381,6 +381,44 @@ function rendernans(canvas::PCanvas2D, wfrmlist::Vector{IWaveform}, strip::Int)
 	return
 end
 
+#Render heatmap
+#-------------------------------------------------------------------------------
+function render(canvas::PCanvas2D, hm::DHeatmap)
+	ctx = canvas.ctx #WANTCONST
+	ds = hm.ds #alias
+	(nx, ny) = size(ds.data)
+	ensure((length(ds.x) == nx+1) && (length(ds.y) == ny+1),
+		"Heatmap: z-data must have one less value in each dimension than x & y vectors."
+	)
+	ctransp = ARGB32(0,0,0,0)
+
+	Cairo.save(ctx)
+	linestyle = LineStyle(:solid, Float64(1), ctransp) #Need 1px line to avoid gaps
+	#TODO: Is there a better way to close gaps??
+	setlinestyle(ctx, linestyle)
+
+	for ix in 1:nx
+		for iy in 1:ny
+			pt1 = map2dev(canvas.xf, Point2D(ds.x[ix], ds.y[iy]))
+			pt2 = map2dev(canvas.xf, Point2D(ds.x[ix+1], ds.y[iy+1]))
+			Cairo.set_source(ctx, ds.data[ix,iy])
+			Cairo.rectangle(ctx, BoundingBox(pt1.x, pt2.x, pt1.y, pt2.y))
+			Cairo.fill_preserve(ctx)
+			Cairo.stroke(ctx)
+		end
+	end
+
+	Cairo.restore(ctx)
+end
+function render(canvas::PCanvas2D, hmlist::Vector{DHeatmap}, strip::Int)
+	for hm in hmlist
+		if 0 == hm.strip || hm.strip == strip
+			render(canvas, hm)
+		end
+	end
+	return
+end
+
 #Render an actual waveform
 #-------------------------------------------------------------------------------
 function render(canvas::PCanvas2D, wfrm::DWaveform)
