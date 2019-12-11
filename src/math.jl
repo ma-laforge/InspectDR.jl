@@ -29,7 +29,7 @@ isincreasing(r::AbstractRange) = (step(r) > 0)
 
 #Safe version of extrema (returns DNaN on error):
 #Also ignores NaNs.  TODO: optimize?
-function extrema_nan(v::Vector)
+function extrema_nan(v::Array)
 	vmin = DInf; vmax = -DInf
 	for elem in v
 		if !isnan(elem)
@@ -50,7 +50,7 @@ end
 #Finds the finite extents of a vector.
 #Returns infinite extents if none are found.
 #TODO: optimize?
-function extents_finite(v::Vector)
+function extents_finite(v::Array)
 	vmin = DInf; vmax = -DInf
 	vmin_inf = DInf; vmax_inf = -DInf
 	for elem in v

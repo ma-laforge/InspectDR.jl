@@ -1,6 +1,17 @@
 #InspectDR: Heatmap tools
 #-------------------------------------------------------------------------------
 
+#==Constants
+===============================================================================#
+
+
+#==Main types
+===============================================================================#
+struct ColorMap
+	e::Vector{ARGB32} #Elements of color map
+end
+ColorMap() = ColorMap([ARGB32(0, 0, 0, 0)])
+
 #Transform used to normalize and clip a value:
 #result = (v + v0) * s
 struct TransformNormalizeClip
@@ -38,4 +49,14 @@ function map2axis(d::Array{T}, xf::Transform1DNormToARGB) where T<:DReal
 	end
 	return result
 end
+
+#==Constructor-like functions
+===============================================================================#
+
+#Construct ColorMap from vector of color values
+#ex: Colors.colormap("blues") returns a vector of RGB{Float64} values
+function ColorMap(v::Vector{T}) where T<:Color
+	return ColorMap([ARGB32(c) for c in v])
+end
+
 #Last line

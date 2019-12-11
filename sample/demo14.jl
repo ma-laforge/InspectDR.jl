@@ -15,7 +15,12 @@ red = RGB24(1, 0, 0)
 green = RGB24(0, 1, 0)
 blue = RGB24(0, 0, 1)
 
-default_line = line(color=blue, width=3)
+#Example using ColorSchemes
+#(run `using Colorschemes` before running demo to test)
+if @isdefined(ColorSchemes)
+cs = ColorSchemes.leonardo
+cmap = InspectDR.ColorMap(get(cs, range(0, stop=1, length=100)))
+end
 
 
 #Input data
@@ -40,7 +45,7 @@ plot = add(mplot, InspectDR.Plot2D(:lin, [:lin, :lin],
 	strip_linz, strip_logz = plot.strips
 
 	#Define extents & scales:
-#	strip_logy.grid = InspectDR.GridRect(vmajor=true, hmajor=true, hminor=true)
+#	strip_logz.grid = InspectDR.GridRect(vmajor=true, hmajor=true, hminor=true)
 	wfrm = addheatmap(plot, x, y, z, strip=1)
 	wfrm = addheatmap(plot, x, y, lz, strip=2)
 

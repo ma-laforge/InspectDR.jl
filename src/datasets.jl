@@ -33,6 +33,10 @@ function getextents(ds::T) where T<:Union{IDataset, IDatasetHeat}
 	return PExtents2D(xmin, xmax, ymin, ymax)
 end
 
+function getzextents(ds::IDatasetHeat)
+	(min, max) = extrema_nan(ds.data)
+	return PExtents1D(min, max)
+end
 
 #==Pre-processing display data
 ===============================================================================#

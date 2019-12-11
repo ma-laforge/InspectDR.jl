@@ -140,18 +140,18 @@ read2axis(pt::Point2D, ixf::InputXfrm2D) = read2axis(pt, ixf.x, ixf.y)
 
 #Map entire data vector:
 #-------------------------------------------------------------------------------
-function map2axis(d::Vector{T}, xf::InputXfrm1DSpec) where T<:Number
+function map2axis(d::Array{T}, xf::InputXfrm1DSpec) where T<:Number
 	#Apparently, passing functions as arguments is not efficient in Julia.
 	#-->Specializing on InputXfrm1DSpec, hoping to improve efficiency on dmap:
 	dmap = map2axis(T, xf)
 
-	result = Array{DReal}(undef, length(d))
+	result = Array{DReal}(undef, size(d))
 	for i in 1:length(d)
 		result[i] = dmap(d[i])
 	end
 	return result
 end
-map2axis(d::Vector{T}, ::InputXfrm1DSpec{:lin}) where T<:Number = d #Optimization: Linear scale does not need re-scaling
+map2axis(d::Array{T}, ::InputXfrm1DSpec{:lin}) where T<:Number = d #Optimization: Linear scale does not need re-scaling
 
 
 #Extents mapping functions, depending on axis type:

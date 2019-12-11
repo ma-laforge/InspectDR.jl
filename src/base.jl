@@ -85,7 +85,8 @@ to track x-values of complex data??
 
 #Input heat map data
 mutable struct Heatmap{T}
-	ext::PExtents2D #Desired extents to display, not data extents
+	ext::PExtents2D #Extents of x/y coordinates
+	zext::PExtents1D #extents of z-data
 	strip::UInt8 #Y-strip
 	visible::Bool
 	ds::T
@@ -244,14 +245,22 @@ PolylineAnnotation(x, y; line=InspectDR.line(), fillcolor=COLOR_TRANSPARENT, clo
 #Single graph strip of a Plot2D (shared x-coord):
 mutable struct GraphStrip
 	yscale::AxisScale
+	zscale::AxisScale
 	ext_data::PExtents2D #Maximum extents of data in strip (typically all finite)
 	yext_full::PExtents1D #y-extents when zoomed out to "full" (NaN values: use ext_data)
 	yext::PExtents1D #Current/active y-extents (typically all finite)
+	zext_data::PExtents1D #Maximum z-extents of data in strip (typically all finite)
+	zext_full::PExtents1D #z-extents when zoomed out to "full" (NaN values: use zext_data)
+	zext::PExtents1D #Current/active z-extents (typically all finite)
 	grid::PlotGrid
+	colormap::ColorMap
 end
 GraphStrip() = GraphStrip(AxisScale(:lin, tgtmajor=8, tgtminor=2),
+	AxisScale(:lin, tgtmajor=8, tgtminor=2),
 	PExtents2D(), PExtents1D(), PExtents1D(),
-	GridRect(vmajor=true, vminor=false, hmajor=true, hminor=false))
+	PExtents1D(), PExtents1D(), PExtents1D(),
+	GridRect(vmajor=true, vminor=false, hmajor=true, hminor=false),
+	defaults.colormap)
 
 #2D plot.
 mutable struct Plot2D <: Plot
@@ -340,11 +349,23 @@ end
 ===============================================================================#
 getextents(d::IWaveform) = getextents(d.ds)
 getextents(d::IHeatmap) = getextents(d.ds)
+getzextents(d::IHeatmap) = getextents(d.ds)
 function getextents(dlist::Vector{T}, strip::Int=1) where T<:Union{IWaveform, IHeatmap}
 	result = PExtents2D(xmin=-DInf, xmax=DInf, ymin=-DInf, ymax=DInf)
 	for d in dlist
 		if strip == d.strip
 			result = union(result, d.ext)
+		end
+	end
+	return result
+end
+#TODO: merge with getextents?
+#TODO CODEDUP: Generate Vector and call union(::Vector) to mitigate code duplication.
+function getzextents(dlist::Vector{T}, strip::Int=1) where T<:IHeatmap
+	result = PExtents1D(min=-DInf, max=DInf)
+	for d in dlist
+		if strip == d.strip
+			result = union(result, d.zext)
 		end
 	end
 	return result
@@ -386,8 +407,9 @@ end
 
 function addheatmap(plot::Plot2D, x::Vector, y::Vector, data::Array{T,2}; id::String="", strip=1, visible=true) where T<:Number
 	ext = PExtents2D() #Don't care at the moment
+	zext = PExtents1D() #Don't care at the moment
 	ensure(isincreasing(x) && isincreasing(x), "Heatmap only supports increasing x/y coordinates")
-	ds = IHeatmap(ext, strip, visible, IDatasetHeat(x, y, data))
+	ds = IHeatmap(ext, zext, strip, visible, IDatasetHeat(x, y, data))
 	push!(plot.data_heat, ds)
 	return ds
 end
@@ -427,6 +449,7 @@ end
 #Full extents are always merged (ext_full expected to be incomplete):
 getxextents_full(plot::Plot2D) = merge(plot.xext_data, plot.xext_full)
 getyextents_full(strip::GraphStrip) = merge(yvalues(strip.ext_data), strip.yext_full)
+getzextents_full(strip::GraphStrip) = merge(strip.zext_data, strip.zext_full)
 
 #Active extents:
 #(Obtain values from full extents when supplied ext contains NaN fields):
@@ -435,6 +458,8 @@ _setxextents(plot::Plot2D, ext::PExtents1D) =
 	(plot.xext = merge(getxextents_full(plot), ext))
 _setyextents(strip::GraphStrip, ext::PExtents1D) =
 	(strip.yext = merge(getyextents_full(strip), ext))
+_setzextents(strip::GraphStrip, ext::PExtents1D) =
+	(strip.zext = merge(getzextents_full(strip), ext))
 
 function setyextents(plot::Plot2D, ext::PExtents1D, strip::Int = 1)
 	_setyextents(plot.strips[strip], ext)
@@ -444,6 +469,11 @@ end
 function setxextents(plot::Plot2D, ext::PExtents1D)
 	_setxextents(plot, ext)
 	invalidate_extents(plot)
+end
+function setzextents(plot::Plot2D, ext::PExtents1D, strip::Int = 1)
+	_setzextents(plot.strips[strip], ext)
+	#No need to invalidate... data reduction depends on x extents
+	#invalidate_extents(plot)
 end
 
 #NOTE: set/get*extents_axis functions: set/get extents in axis coordinates
@@ -624,15 +654,23 @@ end
 _reduce(inputlist::Vector{IWaveform}, xext::PExtents1D, pdm::PointDropMatrix, xres_max::Integer) =
 	map((input)->_reduce(input, xext, pdm, xres_max), inputlist)
 
-
-#TODO: Find data reduction method??
-function genheatmap(input::IHeatmap, colormap::Transform1DNormToARGB)
-	ds = IDatasetHeat(input.ds.x, input.ds.y, map2axis(input.ds.data, colormap))
-	return DHeatmap(input.ext, input.strip, input.visible, ds)
+function update_displaydata(plot::Plot2D, inputlist::Vector{IWaveform})
+	xext = getxextents_axis(plot) #Read back extents, in transformed coordinates
+	plot.display_data = _reduce(inputlist, xext, plot.pointdropmatrix, plot.xres)
 end
 
-genheatmap(inputlist::Vector{IHeatmap}, colormap::Transform1DNormToARGB) =
-	map((input)->genheatmap(input, colormap), inputlist)
+#TODO: Find data reduction method??
+function gen_displaydata(input::IHeatmap, colormap::Transform1DNormToARGB)
+	ds = IDatasetHeat(input.ds.x, input.ds.y, map2axis(input.ds.data, colormap))
+#TODO: compute from size of colormap, do not use colormap
+
+	return DHeatmap(input.ext, input.zext, input.strip, input.visible, ds)
+end
+
+function update_displaydata(plot::Plot2D, inputlist::Vector{IHeatmap})
+	colormap = Transform1DNormToARGB(1,0, 0,0, 0,0, 0,1)
+	plot.display_data_heat = map((input)->gen_displaydata(input, colormap), inputlist)
+end
 
 
 #Rescale input dataset:
@@ -641,17 +679,17 @@ genheatmap(inputlist::Vector{IHeatmap}, colormap::Transform1DNormToARGB) =
 map2axis(input::T, x::InputXfrm1DSpec, y::InputXfrm1DSpec) where T<:IDataset =
 	T(map2axis(input.x, x), map2axis(input.y, y))
 
-map2axis(input::T, x::InputXfrm1DSpec, y::InputXfrm1DSpec, z::TransformNormalizeClip) where T<:IDatasetHeat =
-	T(map2axis(input.x, x), map2axis(input.y, y), input.data)
+map2axis(input::T, x::InputXfrm1DSpec, y::InputXfrm1DSpec, z::InputXfrm1DSpec) where T<:IDatasetHeat =
+	T(map2axis(input.x, x), map2axis(input.y, y), map2axis(input.data, z))
 
 function map2axis(input::IWaveform, x::InputXfrm1DSpec, y::InputXfrm1DSpec)
 	ds = map2axis(input.ds, x, y)
 	return IWaveform(input.id, ds, input.line, input.glyph, getextents(ds), input.strip, input.visible)
 end
 
-function map2axis(input::IHeatmap, x::InputXfrm1DSpec, y::InputXfrm1DSpec, z::TransformNormalizeClip)
+function map2axis(input::IHeatmap, x::InputXfrm1DSpec, y::InputXfrm1DSpec, z::InputXfrm1DSpec)
 	ds = map2axis(input.ds, x, y, z)
-	return IHeatmap(getextents(ds), input.strip, input.visible, ds)
+	return IHeatmap(getextents(ds), getzextents(ds), input.strip, input.visible, ds)
 end
 
 function map2axis(inputlist::Vector{IWaveform}, xflist::Vector{InputXfrm2D})
@@ -674,7 +712,7 @@ function map2axis(inputlist::Vector{IWaveform}, xflist::Vector{InputXfrm2D})
 	return result
 end
 
-function map2axis(inputlist::Vector{IHeatmap}, xflist::Vector{InputXfrm2D}, zxflist::Vector{TransformNormalizeClip})
+function map2axis(inputlist::Vector{IHeatmap}, xflist::Vector{InputXfrm2D}, zxflist::Vector{InputXfrm1D})
 	n = length(inputlist) #WANTCONST
 	nstrips = length(xflist) #WANTCONST
 	emptyds = IDatasetHeat(DReal[], DReal[], Array{DReal}(undef, 0,0)) #WANTCONST
@@ -685,7 +723,7 @@ function map2axis(inputlist::Vector{IHeatmap}, xflist::Vector{InputXfrm2D}, zxfl
 		if !input.visible; continue; end #Don't process non-visible waveforms
 		strip = input.strip
 		if strip > 0 && strip <= nstrips
-			wfrm = map2axis(input, xflist[strip].x, xflist[strip].y, zxflist[strip])
+			wfrm = map2axis(input, xflist[strip].x, xflist[strip].y, zxflist[strip].spec)
 		else #No scale for this strip... return empty waveform
 			wfrm = IHeatmap(PExtents2D(), strip, input.visible, emptyds)
 		end
@@ -703,16 +741,20 @@ function preprocess_data(plot::Plot2D)
 
 	#Figure out required input data tranform for each strip:
 	xflist = Vector{InputXfrm2D}(undef, nstrips)
-	zxflist = Vector{TransformNormalizeClip}(undef, nstrips) #For heatmaps
+	zxflist = Vector{InputXfrm1D}(undef, nstrips) #For heatmaps
+
 	for i in 1:nstrips
 		strip = plot.strips[i]
 
 		#Need to take grid into account:
 		xflist[i] = InputXfrm2D(plot.xscale, strip.yscale, strip.grid)
-		zxflist[i] = TransformNormalizeClip(min=0.0, max=1.0) #Hardcode to values between [0,1] for now
+		#NOTE: With Smith Charts: Transform does (x,y) <= (re(y), im(y)) instead.
+		zxflist[i] = InputXfrm1D(strip.zscale)
 	end
 
 	#Rescale data
+	#NOTE: data extents are auto calculated here.
+	#TODO: Auto-calculate when added, and add an explicit function to update??
 	wfrmlist = map2axis(plot.data, xflist)
 	heatmaplist = map2axis(plot.data_heat, xflist, zxflist)
 
@@ -725,17 +767,17 @@ function preprocess_data(plot::Plot2D)
 		ext_dataheat = getextents(heatmaplist, i)
 		strip.ext_data = axis2read(union(ext_data, ext_dataheat), xf)
 		_setyextents(strip, strip.yext) #Update extents, resolving any NaN fields.
+		zext_data = getzextents(heatmaplist, i)
+		_setzextents(strip, strip.zext) #Update extents, resolving any NaN fields.
 	end
 
 	#Extract maximum xextents from all strips:
 	plot.xext_data = union([xvalues(strip.ext_data) for strip in plot.strips])
 	_setxextents(plot, plot.xext) #Update extents, resolving any NaN fields.
 
-	#Reduce data:
-	xext = getxextents_axis(plot) #Read back extents, in transformed coordinates
-	plot.display_data = _reduce(wfrmlist, xext, plot.pointdropmatrix, plot.xres)
-	colormap = Transform1DNormToARGB(1,0, 0,0, 0,0, 0,1)
-	plot.display_data_heat = genheatmap(heatmaplist, colormap)
+	#Update final display data:
+	update_displaydata(plot, wfrmlist)
+	update_displaydata(plot, heatmaplist)
 	plot.invalid_ddata = false
 
 	#NOTE: Rescaling before data reduction is somewhat inefficient, but makes
