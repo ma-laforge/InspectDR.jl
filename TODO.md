@@ -37,6 +37,22 @@ The following lists various desired ways to display axis scales & labels.
  - Provide a means to reverse axis direction.
 
 
+# TODO: Documentation
+
+ - Document callback/event handler hierarchy and how they are ued.
+ - Document defaults system and how it is used.
+ - Document Plot object hierarchy and how to use it.
+ - Document plot invalidation and how it is applied.
+ - Document scales, transformations and function hierarchy (ex: axis2read).
+
 # TODO: Other
+
+ - Improve differentiation of private vs externally available variables in structures like Plot2D, GraphStrip, etc.
+ - GUI: cancel triggered operation if activestrip(w) < 1
+ - Fix aspect_square functionality (currently very hacky).
+ - Fix issues with fractional pixel graph bounds.
+ - Fix how we store/manipulate extents
+ - REMOVE DUPLICATED CODE WHENEVER POSSIBLE!
+
 
 ...
