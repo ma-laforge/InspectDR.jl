@@ -18,6 +18,9 @@ abstract type PlotAnnotation end
 be broken down to lower-level structures later on.
 =#
 
+struct PreDefaultsType; end #Used to construct structures BEFORE defaults are initialized
+const PREDEFAULTS = PreDefaultsType()
+
 #Specifies whether plot should apply F1 acceleration to drop points:
 mutable struct PointDropMatrix
 	m::Array{Bool,2} #Indices: (has_line, has_glyph)
@@ -107,7 +110,7 @@ mutable struct Annotation
 end
 Annotation(;title="") = Annotation(title, "", [], Libc.strftime(time()))
 
-mutable struct Font <: AbstractStyle
+mutable struct Font
 	name::String
 	_size::Float64
 	bold::Bool
@@ -115,15 +118,15 @@ mutable struct Font <: AbstractStyle
 end
 Font(name::String, _size::Real; bold::Bool=false, color=COLOR_BLACK) =
 	Font(name, _size, bold, color)
-Font() = Font(DEFAULT_FONTNAME, 10)
-function Font(ref::Font; name=StyleDefault, _size=StyleDefault, bold=StyleDefault, color=StyleDefault)
-	result = deepcopy(ref)
-	result[:name] = name
-	result[:_size] = _size
-	result[:bold] = bold
-	result[:color] = color
-	return result
+Font(::PreDefaultsType) = Font(DEFAULT_FONTNAME, 10) #Construct some object
+function overwrite!(f::Font; name=KEEP_PREV, _size=KEEP_PREV, bold=KEEP_PREV, color=KEEP_PREV)
+	overwriteprop!(f, :name, name)
+	overwriteprop!(f, :_size, _size)
+	overwriteprop!(f, :bold, bold)
+	overwriteprop!(f, :color, color)
+	return f
 end
+Font(ref::Font; kwargs...) = overwrite!(deepcopy(ref); kwargs...)
 
 mutable struct PlotLayout <: AbstractStyle #Layout/LegendLStyle
 	enable_legend::Bool
@@ -179,7 +182,7 @@ mutable struct PlotLayout <: AbstractStyle #Layout/LegendLStyle
 =#
 end
 
-PlotLayout() = PlotLayout(
+PlotLayout(::PreDefaultsType) = PlotLayout(
 	false, false, #enable
 	0, 0, 0, 0, 0, #valloc
 	0, 0, 0, 0, 0, #halloc
@@ -190,7 +193,10 @@ PlotLayout() = PlotLayout(
 	LineStyle(:dash, Float64(1), RGB24(.7, .7, .7)), #line_gridminor
 	LineStyle(:solid, Float64(2), COLOR_BLACK), #line_smithmajor
 	LineStyle(:solid, Float64(1), RGB24(.7, .7, .7)), #line_smithminor
-	Font(), Font(), Font(), Font(), Font(), Font(),
+	Font(PREDEFAULTS),
+	Font(PREDEFAULTS), Font(PREDEFAULTS),
+	Font(PREDEFAULTS), Font(PREDEFAULTS),
+	Font(PREDEFAULTS),
 	TickLabelStyle(), TickLabelStyle(),
 	AreaAttributes(), AreaAttributes(), AreaAttributes()
 )
@@ -316,10 +322,10 @@ mutable struct MultiplotLayout <: AbstractStyle
 	font_title::Font
 	frame::AreaAttributes
 end
-MultiplotLayout() = MultiplotLayout(
+MultiplotLayout(::PreDefaultsType) = MultiplotLayout(
 	1,
 	0, 0, 0, #h/valloc
-	Font(),
+	Font(PREDEFAULTS),
 	AreaAttributes()
 )
 
@@ -332,7 +338,7 @@ mutable struct Multiplot
 end
 #TODO: ok to deprecate titlefont=??
 function Multiplot(;style::MultiplotLayout=defaults.mplotlayout, title="",
-		ncolumns=StyleDefault, valloc_plot=StyleDefault, halloc_plot=StyleDefault)
+		ncolumns=USE_DFLT, valloc_plot=USE_DFLT, halloc_plot=USE_DFLT)
 	layout = StyleType(style)
 	layout[:ncolumns] = ncolumns
 	layout[:valloc_plot] = valloc_plot

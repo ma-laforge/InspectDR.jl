@@ -29,13 +29,19 @@ mutable struct Defaults
 end
 Defaults() = Defaults(
 	false, PDM_NEVER, ColorMap(),
-	getstyle(PlotLayout, :screen), getstyle(MultiplotLayout, :screen)
+	PlotLayout(PREDEFAULTS), MultiplotLayout(PREDEFAULTS)
 )
 
 
 #==Data
 ===============================================================================#
 const global defaults = Defaults()
+
+#==Constructors
+===============================================================================#
+
+PlotLayout() = PlotLayout(defaults.plotlayout)
+MultiplotLayout() = MultiplotLayout(defaults.mplotlayout)
 
 
 #==Set style of Defaults
@@ -56,11 +62,20 @@ function _initialize(dflt::Defaults)
 	catch
 	end
 
+	#Get dict value, or default if not exist.
+	#Note: Pop key from dict to avoid double processing
 	function condget(dict, key::Symbol, T::Type, default)
 		if haskey(dict, key)
 			return T(pop!(dict, key))
 		else
 			return T(default)
+		end
+	end
+	function condget(dict, key::Symbol, T::Type, default::KeepPrevType)
+		if haskey(dict, key)
+			return T(pop!(dict, key))
+		else
+			return default
 		end
 	end
 
@@ -75,30 +90,28 @@ function _initialize(dflt::Defaults)
 	fontname = condget(userdefaults, :fontname, String, DEFAULT_FONTNAME)
 	fontscale = condget(userdefaults, :fontscale, Float64, 1.0)
 
+	dflt.mplotlayout = getstyle(MultiplotLayout, :screen)
+	overwritefont!(dflt.mplotlayout, fontname=fontname, fontscale=fontscale)
+
 	#Manually get SUPPORTED defaults for Multiplot layout (seed from :screen):
-	mplotlayout = getstyle(MultiplotLayout, :screen,
-		fontname=fontname, fontscale=fontscale
-	)
 	condoverwrite(key::Symbol, T::Type) =
-		mplotlayout[key] = condget(userdefaults, key, T, mplotlayout[key])
+		(overwriteprop!(dflt.mplotlayout, key, condget(userdefaults, key, T, KEEP_PREV)))
 	condoverwrite(:ncolumns, Int)
 	condoverwrite(:valloc_plot, Float64)
 	condoverwrite(:halloc_plot, Float64)
-	dflt.mplotlayout = mplotlayout
 
 	#Automatically get defaults for Plot layout (seed from :screen):
-	plotlayout = getstyle(PlotLayout, :screen,
-		fontname=fontname, fontscale=fontscale,
+	dflt.plotlayout = getstyle(PlotLayout, :screen,
 		notation_x=notation_x, notation_y=notation_x, enable_legend=false
 	)
+	overwritefont!(dflt.plotlayout, fontname=fontname, fontscale=fontscale)
 	for (k, v) in userdefaults
 		try
-			plotlayout[k] = v
+			dflt.plotlayout[k] = v
 		catch
 			@warn("Cannot set default PlotLayout.$k = $v.")
 		end
 	end
-	dflt.plotlayout = plotlayout
 
 	return
 end

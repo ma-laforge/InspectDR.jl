@@ -1,6 +1,12 @@
 #InspectDR: IO functionnality for writing plots with Cairo
 #-------------------------------------------------------------------------------
 
+#= Comments
+
+ - `show` interface: writing to an IO.
+ - `write` interface: writing to a file.
+=#
+
 #==Constants
 ===============================================================================#
 const MIMEpng = MIME"image/png"
@@ -9,6 +15,8 @@ const MIMEeps = MIME"image/eps"
 const MIMEeps2 = MIME"application/eps" #Apparently this is also a MIME
 const MIMEps = MIME"application/postscript" #TODO: support when Cairo.jl supports PSSurface
 const MIMEpdf = MIME"application/pdf"
+#If an easy way to read Cairo scripts back to a surface is found, we could add:
+#const MIMEcairo = MIME"image/cairo"
 
 const MAPEXT2MIME = Dict{String,MIME}(
 	".png" => MIMEpng(),
@@ -16,9 +24,6 @@ const MAPEXT2MIME = Dict{String,MIME}(
 	".eps" => MIMEeps(),
 	".pdf" => MIMEpdf(),
 )
-
-#If an easy way to read Cairo scripts back to a surface is found:
-#const MIMEcairo = MIME"image/cairo"
 
 #All supported MIMEs:
 #EXCLUDE SVG so it can be turnd on/off??
@@ -64,7 +69,9 @@ end
 
 #w, h: w/h of entire figure.
 function _show(stream::IO, mime::MIME, mplot::Multiplot, w::Float64, h::Float64)
-	yoffset = mplot.layout.values.valloc_title
+	refresh!(mplot.layout) #Copy in values from defaults
+	layout = mplot.layout.values
+	yoffset = layout.valloc_title
 	nrows, ncols = griddims_auto(mplot)
 	wplot = w/ncols; hplot = (h-yoffset)/nrows
 
@@ -72,10 +79,10 @@ function _show(stream::IO, mime::MIME, mplot::Multiplot, w::Float64, h::Float64)
 		_reset(ctx)
 		bb = BoundingBox(0,w,0,h)
 		Cairo.save(ctx)
-			drawrectangle(ctx, bb, mplot.layout.values.frame)
+			drawrectangle(ctx, bb, layout.frame)
 		Cairo.restore(ctx)
 		render(ctx, mplot.title, Point2D(w/2, yoffset/2),
-			mplot.layout.values.font_title, align=ALIGN_HCENTER|ALIGN_VCENTER
+			layout.font_title, align=ALIGN_HCENTER|ALIGN_VCENTER
 		)
 
 		for (i, plot) in enumerate(mplot.subplots)
@@ -99,13 +106,14 @@ end
 #_show() Plot: Leverage write to Multiplot
 function _show(stream::IO, mime::MIME, plot::Plot, w::Float64, h::Float64)
 	mplot = Multiplot()
-	mplot.valloc_title = 0
+	mplot.layout[:valloc_title] = 0
 	push!(mplot.subplots, plot)
 	_show(stream, mime, mplot, w, h)
 end
 
 #_show() Plot2D: Auto-coumpute w/h
 function _show(stream::IO, mime::MIME, plot::Plot2D)
+	refresh!(plot.layout) #Copy in values from defaults
 	bb = plotbounds(plot.layout.values, grid1(plot))
 	_show(stream, mime, plot, bb.xmax, bb.ymax)
 end
@@ -143,27 +151,30 @@ Base.showable(mime::MIME, p::Plot) = Base.showable(mime::MIME, Multiplot())
 
 #_write() Multiplot:
 function _write(path::String, mime::MIME, mplot::Multiplot, w::Float64, h::Float64)
-	io = open(path, "w")
-	_show(io, mime, mplot, w, h)
-	close(io)
+	open(path, "w") do io
+		_show(io, mime, mplot, w, h)
+	end
 end
 
-#_write() Plot: Leverage write to Multiplot
+#_write() Plot:
 function _write(path::String, mime::MIME, plot::Plot, w::Float64, h::Float64)
-	mplot = Multiplot()
-	mplot.layout[:valloc_title] = 0
-	push!(mplot.subplots, plot)
-	_write(path, mime, mplot, w, h)
+	open(path, "w") do io
+		_show(io, mime, plot, w, h)
+	end
 end
 
-#_write() Multiplot: Auto-coumpute w/h
-_write(path::String, mime::MIME, mplot::Multiplot) =
-	_write(path, mime, mplot, size_auto(mplot)...)
+#_write() Multiplot:
+function _write(path::String, mime::MIME, mplot::Multiplot)
+	open(path, "w") do io
+		show(io, mime, mplot)
+	end
+end
 
-#_write() Plot2D: Auto-coumpute w/h
+#_write() Plot2D:
 function _write(path::String, mime::MIME, plot::Plot2D)
-	bb = plotbounds(plot.layout.values, grid1(plot))
-	_write(path, mime, plot, bb.xmax, bb.ymax)
+	open(path, "w") do io
+		_show(io, mime, plot)
+	end
 end
 
 

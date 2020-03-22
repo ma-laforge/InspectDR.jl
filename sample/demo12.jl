@@ -46,7 +46,6 @@ plot = add(mplot, InspectDR.Plot2D(:lin, :lin,
 )
 _strip = plot.strips[1]
 _strip.yext_full = InspectDR.PExtents1D(min=0, max=100)
-plot.layout.values = InspectDR.PlotLayout()
 
 wfrm = add(plot, x, ymeas, id="Measured")
 	wfrm.line = line_meas

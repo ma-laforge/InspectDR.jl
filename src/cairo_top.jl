@@ -108,6 +108,7 @@ end
 #TODO: split in parts so that GUI can be refreshed before refreshing data
 #TODO: Or maybe send in final context so it can be done here.
 function render(bplot::CairoBufferedPlot, plot::Plot2D, bb::BoundingBox, refreshdata::Bool)
+	refresh!(plot.layout) #Copy in values from defaults
 	lyt = plot.layout.values #WANTCONST
 	databb = databounds(bb, lyt, grid1(plot)) #WANTCONST
 	nstrips = length(plot.strips) #WANTCONST
