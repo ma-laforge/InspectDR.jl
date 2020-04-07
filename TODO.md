@@ -43,7 +43,7 @@ The following lists various desired ways to display axis scales & labels.
  - Document defaults system and how it is used.
  - Document Plot object hierarchy and how to use it.
  - Document plot invalidation and how it is applied.
- - Document scales, transformations and function hierarchy (ex: axis2read).
+ - Document scales, transformations and function hierarchy (ex: aloc2axis).
 
 # TODO: Other
 

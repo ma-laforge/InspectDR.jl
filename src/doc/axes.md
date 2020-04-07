@@ -1,7 +1,6 @@
-# Documentation for InspectDR axes
+# InspectDR: Axes Documentation
 
 This file describes the scheme used describe axes and scales.
-
 
 ## Types:
  - AxisScale: Abstract
@@ -10,11 +9,6 @@ This file describes the scheme used describe axes and scales.
  - InputXfrm1D
  - InputXfrm2D
  - InputXfrm1DSpec: Used to generate specialized (efficient) code for a transform.
-
-## Functions:
- - map2axis:
- - axis2read:
- - read2axis:
 
 ## Deprecated?
  - `CoordSystem, AxisCoord, NormCoord, DataCoord, TypedCoord, AnnotationCoord`

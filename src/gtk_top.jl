@@ -86,13 +86,12 @@ end
 #plothover event: show plot coordinates under mouse.
 #-------------------------------------------------------------------------------
 function handleevent_plothover(gplot::GtkPlot, pwidget::PlotWidget, x::Float64, y::Float64)
-	plotinfo = pwidget.plotinfo #WANTCONST
-
 	istrip = pwidget.mouseover.istrip
 	pos = pwidget.mouseover.pos
 	if istrip > 0 && pos != nothing
-		xfmt = hoverfmt(plotinfo.xfmt)
-		yfmt = hoverfmt(plotinfo.strips[istrip].yfmt)
+		rstrip = pwidget.rplot.strips[istrip]
+		xfmt = hoverfmt(rstrip.xfmt)
+		yfmt = hoverfmt(rstrip.yfmt)
 		xstr = formatted(pos.x, xfmt)
 		ystr = formatted(pos.y, yfmt)
 		statstr = "$TEXTH_HACK_STR(x, y) = ($xstr, $ystr)"
@@ -156,8 +155,8 @@ function PlotWidget(plot::Plot)
 #	plotbuf = Gtk.cairo_surface_for(canvas) #create similar - does not work here
 	curstrip = 1 #TODO: Is this what is desired?
 
-	plotinfo = Plot2DInfo(plot)
-	pwidget = PlotWidget(vbox, canvas, plot, plotinfo, ISNormal(),
+	bb = BoundingBox(0, w, 0, h)
+	pwidget = PlotWidget(vbox, canvas, plot, RPlot2D(plot, bb), ISNormal(),
 		w_xscale, xscale, w_xpos, xpos,
 		plotbuf, curstrip, GtkMouseOver(),
 		CtrlMarkerGroup(plot.layout[:font_annotation]), nothing, true, true,

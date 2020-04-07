@@ -25,7 +25,7 @@ const PROPSET_MPLOTFONTS = Set([:font_title])
 const PROPSET_PLOTAUTOFIT = Set([
 	:h_title, :h_axislabel, :h_ticklabel, :w_axislabel, :w_ticklabel,
 	:valloc_top, :valloc_mid, :valloc_bottom, :halloc_left, :halloc_right,
-	:halloc_legend, :voffset_title,
+	:halloc_colorscale, :halloc_colorscale_right, :halloc_legend, :voffset_title,
 	:voffset_xticklabel, :hoffset_yticklabel, :voffset_xaxislabel, :hoffset_yaxislabel
 ])
 const PROPSET_MPLOTAUTOFIT = Set([:valloc_title])
@@ -60,6 +60,7 @@ function autofit2font!(lyt::PlotLayout)
 
 	lyt.halloc_left = w_axislabel + 4.25*w_ticklabel
 	lyt.halloc_right = w_ticklabel * 3.75 #Room for x10^EXP
+	lyt.halloc_colorscale_right = 4.25*w_ticklabel
 
 	lyt.voffset_title = h_title*0.5
 	lyt.voffset_xticklabel = h_ticklabel*0.5
@@ -128,6 +129,7 @@ end
 function getstyle(::Type{PlotLayout}, ::StyleID{:screen},
 		fontscale::Float64, notation_x::Symbol, notation_y::Symbol, enable_legend::Bool)
 	lyt = PlotLayout(PREDEFAULTS)
+	#NOTE: Dimensions in Cairo backend are in pixels.
 
 	lyt.enable_legend = enable_legend
 	lyt.enable_timestamp = false
@@ -142,6 +144,7 @@ function getstyle(::Type{PlotLayout}, ::StyleID{:screen},
 	lyt.valloc_data = DEFAULT_DATA_HEIGHT
 	lyt.halloc_data = DEFAULT_DATA_WIDTH
 
+	lyt.halloc_colorscale = 20
 	lyt.halloc_legendlineseg = 20
 	lyt.hoffset_legendtext = 0.5
 	lyt.valloc_legenditemsp = 0.25
@@ -164,7 +167,9 @@ function getstyle(::Type{PlotLayout}, ::StyleID{:screen},
 	lyt.frame_data = AreaAttributes(
 		line=InspectDR.line(style=:solid, color=COLOR_BLACK, width=2)
 	)
-
+	lyt.frame_colorscale = AreaAttributes(
+		line=InspectDR.line(style=:solid, color=COLOR_BLACK, width=2)
+	)
 	return autofit2font!(lyt) #Compute offsets
 end
 
@@ -193,10 +198,13 @@ getstyle(::Type{T}, ID::StyleID{:screen}; fontscale::Real=1.0,
 #-------------------------------------------------------------------------------
 #":IEEE" PlotLayout stylesheet:
 function getstyle(::Type{PlotLayout}, ::StyleID{:IEEE},
-		ppi::Float64, fontscale::Float64, enable_legend::Bool
+		ppi::Float64, fontscale::Float64, enable_legend::Bool #ppi: pixels per inch
 	)
 	pt2px = ppi/DTPPOINTS_PER_INCH #WANTCONST
 	lyt = PlotLayout(PREDEFAULTS)
+	#=NOTE: Dimensions in Cairo backend are in pixels.
+	  Must therefore convert desired dimensions in points, to pixels
+	=#
 
 	#IEEE Plot: Must ensure readable axis & tick labels
 	fntaxis = Font(lyt.font_axislabel.name, fontscale*7*pt2px)
@@ -222,6 +230,8 @@ function getstyle(::Type{PlotLayout}, ::StyleID{:IEEE},
 	lyt.valloc_bottom = h_axislabel + 1.75*h_ticklabel
 	lyt.halloc_left = w_axislabel + 2.5*h_ticklabel
 	lyt.halloc_right = w_ticklabel * 3.75 #Room for x10^EXP
+	lyt.halloc_colorscale = 20*pt2px
+	lyt.halloc_colorscale_right = 2.5*h_ticklabel
 
 	lyt.voffset_title = 0
 	lyt.voffset_xticklabel = h_ticklabel*0.5
@@ -236,6 +246,7 @@ function getstyle(::Type{PlotLayout}, ::StyleID{:IEEE},
 	lyt.hoffset_legendtext = 0.5
 
 	lyt.frame_data.line = line(style=:solid, color=COLOR_BLACK, width=1*pt2px)
+	lyt.frame_colorscale.line = line(style=:solid, color=COLOR_BLACK, width=1*pt2px)
 	return lyt
 end
 

@@ -30,9 +30,9 @@ modifiers_pressed(eventstate, modmask) = (modmask == (MODIFIERS_SUPPORTED & even
 #Returns 0 or strip index:
 #TODO: refer to graphbblist only - instead of pwidget???
 function hittest(pwidget::PlotWidget, x::Float64, y::Float64)
-	infolist = pwidget.plotinfo.strips #WANTCONST
-	for i = 1:length(infolist)
-		if isinside(infolist[i].graphbb, x, y)
+	maplist = pwidget.rplot.strips #WANTCONST
+	for i = 1:length(maplist)
+		if isinside(maplist[i].bb, x, y)
 			return i
 		end
 	end
@@ -52,10 +52,8 @@ function handleevent_plothover(pwidget::PlotWidget, event::Gtk.GdkEventMotion, i
 	x, y = event.x, event.y
 
 	if istrip > 0
-		xf = Transform2D(pwidget.plotinfo, istrip)
-		pt = map2axis(xf, Point2D(x, y))
-		ixf = InputXfrm2D(pwidget.plotinfo, istrip)
-		pwidget.mouseover.pos = axis2read(pt, ixf) #TODO: do we want "read"able coords?
+		#TODO: do we want "read"able coords?
+		pwidget.mouseover.pos = dev2axis(pwidget.rplot.strips[istrip], Point2D(x, y))
 	else
 		pwidget.mouseover.pos = nothing
 	end

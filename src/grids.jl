@@ -39,11 +39,13 @@ end
 GridLines(displaymajor=true, displayminor=true) =
 	GridLines(displaymajor, displayminor, [], [], NoRangeDisplayInfo())
 
+#GridLinesAuto: Auto-calculate grid lines from extents
 mutable struct GridLinesAuto <: AbstractGridLines
 	displaymajor::Bool
 	displayminor::Bool
 end
 
+#UndefinedGridLines: non-finite, or zero extents
 mutable struct UndefinedGridLines <: AbstractGridLines
 	minline::DReal
 	maxline::DReal

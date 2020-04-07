@@ -7,56 +7,46 @@
 
 #==Main types
 ===============================================================================#
-struct ColorMap
-	e::Vector{ARGB32} #Elements of color map
+struct ColorScale
+	e::Vector{ARGB32} #Elements of color scale
 end
-ColorMap() = ColorMap([ARGB32(0, 0, 0, 0)])
+ColorScale() = ColorScale([ARGB32(0, 0, 0, 0)])
 
-#Transform used to normalize and clip a value:
-#result = (v + v0) * s
-struct TransformNormalizeClip
-	v0::DReal; s::DReal
+#Transform used to map a 1D "z" value to a colour.
+struct Transform1DToARGB
+	vmin::DReal; span::DReal #Min value; span of colour scale
+	s::DReal #scaling factor
+	colorscale::ColorScale
 end
-
-function TransformNormalizeClip(;min::DReal=0, max::DReal=1)
-	v0 = -min; s = (max-min)
-	return TransformNormalizeClip(v0, s)
-end
-
-#Transform used to map a [0,1] normalized 1D value to a colour.
-#r = v*rs + r0
-#g = v*gs + g0
-#b = v*bs + b0
-#a = v*as + a0
-#TODO: Make a more flexible colormap.
-struct Transform1DNormToARGB
-	rs::DReal; r0::DReal
-	gs::DReal; g0::DReal
-	bs::DReal; b0::DReal
-	as::DReal; a0::DReal
+function Transform1DToARGB(colorscale::ColorScale; vmin::DReal=0, vmax::DReal=1)
+	vmin, vmax = minmax(vmin, vmax)
+	span = vmax - vmin
+	N = length(colorscale.e)
+	s = (N-1) / span
+	return Transform1DToARGB(vmin, span, s, colorscale)
 end
 
-
-function map2axis(d::Array{T}, xf::Transform1DNormToARGB) where T<:DReal
-	result = Array{ARGB32}(undef,size(d))
-	for i in 1:length(d)
-		v = max(min(d[i], 1.0), 0.0)
-		r = v*xf.rs+xf.r0
-		g = v*xf.gs+xf.g0
-		b = v*xf.bs+xf.b0
-		a = v*xf.as+xf.a0
-		result[i] = ARGB32(r,g,b,a)
-	end
-	return result
-end
 
 #==Constructor-like functions
 ===============================================================================#
 
-#Construct ColorMap from vector of color values
+#Construct ColorScale from vector of color values
 #ex: Colors.colormap("blues") returns a vector of RGB{Float64} values
-function ColorMap(v::Vector{T}) where T<:Color
-	return ColorMap([ARGB32(c) for c in v])
+function ColorScale(v::Vector{T}) where T<:Colorant
+	return ColorScale([ARGB32(c) for c in v])
+end
+
+
+#==Main functions
+===============================================================================#
+function apply(xf::Transform1DToARGB, d::Array{T}) where T<:DReal
+	result = Array{ARGB32}(undef,size(d))
+	for i in 1:length(d)
+		v = max(min(d[i] - xf.vmin, xf.span), 0)
+		idx = Int(round(v*xf.s)) + 1
+		result[i] = xf.colorscale.e[idx]
+	end
+	return result
 end
 
 #Last line

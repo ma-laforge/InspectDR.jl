@@ -22,13 +22,13 @@ const PDM_DEFAULTS = Dict(
 mutable struct Defaults
 	rendersvg::Bool #Might want to dissalow SVG renderings for performance reasons
 	pointdropmatrix::PointDropMatrix
-	colormap::ColorMap
+	colorscale::ColorScale
 
 	plotlayout::PlotLayout
 	mplotlayout::MultiplotLayout
 end
 Defaults() = Defaults(
-	false, PDM_NEVER, ColorMap(),
+	false, PDM_NEVER, ColorScale(),
 	PlotLayout(PREDEFAULTS), MultiplotLayout(PREDEFAULTS)
 )
 
@@ -82,10 +82,11 @@ function _initialize(dflt::Defaults)
 	dflt.rendersvg = condget(userdefaults, :rendersvg, Bool, true)
 	notation_x = condget(userdefaults, :notation_x, Symbol, :ENG)
 	notation_y = condget(userdefaults, :notation_y, Symbol, :ENG)
+	notation_z = condget(userdefaults, :notation_z, Symbol, :ENG)
 	droppoints = condget(userdefaults, :droppoints, Symbol, :noglyph)
 	dflt.pointdropmatrix = PDM_DEFAULTS[droppoints]
-	cmapid = condget(userdefaults, :colormap, String, "Oranges")
-	dflt.colormap = ColorMap(Colors.colormap(cmapid))
+	cmapid = condget(userdefaults, :colorscale, String, "Oranges")
+	dflt.colorscale = ColorScale(Colors.colormap(cmapid))
 
 	fontname = condget(userdefaults, :fontname, String, DEFAULT_FONTNAME)
 	fontscale = condget(userdefaults, :fontscale, Float64, 1.0)

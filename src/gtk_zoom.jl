@@ -49,7 +49,7 @@ end
 
 function selectionbox_draw(ctx::CairoContext, w::PlotWidget)
 	if !isa(w.state, ISSelectingArea); return; end
-	graphbb = w.plotinfo.strips[activestrip(w)].graphbb
+	graphbb = w.rplot.strips[activestrip(w)].bb
 	selectionbox_draw(ctx, w.state.bb, graphbb, w.hallowed, w.vallowed)
 end
 
@@ -91,7 +91,7 @@ function scalectrl_apply(pwidget::PlotWidget)
 	ixf = InputXfrm1D(plot.xscale) #WANTCONST
 
 	#Use transformed coordinate system:
-	xext_full = read2axis(getxextents_full(plot), ixf)
+	xext_full = axis2aloc(getxextents_full(plot), ixf)
 	span = xext_full.max - xext_full.min
 	center = (xext_full.max + xext_full.min) / 2
 	vspan = span/xscale #Visible span
@@ -100,8 +100,8 @@ function scalectrl_apply(pwidget::PlotWidget)
 
 	#Update extents & redraw
 	xext_new = PExtents1D(xmin, xmax)
-	xext = merge(getxextents_axis(plot), xext_new)
-	setxextents_axis(plot, xext)
+	xext = merge(getxextents_aloc(plot), xext_new)
+	setxextents_aloc(plot, xext)
 
 	refresh(pwidget, refreshdata=true)
 end
@@ -114,16 +114,16 @@ function zoom(pwidget::PlotWidget, bb::BoundingBox, istrip::Int)
 	p1 = Point2D(bb.xmin, bb.ymin)
 	p2 = Point2D(bb.xmax, bb.ymax)
 
-	xf = Transform2D(pwidget.plotinfo, istrip)
-	p1 = map2axis(xf, p1)
-	p2 = map2axis(xf, p2)
+	rstrip = pwidget.rplot.strips[istrip]
+	p1 = dev2aloc(rstrip, p1)
+	p2 = dev2aloc(rstrip, p2)
 
 	if pwidget.hallowed
-		setxextents_axis(pwidget.src, PExtents1D(min(p1.x, p2.x), max(p1.x, p2.x)))
+		setxextents_aloc(pwidget.src, PExtents1D(min(p1.x, p2.x), max(p1.x, p2.x)))
 	end
 
 	if pwidget.vallowed
-		setyextents_axis(pwidget.src, PExtents1D(min(p1.y, p2.y), max(p1.y, p2.y)), istrip)
+		setyextents_aloc(pwidget.src, PExtents1D(min(p1.y, p2.y), max(p1.y, p2.y)), istrip)
 	end
 
 	scalectrl_enabled(pwidget, false) #Scroll bar control no longer valid
@@ -139,8 +139,8 @@ function zoom(pwidget::PlotWidget, ext::PExtents2D, pt::Point2D, ratio::Float64,
 	xmin = pt.x-ratio*Δx
 	ymin = pt.y-ratio*Δy
 
-	setxextents_axis(pwidget.src, PExtents1D(xmin, xmin + ratio*xspan))
-	setyextents_axis(pwidget.src, PExtents1D(ymin, ymin + ratio*yspan), istrip)
+	setxextents_aloc(pwidget.src, PExtents1D(xmin, xmin + ratio*xspan))
+	setyextents_aloc(pwidget.src, PExtents1D(ymin, ymin + ratio*yspan), istrip)
 
 	scalectrl_enabled(pwidget, false) #Scroll bar control no longer valid
 	refresh(pwidget, refreshdata=true)
@@ -148,7 +148,7 @@ end
 
 #Zoom in/out, centered on current extents
 function zoom(pwidget::PlotWidget, ratio::Float64, istrip::Int)
-	ext = getextents_axis(pwidget.src, istrip)
+	ext = pwidget.rplot.strips[istrip].ext
 	pt = Point2D((ext.xmin+ext.xmax)/2, (ext.ymin+ext.ymax)/2)
 	zoom(pwidget, ext, pt, ratio, istrip)
 end
@@ -159,10 +159,9 @@ zoom_in(pwidget::PlotWidget, stepratio::Float64=ZOOM_STEPRATIO) =
 
 #Zoom in/out around specified device coordinates:
 function zoom(pwidget::PlotWidget, x::Float64, y::Float64, ratio::Float64, istrip::Int)
-	pt = Point2D(x, y)
-	ext = getextents_axis(pwidget.src, istrip)
-	xf = Transform2D(pwidget.plotinfo, istrip)
-	pt = map2axis(xf, pt)
+	rstrip = pwidget.rplot.strips[istrip]
+	ext = rstrip.ext #(aloc coordinates)
+	pt = dev2aloc(rstrip, Point2D(x, y))
 	zoom(pwidget, ext, pt, ratio, istrip)
 end
 zoom_out(pwidget::PlotWidget, x::Float64, y::Float64, stepratio::Float64=ZOOM_STEPRATIO) =
@@ -230,17 +229,17 @@ end
 #==Basic pan control
 ===============================================================================#
 function pan_xratio(pwidget::PlotWidget, panstepratio::Float64)
-	xext = getxextents_axis(pwidget.src)
+	xext = getxextents_aloc(pwidget.src)
 	panstep = panstepratio*(xext.max-xext.min)
-	setxextents_axis(pwidget.src,
+	setxextents_aloc(pwidget.src,
 		PExtents1D(xext.min+panstep, xext.max+panstep))
 	scalectrl_enabled(pwidget, false) #Scroll bar control no longer valid
 	refresh(pwidget, refreshdata=true)
 end
 function pan_yratio(pwidget::PlotWidget, panstepratio::Float64, istrip::Int)
-	yext = getyextents_axis(pwidget.src, istrip)
+	yext = getyextents_aloc(pwidget.src, istrip)
 	panstep = panstepratio*(yext.max-yext.min)
-	setyextents_axis(pwidget.src,
+	setyextents_aloc(pwidget.src,
 		PExtents1D(yext.min+panstep, yext.max+panstep), istrip)
 	refresh(pwidget, refreshdata=true)
 end
@@ -258,16 +257,16 @@ pan_down(pwidget::PlotWidget) = pan_yratio(pwidget, -PAN_STEPRATIO)
 #Δy/Δy: in device coordinates
 function mousepan_delta(pwidget::PlotWidget, ext::PExtents2D, Δx::Float64, Δy::Float64, istrip::Int)
 	#Convert to plot coordinates:
-	xf = Transform2D(ext, pwidget.plotinfo.strips[istrip].graphbb)
-	Δvec = map2axis(xf, Vector2D(-Δx, -Δy))
+	rstrip = pwidget.rplot.strips[istrip]
+	Δvec = apply_inv(rstrip.xf, Vector2D(-Δx, -Δy))
 
-	setextents_axis(pwidget.src, ext, istrip) #Restore original extents before overwriting
+	setextents_aloc(pwidget.src, ext, istrip) #Restore original extents before overwriting
 
 	if pwidget.hallowed
-		setxextents_axis(pwidget.src, PExtents1D(ext.xmin+Δvec.x, ext.xmax+Δvec.x))
+		setxextents_aloc(pwidget.src, PExtents1D(ext.xmin+Δvec.x, ext.xmax+Δvec.x))
 	end
 	if pwidget.vallowed
-		setyextents_axis(pwidget.src, PExtents1D(ext.ymin+Δvec.y, ext.ymax+Δvec.y), istrip)
+		setyextents_aloc(pwidget.src, PExtents1D(ext.ymin+Δvec.y, ext.ymax+Δvec.y), istrip)
 	end
 
 	scalectrl_enabled(pwidget, false) #Scroll bar control no longer valid
@@ -276,7 +275,7 @@ end
 function mousepan_setstart(pwidget::PlotWidget, x::Float64, y::Float64)
 	locdir_any(pwidget)
 	istrip = activestrip(pwidget)
-	ext_start = getextents_axis(pwidget.src, istrip)
+	ext_start = pwidget.rplot.strips[istrip].ext
 	p0 = Point2D(x, y)
 	gdk_window_set_cursor(pwidget.canvas, CURSOR_PAN)
 	pwidget.state = ISPanningData(p0, p0, ext_start, istrip)

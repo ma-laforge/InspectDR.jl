@@ -63,11 +63,8 @@ function clear(ctx::CairoContext, color::Colorant=COLOR_TRANSPARENT)
 end
 
 #Draws a rectangle-shaped area with a solid color
-function wipe(ctx::CairoContext, bb::BoundingBox, color::Colorant)
-	Cairo.set_source(ctx, color)
-	Cairo.rectangle(ctx, bb)
-	Cairo.fill(ctx)
-end
+wipe(ctx::CairoContext, bb::BoundingBox, color::Colorant) =
+	drawrectangle(ctx, bb, color)
 
 function setclip(ctx::CairoContext, bb::BoundingBox)
 	Cairo.rectangle(ctx, bb)
@@ -129,6 +126,13 @@ function drawrectangle(ctx::CairoContext, bb::BoundingBox, aa::AreaAttributes)
 	Cairo.stroke(ctx)
 end
 
+#Draw a filled rectangle with no border
+#-------------------------------------------------------------------------------
+function drawrectangle(ctx::CairoContext, bb::BoundingBox, color::Colorant)
+	Cairo.set_source(ctx, color)
+	Cairo.rectangle(ctx, bb)
+	Cairo.fill(ctx)
+end
 
 #==Rendering text
 ===============================================================================#

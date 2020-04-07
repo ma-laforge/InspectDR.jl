@@ -47,7 +47,7 @@ render_xcircles(ctx::CairoContext, clist::Vector{DReal}) =
 function render_rcirclelabel(ctx::CairoContext, xf::Transform2D, pt::Point2D, xflip::Bool, lbl::String)
 	xscale = xflip ? -1 : 1
 	xalign = xflip ? ALIGN_LEFT : ALIGN_RIGHT
-	pt = map2dev(xf, Point2D(xscale*pt.x, pt.y))
+	pt = apply(xf, Point2D(xscale*pt.x, pt.y))
 	render(ctx, lbl, Point2D(pt.x-xscale*SMITHLABEL_OFFSET, pt.y+SMITHLABEL_OFFSET),
 		align=ALIGN_TOP|xalign
 	)
@@ -73,9 +73,9 @@ function render_xcirclelabel(ctx::CairoContext, xf::Transform2D, pt::Point2D, xf
 
 	#Compute text position, including offset:
 	pt = Point2D(xscale*pt.x, pt.y)
-	vpos = map2dev(xf, Vector2D(pt)) #Directional vector of label position
+	vpos = apply(xf, Vector2D(pt)) #Directional vector of label position
 	voffset = (SMITHLABEL_OFFSET/vecnorm(vpos))*vpos
-	pt = map2dev(xf, pt)+voffset
+	pt = apply(xf, pt)+voffset
 	render(ctx, lbl, pt, angle=Θ, align=ALIGN_BOTTOM|ALIGN_HCENTER)
 end
 function render_xcirclelabel(ctx::CairoContext, xf::Transform2D, xflip::Bool, refscale::Real, c::DReal)
@@ -108,7 +108,7 @@ function getrealimag(d::Vector{T}) where T<:Number
 	return (x, y)
 end
 
-function map2axis(input::T, x::InputXfrm1DSpec{:real}, y::InputXfrm1DSpec{:imag}) where T<:IDataset
+function data2aloc(input::T, x::InputXfrm1DSpec{:real}, y::InputXfrm1DSpec{:imag}) where T<:IDataset
 	(x, y) = getrealimag(input.y)
 	return IDataset{false}(x, y) #Assume new re/im data is not sorted.
 end
@@ -116,16 +116,15 @@ end
 
 #==High-level rendering functions
 ===============================================================================#
-function render_grid(canvas::PCanvas2D, lyt::PlotLayout, grid::GridSmith)
-	ctx = canvas.ctx #WANTCONST
-	graphbb = canvas.graphbb #WANTCONST
+function render_grid(ctx::CairoContext, rstrip::RStrip2D, lyt::PlotLayout, grid::GridSmith)
+	graphbb = rstrip.bb #WANTCONST
 	xflip = !grid.zgrid #WANTCONST Flip x-axis for admittance(Y)-grid lines
 
 Cairo.save(ctx) #-----
 	setclip(ctx, graphbb)
 
 	#Set transform through Cairo to so it can deal with circles:
-	setxfrm(ctx, canvas.xf)
+	setxfrm(ctx, rstrip.xf)
 	if xflip
 		Cairo.scale(ctx, -1, 1)
 	end
@@ -141,26 +140,17 @@ Cairo.save(ctx) #-----
 
 	#Draw X=0 line:
 	setlinestyle(ctx, lyt.line_smithminor)
-	y = map2dev(canvas.xf, Point2D(0, 0)).y
-	drawline(ctx::CairoContext, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
+	y = apply(rstrip.xf, Point2D(0, 0)).y
+	drawline(ctx, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
 
 	#Draw labels:
 	setfont(ctx, lyt.font_ticklabel)
-	render_rcirclelabels(ctx, canvas.xf, xflip, grid.ref, grid.labelR)
-	render_rcirclelabel(ctx, canvas.xf, Point2D(1,0), xflip, "∞")
-	render_xcirclelabels(ctx, canvas.xf, xflip, grid.ref, grid.labelX)
+	render_rcirclelabels(ctx, rstrip.xf, xflip, grid.ref, grid.labelR)
+	render_rcirclelabel(ctx, rstrip.xf, Point2D(1,0), xflip, "∞")
+	render_xcirclelabels(ctx, rstrip.xf, xflip, grid.ref, grid.labelX)
 
 Cairo.restore(ctx) #-----
 	nothing
-end
-
-function render_axes(canvas::PCanvas2D, lyt::PlotLayout, grid::GridSmith, xs::AxisScale, ys::AxisScale, xticklabels::Bool)
-	render_graphframe(canvas, lyt.frame_data)
-
-	#Display grid:
-	#TODO: make it possible to disable?
-	cgrid = coord_grid(grid, xs, ys, canvas.ext)
-	render_ticks(canvas, lyt, cgrid, xs, ys, xticklabels)
 end
 
 #Last line

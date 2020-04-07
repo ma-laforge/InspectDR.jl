@@ -20,17 +20,13 @@ Cairo.restore(ctx)
 	render(ctx, wfrm.id, Point2D(x, y), align=ALIGN_VCENTER|ALIGN_LEFT)
 end
 
-function legend_render(canvas::PCanvas2D, plot::Plot2D, istrip::Int)
-	ctx = canvas.ctx #WANTCONST
-	lyt = plot.layout.values #WANTCONST
+function render_legend(ctx::CairoContext, rstrip::RStrip2D, display_data::Vector,
+		lyt::PlotLayout, bbleg::BoundingBox)
+	Cairo.save(ctx)
+	drawrectangle(ctx, bbleg, lyt.frame_legend)
+	Cairo.restore(ctx)
 
-	xleft = canvas.bb.xmax - lyt.halloc_legend
-	bb = BoundingBox(xleft, canvas.bb.xmax, canvas.graphbb.ymin, canvas.graphbb.ymin)
-	Cairo.save(canvas.ctx)
-	drawrectangle(ctx, bb, lyt.frame_legend)
-	Cairo.restore(canvas.ctx)
-
-	Cairo.save(canvas.ctx)
+	Cairo.save(ctx)
 	setfont(ctx, lyt.font_legend)
 	(w, h) = text_dims(Cairo.text_extents(ctx, "M"))
 	ypitch = h*(1+lyt.valloc_legenditemsp)
@@ -38,15 +34,61 @@ function legend_render(canvas::PCanvas2D, plot::Plot2D, istrip::Int)
 	#Compute absolute values:
 	textoffset = lyt.hoffset_legendtext*w
 
-	y = canvas.graphbb.ymin + h/2
-	for d in plot.display_data
-		if d.strip != istrip; continue; end
+	y = bbleg.ymin + h/2
+	for d in display_data
+		if d.strip != rstrip.istrip; continue; end
 		if "" == d.id; continue; end
-		legend_renderitem(ctx, d, xleft, y, lyt.halloc_legendlineseg, textoffset)
+		legend_renderitem(ctx, d, bbleg.xmin, y, lyt.halloc_legendlineseg, textoffset)
 		y += ypitch
 	end
-	Cairo.restore(canvas.ctx)
+	Cairo.restore(ctx)
 end
 
+function render_colorscale(ctx::CairoContext, rstrip::RStrip2D, strip::GraphStrip, lyt::PlotLayout)
+	colorscale = strip.colorscale
+
+	#Compute bounding box of colorscale:
+	xleft = rstrip.bb.xmax + lyt.halloc_right
+	bb = BoundingBox(xleft, xleft+lyt.halloc_colorscale, rstrip.bb.ymin, rstrip.bb.ymax)
+
+	#Draw color scale itself:
+	N = length(colorscale.e)
+	Δ = bb.ymin - bb.ymax
+	ystart = bb.ymax #start at bottom (ymax)
+	Cairo.save(ctx)
+	for i in 1:N
+		yend = bb.ymax + Δ * (i/N)
+		cbb = BoundingBox(bb.xmin, bb.xmax, ystart, yend)
+		drawrectangle(ctx, cbb, colorscale.e[i])
+		ystart = yend
+	end
+	Cairo.restore(ctx)
+
+	#Draw frame:
+	Cairo.save(ctx)
+	zscale = strip.zscale; zext = strip.zext
+	zlines = gridlines(zscale, zext.min, zext.max, true, true, zscale.tgtmajor, zscale.tgtminor)
+	render_zticks(ctx, rstrip, lyt, bb, zext, zlines, zscale)
+	drawrectangle(ctx, bb, lyt.frame_colorscale)
+	Cairo.restore(ctx)
+	return
+end
+
+function render_legends(ctx::CairoContext, rplot::RPlot2D, plot::Plot2D)
+	lyt = plot.layout.values #WANTCONST
+
+	if lyt.enable_colorscale
+		for rstrip in rplot.strips
+			render_colorscale(ctx, rstrip, plot.strips[rstrip.istrip], lyt)
+		end
+	end
+	if lyt.enable_legend
+		legend_left = rplot.bb.xmax - lyt.halloc_legend
+		for rstrip in rplot.strips
+			bbleg = BoundingBox(legend_left, rplot.bb.xmax, rstrip.bb.ymin, rstrip.bb.ymax)
+			render_legend(ctx, rstrip, plot.display_data, lyt, bbleg)
+		end
+	end
+end
 
 #Last line

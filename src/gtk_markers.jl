@@ -38,10 +38,9 @@ end
 #==Rendering functions
 ===============================================================================#
 #TODO: move somewhere else?
-function render_ctrlpoint(canvas::PCanvas2D, pt::Point2D, ixf::InputXfrm2D)
-	ctx = canvas.ctx #WANTCONST
-	pt = read2axis(pt, ixf)
-	pt = map2dev(canvas.xf, pt)
+function render_ctrlpoint(ctx::CairoContext, rstrip::RStrip2D, pt::Point2D)
+	pt = axis2aloc(pt, rstrip.ixf)
+	pt = apply(rstrip.xf, pt)
 	setlinestyle(ctx, LineStyle(CTRLPOINT_ATTR.line))
 	#TODO: Deprecate workaround if behaviour is changed.
 	#NOTE: Will draw line if we don't "move to" 0rad point on arc before drawing:
@@ -53,25 +52,25 @@ function render_ctrlpoint(canvas::PCanvas2D, pt::Point2D, ixf::InputXfrm2D)
 	return
 end
 
-function render_markercoord(canvas::PCanvas2D, pt::Point2D, font::Font,
-	xfmt::NumericFormatting, yfmt::NumericFormatting, graphinfo::Graph2DInfo, strip::Int)
+function render_markercoord(ctx::CairoContext, rstrip::RStrip2D, pt::Point2D, font::Font)
+	xfmt = hoverfmt(rstrip.xfmt); yfmt = hoverfmt(rstrip.yfmt) #WANTCONST
 	xstr = formatted(pt.x, xfmt)
 	ystr = formatted(pt.y, yfmt)
 	str = "$xstr, $ystr"
 	a = atext(str, x=pt.x, y=pt.y, xoffset=3, yoffset=-3,
-		font=font, align=:tl, strip=strip)
-	render(canvas, a, graphinfo)
+		font=font, align=:tl, strip=rstrip.istrip)
+	render(ctx, rstrip, a)
 	return
 end
 
-function render_Δinfo(canvas::PCanvas2D, p1::Point2D, p2::Point2D, Δinfo::Vector2D,
-	font::Font, xfmt::NumericFormatting, yfmt::NumericFormatting, ixf::InputXfrm2D, strip::Int)
+function render_Δinfo(ctx::CairoContext, rstrip::RStrip2D,
+		p1::Point2D, p2::Point2D, Δinfo::Vector2D, font::Font)
 	align = ALIGN_TOP | ALIGN_LEFT #WANTCONST
 	mfmt = number_fmt(ndigits=4, decfloating=true) #WANTCONST
+	xfmt = hoverfmt(rstrip.xfmt); yfmt = hoverfmt(rstrip.yfmt) #WANTCONST
 	boxattr = AreaAttributes(
 		line(style=:solid, width=1.5, color=COLOR_BLACK), COLOR_WHITE
 	) #WANTCONST
-	ctx = canvas.ctx #WANTCONST
 	Δx = p2.x - p1.x; Δy = p2.y - p1.y
 	m = Δy/Δx
 	Δxstr = formatted(Δx, xfmt); Δxstr = "Δx=$Δxstr"
@@ -87,9 +86,9 @@ function render_Δinfo(canvas::PCanvas2D, p1::Point2D, p2::Point2D, Δinfo::Vect
 	h += hx + hy + 2*Δh
 
 	#Figure out where to display:
-	p1a = read2axis(p1, ixf); 	p2a = read2axis(p2, ixf)
+	p1a = axis2aloc(p1, rstrip.ixf); 	p2a = axis2aloc(p2, rstrip.ixf)
 	pdraw = Point2D((p1a.x + p2a.x)/2, (p1a.y + p2a.y)/2)
-		pdraw = map2dev(canvas.xf, pdraw)
+		pdraw = apply(rstrip.xf, pdraw)
 	x = pdraw.x + Δinfo.x; y = pdraw.y + Δinfo.y
 	x -= w/2; y -= h/2
 	pad = Δh
@@ -103,26 +102,23 @@ function render_Δinfo(canvas::PCanvas2D, p1::Point2D, p2::Point2D, Δinfo::Vect
 	return rect #Want to know where we drew the box
 end
 
-function render(canvas::PCanvas2D, mg::CtrlMarkerGroup, graphinfo::Graph2DInfo, strip::Int)
-	xfmt = hoverfmt(graphinfo.xfmt) #WANTCONST
-	yfmt = hoverfmt(graphinfo.yfmt) #WANTCONST
-	ixf = graphinfo.ixf #WANTCONST
+function render(ctx::CairoContext, rstrip::RStrip2D, mg::CtrlMarkerGroup)
 	for elem in mg.elem
 		mstrip = elem.prop.strip
-		if 0 == mstrip || mstrip == strip
-			render(canvas, elem.prop, graphinfo) #Render crosshairs
-			render_markercoord(canvas, elem.prop.pos, mg.fntcoord, xfmt, yfmt, graphinfo, strip)
+		if 0 == mstrip || mstrip == rstrip.istrip
+			render(ctx, rstrip, elem.prop) #Render crosshairs
+			render_markercoord(ctx, rstrip, elem.prop.pos, mg.fntcoord)
 		end
 	end
 
 	#Render Δinfo on top:
 	for elem in mg.elem
 		mstrip = elem.prop.strip
-		if 0 == mstrip || mstrip == strip
+		if 0 == mstrip || mstrip == rstrip.istrip
 			mref = elem.ref
 			if mref != nothing
-				elem.Δbb = render_Δinfo(canvas, mref.prop.pos, elem.prop.pos, elem.Δinfo,
-					mg.fntdelta, xfmt, yfmt, ixf, strip
+				elem.Δbb = render_Δinfo(ctx, rstrip,
+					mref.prop.pos, elem.prop.pos, elem.Δinfo, mg.fntdelta
 				)
 			end
 		end
@@ -131,8 +127,8 @@ function render(canvas::PCanvas2D, mg::CtrlMarkerGroup, graphinfo::Graph2DInfo, 
 	#Render control points on top:
 	for elem in mg.elem
 		mstrip = elem.prop.strip
-		if 0 == mstrip || mstrip == strip
-			render_ctrlpoint(canvas, elem.prop.pos, ixf)
+		if 0 == mstrip || mstrip == rstrip.istrip
+			render_ctrlpoint(ctx, rstrip, elem.prop.pos)
 		end
 	end
 	return
@@ -141,11 +137,11 @@ end
 
 #==Helper functions
 ===============================================================================#
-function hittest(marker::CtrlMarker, xf::Transform2D, ixf::InputXfrm2D, x::Float64, y::Float64)
+function hittest(marker::CtrlMarker, rstrip::RStrip2D, x::Float64, y::Float64)
 	Δhit = Float64(CTRLPOINT_RADIUS+CTRLPOINT_ATTR.line.width/2) #WANTCONST
 
-	pt = read2axis(marker.prop.pos, ixf)
-	pt = map2dev(xf, pt)
+	pt = axis2aloc(marker.prop.pos, rstrip.ixf)
+	pt = apply(rstrip.xf, pt)
 	Δx = abs(x-pt.x); Δy = abs(y-pt.y)
 	Δ = sqrt(Δx*Δx + Δy*Δy)
 	return (Δ <= Δhit) #Hit successful if clicked on marker.
@@ -236,13 +232,11 @@ end
 #Handle mousepress if a CtrlMarker was clicked:
 function handleevent_mousepress(pwidget::PlotWidget, markers::CtrlMarkerGroup,
 	istrip::Int, x::Float64, y::Float64)
-	xf = Transform2D(pwidget.plotinfo, istrip)
-	ixf = InputXfrm2D(pwidget.plotinfo, istrip)
 
 	#See if we clicked on a marker:
 	for i in 1:length(markers.elem)
 		elem = markers.elem[i]
-		if hittest(elem, xf, ixf, x, y)
+		if hittest(elem, pwidget.rplot.strips[istrip], x, y)
 			initpos = elem.prop.pos
 			gdk_window_set_cursor(pwidget.canvas, CURSOR_MOVE)
 			pwidget.state = ISMovingMarker(istrip, initpos, elem)
@@ -282,12 +276,7 @@ function handleevent_mouserelease(::ISMovingMarker, pwidget::PlotWidget, event::
 end
 function handleevent_mousemove(s::ISMovingMarker, pwidget::PlotWidget, event::Gtk.GdkEventMotion)
 	handleevent_plothover(pwidget, event, s.istrip)
-
-	xf = Transform2D(pwidget.plotinfo, s.istrip)
-	ixf = InputXfrm2D(pwidget.plotinfo, s.istrip)
-	pt = map2axis(xf, Point2D(event.x, event.y))
-	pt = axis2read(pt, ixf)
-	s.marker.prop.pos = pt
+	s.marker.prop.pos = dev2axis(pwidget.rplot.strips[s.istrip], Point2D(event.x, event.y))
 	refresh(pwidget, refreshdata=false)
 end
 

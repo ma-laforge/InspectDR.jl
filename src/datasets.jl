@@ -16,7 +16,8 @@ end
 mutable struct IDatasetHeat{T}
 	x::Vector{DReal}
 	y::Vector{DReal}
-	data::Array{T,2} #z values for each (x,y) coord
+	data::Array{T,2} #z values for each area delimited by (x,y) coord
+	#TODO: rename data to z???
 end
 
 

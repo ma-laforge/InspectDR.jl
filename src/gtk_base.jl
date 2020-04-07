@@ -121,7 +121,7 @@ mutable struct PlotWidget
 	widget::_Gtk.Box #Base widget
 	canvas::_Gtk.Canvas #Actual plot area
 	src::Plot
-	plotinfo::Plot2DInfo
+	rplot::RPlot2D
 	state::InputState
 
 	#Scrollbars to control x-scale & position:
@@ -170,6 +170,25 @@ function refresh_title(gplot::GtkPlot)
 	end
 	set_gtk_property!(gplot.wnd, :title, title)
 	return
+end
+
+#Get numeric formatting/precision with mouse hover:
+function hoverfmt(fmt::TickLabelFormatting)
+	result = deepcopy(fmt.fmt)
+	#Display a bit more precision than tick labels:
+	result.ndigits += 2 #TODO: Better algorithm?
+	return result
+end
+
+
+#==Constructor-like functions
+===============================================================================#
+function StripCoordMap(rplot::RPlot2D)
+	result = StripCoordMap[]
+	for strip in rplot.strips
+		push!(result, StripCoordMap(strip.bb, strip.ext, strip.ixf, strip.xf, strip.xfmt, strip.yfmt))
+	end
+	return result
 end
 
 
@@ -221,6 +240,12 @@ function invalidbuffersize(pwidget::PlotWidget)
 		height(pwidget.canvas) != height(pwidget.plotbuf.surf)
 end
 
+dev2aloc(rstrip::RStrip2D, pt::Point2D) = apply_inv(rstrip.xf, pt)
+function dev2axis(rstrip::RStrip2D, pt::Point2D)
+	_pt = apply_inv(rstrip.xf, pt) #dev->aloc
+	return aloc2axis(_pt, rstrip.ixf)
+end
+
 #Render PlotWidget widget to buffer:
 #-------------------------------------------------------------------------------
 function render(pwidget::PlotWidget; refreshdata::Bool=true)
@@ -238,8 +263,8 @@ function render(pwidget::PlotWidget; refreshdata::Bool=true)
 
 	w = width(pwidget.canvas); h = height(pwidget.canvas)
 	bb = BoundingBox(0, w, 0, h)
-	pwidget.plotinfo = render(pwidget.plotbuf, plot, bb, refreshdata)
-	nstrips = length(pwidget.plotinfo.strips)
+	pwidget.rplot = render(pwidget.plotbuf, plot, bb, refreshdata)
+	nstrips = length(pwidget.rplot.strips)
 	pwidget.curstrip = max(pwidget.curstrip, 1) #Focus on 1st strip - if no strip has focus
 	pwidget.curstrip = min(pwidget.curstrip, nstrips) #Make sure focus is not beyond nstrips
 	return

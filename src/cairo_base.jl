@@ -8,38 +8,97 @@
 
 #==Main types
 ===============================================================================#
-#2D plot canvas; basic info:
-mutable struct PCanvas2D <: PlotCanvas
-	ctx::CairoContext
-	bb::BoundingBox #Entire canvas
-	graphbb::BoundingBox #Graph portion
-	ext::PExtents2D #Extents of graph portion
-	xf::Transform2D #Transform used to render data
-end
-PCanvas2D(ctx, bb, graphbb, ext) =
-	PCanvas2D(ctx, bb, graphbb, ext, Transform2D(ext, graphbb))
-PCanvas2D(ctx, bb, ginfo::Graph2DInfo) =
-	PCanvas2D(ctx, bb, ginfo.graphbb, ginfo.ext, ginfo.xf)
 
-
-#=
-#TODO: use instead of PCanvas2D???
-#TODO: Add axis scale info, etc???
-#Canvas for 2D Graph:
-mutable struct GCanvas2D
-	ctx::CairoContext
-	graphbb::BoundingBox
-	ext::PExtents2D #Extents of graph portion
-	xf::Transform2D #Transform used to render data
-end
-GCanvas2D(ctx, graphbb, ext) =
-	GCanvas2D(ctx, graphbb, ext, Transform2D(ext, graphbb))
+# RPlot2D/RStrip2D
+#-------------------------------------------------------------------------------
+#=Comments
+ - Cache for bounds, current extents, text formatting, transforms, etc.
+ - "Evaluated" information about all plots/strips.
+ - Structures are not meant to be user-editable.
+ - Structures intended for ease of access for rendering functions, at expense
+   of data duplication (Assumes data will not get corrupted while rendering).
 =#
+struct RStrip2D
+	istrip::Int
+	bb::BoundingBox #Location of graph (device units)
+	ext::PExtents2D #Current extents of graph (aloc units)
+	ixf::InputXfrm2D #Input transform for y-values (data->aloc)
+	xf::Transform2D #Transform used to render data (aloc->dev)
+
+	xscale::AxisScale
+	yscale::AxisScale
+	xfmt::TickLabelFormatting #x tick label formatting
+	yfmt::TickLabelFormatting #y tick label formatting
+	#x/yfmt: Want to define/use coord_grid when displaying coordinates???
+	#        Or maybe we deprecate coord_grid???
+
+	#Real, displayed ("_eval"-uated) grid - not "coordinate grid"
+	grid::PlotGrid #will be concrete (ex: with Gridlines),
+	               #not abstract (ex: with GridLinesAuto)
+	cgrid::PlotGrid #also concrete.  Used to draw tick coordinates
+	#(ex: A smith chart has a Smith-type "grid", and rectangular "cgrid"
+	#for ticks and hover coordinates.)
+end
+
+struct RPlot2D
+	bb::BoundingBox #Location of plot (device units)
+	databb::BoundingBox #Location of data area (encompassing all graphs)
+	strips::Vector{RStrip2D}
+end
+
 
 #Used to buffer portions of plot for better GUI response times
 mutable struct CairoBufferedPlot
 	surf::Cairo.CairoSurface #Main surface where plot is drawn
 	data::Cairo.CairoSurface #Cache of data image layer
+end
+
+#==Constructor-like functions
+===============================================================================#
+
+function RStrip2D(plot::Plot2D, strip::GraphStrip, graphbb::BoundingBox,
+		ext::PExtents2D, xfmt::TickLabelFormatting, istrip::Int)
+	dfltfmt = TickLabelFormatting(NoRangeDisplayInfo()) #WANTCONST
+	xf = Transform2D(ext, graphbb)
+
+	yfmt = dfltfmt
+	grid = _eval(strip.grid, plot.xscale, strip.yscale, ext)
+	cgrid = coord_grid(strip.grid, plot.xscale, strip.yscale, ext)
+	if !isa(cgrid.ylines, UndefinedGridLines)
+		yfmt = TickLabelFormatting(plot.layout.values.format_ytick, cgrid.ylines.rnginfo)
+	end
+
+	ixf = InputXfrm2D(InputXfrm1DSpec(plot.xscale), InputXfrm1DSpec(strip.yscale))
+	return RStrip2D(istrip, graphbb, ext, ixf, xf, plot.xscale, strip.yscale, xfmt, yfmt, grid, cgrid)
+end
+
+#bb: bounding box of entire plot
+function RPlot2D(plot::Plot2D, bb::BoundingBox)
+	dfltfmt = TickLabelFormatting(NoRangeDisplayInfo()) #WANTCONST
+	nstrips = length(plot.strips)
+	databb = databounds(bb, plot.layout.values, grid1(plot))
+	graphbblist = graphbounds_list(databb, plot.layout.values, nstrips)
+
+	xfmt = dfltfmt
+	if nstrips > 0
+		strip = plot.strips[1]
+		ext = getextents_aloc(plot, 1)
+		grid = _eval(strip.grid, plot.xscale, strip.yscale, ext)
+		cgrid = coord_grid(grid, plot.xscale, strip.yscale, ext)
+		if !isa(cgrid.xlines, UndefinedGridLines)
+			xfmt = TickLabelFormatting(plot.layout.values.format_xtick, cgrid.xlines.rnginfo)
+		end
+	end
+	striplist = RStrip2D[]
+
+	for istrip in 1:nstrips #Compute x/y label formats:
+		strip = plot.strips[istrip]
+		graphbb = graphbblist[istrip]
+		ext = getextents_aloc(plot, istrip)
+		push!(striplist, RStrip2D(plot, strip, graphbb, ext, xfmt, istrip))
+	end
+
+	return RPlot2D(bb, databb, striplist)
 end
 
 
@@ -126,220 +185,16 @@ function drawglyph_safe(ctx::CairoContext, wfrm::DWaveform, pt::Point2D)
 end
 
 
-#==Rendering base plot elements
-===============================================================================#
-
-#Render main plot annotation (titles, axis labels, ...)
-#-------------------------------------------------------------------------------
-function render(ctx::CairoContext, a::Annotation,
-	bb::BoundingBox, databb::BoundingBox, graphbblist::Vector{BoundingBox}, lyt::PlotLayout)
-	TIMESTAMP_OFFSET = 3 #WANTCONST
-
-	#Title
-#	xcenter = (bb.xmin+bb.xmax)/2 #Entire plot BB.
-	xcenter = (databb.xmin+databb.xmax)/2 #Data-area BB only.
-	pt = Point2D(xcenter, bb.ymin+lyt.voffset_title)
-	render(ctx, a.title, pt, lyt.font_title, align=ALIGN_HCENTER|ALIGN_VCENTER)
-
-	#X-axis label
-	xcenter = (databb.xmin+databb.xmax)/2
-	pt = Point2D(xcenter, bb.ymax-lyt.voffset_xaxislabel)
-	render(ctx, a.xlabel, pt, lyt.font_axislabel, align=ALIGN_HCENTER|ALIGN_VCENTER)
-
-	#Y-axis labels
-	nstrips = min(length(a.ylabels), length(graphbblist))
-	for i in 1:nstrips
-		graphbb = graphbblist[i]
-		ycenter = (graphbb.ymin+graphbb.ymax)/2
-		pt = Point2D(bb.xmin+lyt.hoffset_yaxislabel, ycenter)
-		render(ctx, a.ylabels[i], pt, lyt.font_axislabel, align=ALIGN_HCENTER|ALIGN_VCENTER, angle=-π/2)
-	end
-
-	#Time stamp
-	if lyt.enable_timestamp
-		pt = Point2D(bb.xmax-TIMESTAMP_OFFSET, bb.ymax-TIMESTAMP_OFFSET)
-		render(ctx, a.timestamp, pt, lyt.font_time, align=ALIGN_RIGHT|ALIGN_BOTTOM)
-	end
-end
-
-#Render frame around graph
-#-------------------------------------------------------------------------------
-function render_graphframe(canvas::PCanvas2D, aa::AreaAttributes)
-	ctx = canvas.ctx #WANTCONST
-Cairo.save(ctx)
-	setlinestyle(ctx, LineStyle(aa.line))
-	Cairo.rectangle(ctx, canvas.graphbb)
-	Cairo.stroke(ctx)
-Cairo.restore(ctx)
-	return
-end
-
-#==Render grid
-===============================================================================#
-render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, xlines::AbstractGridLines) = nothing
-function render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, xlines::GridLines)
-	if xlines.displaymajor
-		setlinestyle(ctx, lyt.line_gridmajor)
-		for xline in xlines.major
-			x = map2dev(xf, Point2D(xline, 0)).x
-			drawline(ctx, Point2D(x, graphbb.ymin), Point2D(x, graphbb.ymax))
-		end
-	end
-	if xlines.displayminor
-		setlinestyle(ctx, lyt.line_gridminor)
-		for xline in xlines.minor
-			x = map2dev(xf, Point2D(xline, 0)).x
-			drawline(ctx, Point2D(x, graphbb.ymin), Point2D(x, graphbb.ymax))
-		end
-	end
-end
-render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, ylines::AbstractGridLines) = nothing
-function render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, ylines::GridLines)
-	if ylines.displaymajor
-		setlinestyle(ctx, lyt.line_gridmajor)
-		for yline in ylines.major
-			y = map2dev(xf, Point2D(0, yline)).y
-			drawline(ctx, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
-		end
-	end
-	if ylines.displayminor
-		setlinestyle(ctx, lyt.line_gridminor)
-		for yline in ylines.minor
-			y = map2dev(xf, Point2D(0, yline)).y
-			drawline(ctx, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
-		end
-	end
-end
-
-function render_grid(canvas::PCanvas2D, lyt::PlotLayout, grid::GridRect)
-	ctx = canvas.ctx #WANTCONST
-	Cairo.save(ctx) #-----
-	render_vlines(ctx, canvas.graphbb, canvas.xf, lyt, grid.xlines)
-	render_hlines(ctx, canvas.graphbb, canvas.xf, lyt, grid.ylines)
-	Cairo.restore(ctx) #-----
-end
-
-
-#==Render ticks
-===============================================================================#
-
-#Default label:
-function render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, ::AxisScale)
-	tstr = ""
-	if false #Old display system.
-		#TODO: deprecate
-		tstr = "$val"
-		if length(tstr) > 7 #HACK!
-			tstr = @sprintf("%0.1e", val)
-		end
-	else
-		tstr = formatted(val, fmt.fmt, showexp=!fmt.splitexp)
-	end
-	render(ctx, tstr, pt, font, align=align)
-end
-
-render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, scale::LogScale{:e}) =
-	render_power(ctx, "e", val, pt, font, align)
-render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, scale::LogScale{2}) =
-	render_power(ctx, "2", val, pt, font, align)
-render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, scale::LogScale{10}) =
-	render_power(ctx, "10", val, pt, font, align)
-
-function render_axisscalelabel(ctx::CairoContext, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, ::AxisScale)
-	tstr = formatted_exp(fmt.fmt)
-	render(ctx, tstr, pt, font, align=align)
-end
-
-#Render ticks: Well-defined GridLines
-#-------------------------------------------------------------------------------
-function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, xlines::GridLines, xs::AxisScale, ticklabels::Bool)
-	tframe = DReal(lyt.frame_data.line.width) #WANTCONST TODO: Fix LineAttributes to have concrete type
-	fmt = TickLabelFormatting(lyt.format_xtick, xlines.rnginfo)
-	yframe = graphbb.ymax
-	ylabel = graphbb.ymax + lyt.voffset_xticklabel
-	for xtick in xlines.major
-		x = map2dev(xf, Point2D(xtick, 0)).x
-		if ticklabels
-			render_ticklabel(ctx, xtick, Point2D(x, ylabel), lyt.font_ticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, xs)
-		end
-		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-lyt.length_tickmajor))
-	end
-	for xtick in xlines.minor
-		x = map2dev(xf, Point2D(xtick, 0)).x
-		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-lyt.length_tickminor))
-	end
-	if fmt.splitexp && ticklabels
-		xlabel = graphbb.xmax + tframe
-		render_axisscalelabel(ctx, Point2D(xlabel, yframe), lyt.font_ticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, xs)
-	end
-end
-function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, ylines::GridLines, ys::AxisScale)
-	tframe = DReal(lyt.frame_data.line.width) #WANTCONST TODO: Fix LineAttributes to have concrete type
-	fmt = TickLabelFormatting(lyt.format_ytick, ylines.rnginfo)
-	xframe = graphbb.xmin
-	xlabel = graphbb.xmin - lyt.hoffset_yticklabel
-	for ytick in ylines.major
-		y = map2dev(xf, Point2D(0, ytick)).y
-		render_ticklabel(ctx, ytick, Point2D(xlabel, y), lyt.font_ticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, ys)
-		drawline(ctx, Point2D(xframe, y), Point2D(xframe+lyt.length_tickmajor, y))
-	end
-	for ytick in ylines.minor
-		y = map2dev(xf, Point2D(0, ytick)).y
-		drawline(ctx, Point2D(xframe, y), Point2D(xframe+lyt.length_tickminor, y))
-	end
-	if fmt.splitexp
-		ylabel = graphbb.ymin - tframe
-		render_axisscalelabel(ctx, Point2D(xframe, ylabel), lyt.font_ticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, ys)
-	end
-end
-
-#Render ticks: UndefinedGridLines
-#-------------------------------------------------------------------------------
-function render_xticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, xlines::UndefinedGridLines, xs::AxisScale, ticklabels::Bool)
-	fmt = TickLabelFormatting(NoRangeDisplayInfo())
-	yframe = graphbb.ymax
-	ylabel = graphbb.ymax + lyt.voffset_xticklabel
-	for (x, xlabel) in [(graphbb.xmin, xlines.minline), (graphbb.xmax, xlines.maxline)]
-		if ticklabels
-			render_ticklabel(ctx, xlabel, Point2D(x, ylabel), lyt.font_ticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, LinScale())
-		end
-		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-lyt.length_tickmajor))
-	end
-end
-function render_yticks(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, ylines::UndefinedGridLines, ys::AxisScale)
-	fmt = TickLabelFormatting(NoRangeDisplayInfo())
-	xframe = graphbb.xmin
-	xlabel = graphbb.xmin - lyt.hoffset_yticklabel
-	for (y, ylabel) in [(graphbb.ymax, ylines.minline), (graphbb.ymin, ylines.maxline)]
-		render_ticklabel(ctx, ylabel, Point2D(xlabel, y), lyt.font_ticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, LinScale())
-		drawline(ctx, Point2D(xframe, y), Point2D(xframe+lyt.length_tickmajor, y))
-	end
-end
-
-function render_ticks(canvas::PCanvas2D, lyt::PlotLayout, grid::GridRect, xs::AxisScale, ys::AxisScale, xticklabels::Bool)
-	render_xticks(canvas.ctx, canvas.graphbb, canvas.xf, lyt, grid.xlines, xs, xticklabels)
-	render_yticks(canvas.ctx, canvas.graphbb, canvas.xf, lyt, grid.ylines, ys)
-end
-
-
 #==High-level rendering
 ===============================================================================#
 
-#Render axis labels, ticks, ...
-#-------------------------------------------------------------------------------
-function render_axes(canvas::PCanvas2D, lyt::PlotLayout, grid::GridRect, xs::AxisScale, ys::AxisScale, xticklabels::Bool)
-	render_graphframe(canvas, lyt.frame_data)
-	render_ticks(canvas, lyt, grid, xs, ys, xticklabels)
-end
-
 #Render NaNs on plot:
 #-------------------------------------------------------------------------------
-function rendernans(canvas::PCanvas2D, wfrm::IWaveform)
+function rendernans(ctx::CairoContext, rstrip::RStrip2D, wfrm::IWaveform)
 	NAN_LINE = LineStyle(
 		:solid, Float64(4), ARGB32(1, 0, 0, 0.5)
 	) #WANTCONST
-	ctx = canvas.ctx #WANTCONST
-	graphbb = canvas.graphbb #WANTCONST
+	graphbb = rstrip.bb #WANTCONST
 	x = wfrm.ds.x #WANTCONST
 	y = wfrm.ds.y #WANTCONST
 
@@ -357,12 +212,12 @@ function rendernans(canvas::PCanvas2D, wfrm::IWaveform)
 		if xnan && ynan
 			hasNaNNaN = true #nothing practical to display
 		elseif xnan
-			pt = map2dev(canvas.xf, pt)
+			pt = apply(rstrip.xf, pt)
 			Cairo.move_to(ctx, graphbb.xmin, pt.y)
 			Cairo.line_to(ctx, graphbb.xmax, pt.y)
 			Cairo.stroke(ctx)
 		elseif ynan
-			pt = map2dev(canvas.xf, pt)
+			pt = apply(rstrip.xf, pt)
 			Cairo.move_to(ctx, pt.x, graphbb.ymin)
 			Cairo.line_to(ctx, pt.x, graphbb.ymax)
 			Cairo.stroke(ctx)
@@ -372,10 +227,10 @@ function rendernans(canvas::PCanvas2D, wfrm::IWaveform)
 	#TODO: warn hasNaNNaN?
 	return hasNaNNaN
 end
-function rendernans(canvas::PCanvas2D, wfrmlist::Vector{IWaveform}, strip::Int)
+function rendernans(ctx::CairoContext, rstrip::RStrip2D, wfrmlist::Vector{IWaveform})
 	for wfrm in wfrmlist
-		if 0 == wfrm.strip || wfrm.strip == strip
-			rendernans(canvas, wfrm)
+		if 0 == wfrm.strip || wfrm.strip == rstrip.istrip
+			rendernans(ctx, rstrip, wfrm)
 		end
 	end
 	return
@@ -383,8 +238,7 @@ end
 
 #Render heatmap
 #-------------------------------------------------------------------------------
-function render(canvas::PCanvas2D, hm::DHeatmap)
-	ctx = canvas.ctx #WANTCONST
+function render(ctx::CairoContext, rstrip::RStrip2D, hm::DHeatmap)
 	ds = hm.ds #alias
 	(nx, ny) = size(ds.data)
 	ensure((length(ds.x) == nx+1) && (length(ds.y) == ny+1),
@@ -399,8 +253,8 @@ function render(canvas::PCanvas2D, hm::DHeatmap)
 
 	for ix in 1:nx
 		for iy in 1:ny
-			pt1 = map2dev(canvas.xf, Point2D(ds.x[ix], ds.y[iy]))
-			pt2 = map2dev(canvas.xf, Point2D(ds.x[ix+1], ds.y[iy+1]))
+			pt1 = apply(rstrip.xf, Point2D(ds.x[ix], ds.y[iy]))
+			pt2 = apply(rstrip.xf, Point2D(ds.x[ix+1], ds.y[iy+1]))
 			Cairo.set_source(ctx, ds.data[ix,iy])
 			Cairo.rectangle(ctx, BoundingBox(pt1.x, pt2.x, pt1.y, pt2.y))
 			Cairo.fill_preserve(ctx)
@@ -410,10 +264,10 @@ function render(canvas::PCanvas2D, hm::DHeatmap)
 
 	Cairo.restore(ctx)
 end
-function render(canvas::PCanvas2D, hmlist::Vector{DHeatmap}, strip::Int)
+function render(ctx::CairoContext, rstrip::RStrip2D, hmlist::Vector{DHeatmap})
 	for hm in hmlist
-		if 0 == hm.strip || hm.strip == strip
-			render(canvas, hm)
+		if 0 == hm.strip || hm.strip == rstrip.istrip
+			render(ctx, rstrip, hm)
 		end
 	end
 	return
@@ -421,8 +275,7 @@ end
 
 #Render an actual waveform
 #-------------------------------------------------------------------------------
-function render(canvas::PCanvas2D, wfrm::DWaveform)
-	ctx = canvas.ctx #WANTCONST
+function render(ctx::CairoContext, rstrip::RStrip2D, wfrm::DWaveform)
 	ds = wfrm.ds #WANTCONST
 
 	if length(ds) < 1; return; end
@@ -431,7 +284,7 @@ if hasline(wfrm)
 	setlinestyle(ctx, LineStyle(wfrm.line))
 	newsegment = true
 	for i in 1:length(ds)
-		pt = map2dev(canvas.xf, ds[i])
+		pt = apply(rstrip.xf, ds[i])
 		xnan = isnan(pt.x); ynan = isnan(pt.y)
 
 		#TODO: log NaNs?  Display NaNs?
@@ -462,16 +315,16 @@ end
 	fill = getglyphfill(wfrm.glyph)
 	gsize = Float64(wfrm.glyph.size)
 	for i in 1:length(ds)
-		pt = map2dev(canvas.xf, ds[i])
+		pt = apply(rstrip.xf, ds[i])
 		drawglyph(ctx, _glyph, pt, gsize, fill)
 	end
 
 	return
 end
-function render(canvas::PCanvas2D, wfrmlist::Vector{DWaveform}, strip::Int)
+function render(ctx::CairoContext, rstrip::RStrip2D, wfrmlist::Vector{DWaveform})
 	for wfrm in wfrmlist
-		if 0 == wfrm.strip || wfrm.strip == strip
-			render(canvas, wfrm)
+		if 0 == wfrm.strip || wfrm.strip == rstrip.istrip
+			render(ctx, rstrip, wfrm)
 		end
 	end
 	return

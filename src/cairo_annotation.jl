@@ -21,11 +21,11 @@ const ALIGN_MAP = Dict{Symbol, CAlignment}(
 
 #==Rendering text annotation
 ===============================================================================#
-function render(canvas::PCanvas2D, a::TextAnnotation, graphinfo::Graph2DInfo)
+function render(ctx::CairoContext, rstrip::RStrip2D, a::TextAnnotation)
 	align = get(ALIGN_MAP, a.align, ALIGN_BOTTOM | ALIGN_LEFT)
 	angle = deg2rad(a.angle)
-	pt = map2dev(a.pos, canvas.xf, graphinfo.ixf, canvas.graphbb)
-	render(canvas.ctx, a.text, pt, a.font, angle=angle, align=align)
+	pt = axis2dev(a.pos, rstrip.xf, rstrip.ixf, rstrip.bb)
+	render(ctx, a.text, pt, a.font, angle=angle, align=align)
 	return
 end
 
@@ -33,16 +33,15 @@ end
 #==Rendering markers
 ===============================================================================#
 
-function render(canvas::PCanvas2D, mkr::HVMarker, graphinfo::Graph2DInfo)
-	ctx = canvas.ctx #WANTCONST
-	graphbb = canvas.graphbb #WANTCONST
+function render(ctx::CairoContext, rstrip::RStrip2D, mkr::HVMarker)
+	graphbb = rstrip.bb #WANTCONST
 	if :none == mkr.line.style
 		return
 	end
 
 	setlinestyle(ctx, LineStyle(mkr.line))
-	pt = read2axis(mkr.pos, graphinfo.ixf)
-	pt = map2dev(canvas.xf, pt)
+	pt = axis2aloc(mkr.pos, rstrip.ixf)
+	pt = apply(rstrip.xf, pt)
 
 	if mkr.vmarker
 		drawline(ctx, Point2D(pt.x, graphbb.ymin), Point2D(pt.x, graphbb.ymax))
@@ -57,15 +56,13 @@ end
 
 #==Rendering polyline for annotation
 ===============================================================================#
-function render(canvas::PCanvas2D, a::PolylineAnnotation, graphinfo::Graph2DInfo)
-	ctx = canvas.ctx #WANTCONST
-
+function render(ctx::CairoContext, rstrip::RStrip2D, a::PolylineAnnotation)
 	x = a.x; y = a.y
 	setlinestyle(ctx, LineStyle(a.line))
-	pt = map2dev(canvas.xf, Point2D(x[1], y[1]))
+	pt = apply(rstrip.xf, Point2D(x[1], y[1]))
 	Cairo.move_to(ctx, pt.x, pt.y)
 	for i in 2:length(x)
-		pt = map2dev(canvas.xf, Point2D(x[i], y[i]))
+		pt = apply(rstrip.xf, Point2D(x[i], y[i]))
 		Cairo.line_to(ctx, pt.x, pt.y)
 	end
 	if a.closepath
@@ -73,31 +70,24 @@ function render(canvas::PCanvas2D, a::PolylineAnnotation, graphinfo::Graph2DInfo
 		renderfill(ctx, a.fillcolor)
 	end
 	Cairo.stroke(ctx)
-
-#	function xf(x, y)
-#		pt = map2dev(canvas.xf, map2axis(Point2D(x,y), graphinfo.ixf))
-#		return (x, y)
-#	end
 	return
 end
 
 
 #==Generic rendering algorithm for annotations
 ===============================================================================#
-#TODO: warn undefined???
-render(canvas::PCanvas2D, a::PlotAnnotation, graphinfo::Graph2DInfo) = nothing
 
 #Basic render function for PlotAnnotation types:
-function render(canvas::PCanvas2D, a::PlotAnnotation, graphinfo::Graph2DInfo, strip::Int)
-	if 0 == a.strip || a.strip == strip
-		render(canvas, a, graphinfo)
+function render(ctx::CairoContext, rstrip::RStrip2D, a::PlotAnnotation)
+	if 0 == a.strip || a.strip == rstrip.istrip
+		render(ctx, rstrip, a)
 	end
 	return
 end
 
-function render(canvas::PCanvas2D, alist::Vector{T}, graphinfo::Graph2DInfo, strip::Int) where T<:PlotAnnotation
+function render(ctx::CairoContext, rstrip::RStrip2D, alist::Vector{T}) where T<:PlotAnnotation
 	for a in alist
-		render(canvas, a, graphinfo, strip)
+		render(ctx, rstrip, a)
 	end
 	return
 end

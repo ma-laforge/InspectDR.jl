@@ -63,6 +63,7 @@ abstract type NLTransform{NDIMS} end #Nonlinear transform
 #InputXfrm: Maps raw input data to axis coordinates:
 
 #InputXfrm1DSpec: Generates specialized (efficient) code:
+#(Identifies xf from input data -> {aloc or axis})
 struct InputXfrm1DSpec{T} <: NLTransform{1}
 end
 InputXfrm1DSpec(::LinScale{1}) = InputXfrm1DSpec{:lin}()
@@ -92,58 +93,63 @@ mutable struct Pos2DOffset
 	offset::Vector2D #Absolute offset (device units)
 end
 
+#==Accessors
+===============================================================================#
+xvalues(xf::InputXfrm2D) = InputXfrm1D(xf.x)
+yvalues(xf::InputXfrm2D) = InputXfrm1D(xf.y)
+
 
 #==Mapping/interpolation functions
 ===============================================================================#
-#Map input data to axis coordinates:
-map2axis(::Type{T}, ::InputXfrm1DSpec{:lin}) where T<:Number = (x::T)->DReal(x)
-map2axis(::Type{T}, ::InputXfrm1DSpec{:dB10}) where T<:Number = (x::T)->(5*log10(DReal(abs2(x))))
-map2axis(::Type{T}, ::InputXfrm1DSpec{:dB20}) where T<:Number = (x::T)->(10*log10(DReal(abs2(x))))
-map2axis(::Type{T}, ::InputXfrm1DSpec{:ln}) where T<:Number =
+#Map input data --> aloc coordinates:
+data2aloc(::Type{T}, ::InputXfrm1DSpec{:lin}) where T<:Number = (x::T)->DReal(x)
+data2aloc(::Type{T}, ::InputXfrm1DSpec{:dB10}) where T<:Number = (x::T)->(5*log10(DReal(abs2(x))))
+data2aloc(::Type{T}, ::InputXfrm1DSpec{:dB20}) where T<:Number = (x::T)->(10*log10(DReal(abs2(x))))
+data2aloc(::Type{T}, ::InputXfrm1DSpec{:ln}) where T<:Number =
 	(x::T)->(x<0 ? DNaN : log(DReal(x)))
-map2axis(::Type{T}, ::InputXfrm1DSpec{:log2}) where T<:Number =
+data2aloc(::Type{T}, ::InputXfrm1DSpec{:log2}) where T<:Number =
 	(x::T)->(x<0 ? DNaN : log2(DReal(x)))
-map2axis(::Type{T}, ::InputXfrm1DSpec{:log10}) where T<:Number =
+data2aloc(::Type{T}, ::InputXfrm1DSpec{:log10}) where T<:Number =
 	(x::T)->(x<0 ? DNaN : log10(DReal(x)))
 #TODO: find a way to show negative values for log10?
 
-#Map axis coord --> user-readable coord (Typically reverse of map2axis):
-axis2read(::Type{T}, ::InputXfrm1DSpec) where T<:Number = (x::T)->DReal(x) #NOTE: lin/dB values remain as-is - for readability
-axis2read(::Type{T}, ::InputXfrm1DSpec{:ln}) where T<:Number = (x::T)->(exp(x))
-axis2read(::Type{T}, ::InputXfrm1DSpec{:log2}) where T<:Number = (x::T)->(2.0^x)
-axis2read(::Type{T}, ::InputXfrm1DSpec{:log10}) where T<:Number = (x::T)->(10.0^x)
+#Map aloc coord --> axis (user-readable) coord (Typically reverse of data2aloc):
+aloc2axis(::Type{T}, ::InputXfrm1DSpec) where T<:Number = (x::T)->DReal(x) #NOTE: lin/dB values remain as-is - for readability
+aloc2axis(::Type{T}, ::InputXfrm1DSpec{:ln}) where T<:Number = (x::T)->(exp(x))
+aloc2axis(::Type{T}, ::InputXfrm1DSpec{:log2}) where T<:Number = (x::T)->(2.0^x)
+aloc2axis(::Type{T}, ::InputXfrm1DSpec{:log10}) where T<:Number = (x::T)->(10.0^x)
 
-axis2read(v::T, s::InputXfrm1DSpec) where T<:Number = axis2read(T,s)(v) #One-off conversion
+aloc2axis(v::T, s::InputXfrm1DSpec) where T<:Number = aloc2axis(T,s)(v) #One-off conversion
 
-#Map user-readable coord --> axis coord (Typically same as map2axis):
-read2axis(::Type{T}, ixf::InputXfrm1DSpec) where T<:Number = map2axis(T, ixf)
+#Map user-readable coord, axis --> aloc coord (Typically same as data2aloc):
+axis2aloc(::Type{T}, ixf::InputXfrm1DSpec) where T<:Number = data2aloc(T, ixf)
 #Exception: "Readable" coordinates match axis coordinates when in dB:
-read2axis(::Type{T}, ::InputXfrm1DSpec{:dB10}) where T<:Number = (x::DReal)->x
-read2axis(::Type{T}, ::InputXfrm1DSpec{:dB20}) where T<:Number = (x::DReal)->x
+axis2aloc(::Type{T}, ::InputXfrm1DSpec{:dB10}) where T<:Number = (x::DReal)->x
+axis2aloc(::Type{T}, ::InputXfrm1DSpec{:dB20}) where T<:Number = (x::DReal)->x
 
-read2axis(v::T, s::InputXfrm1DSpec) where T<:Number = read2axis(T,s)(v) #One-off conversion
+axis2aloc(v::T, s::InputXfrm1DSpec) where T<:Number = axis2aloc(T,s)(v) #One-off conversion
 
 
 #Map Point2D:
 #-------------------------------------------------------------------------------
-#TODO: define one-off conversion for map2axis to simplify following?:
-map2axis(pt::Point2D, xixf::InputXfrm1DSpec, yixf::InputXfrm1DSpec) =
-	Point2D(map2axis(DReal, xixf)(pt.x), map2axis(DReal, yixf)(pt.y))
-map2axis(pt::Point2D, ixf::InputXfrm2D) = map2axis(pt, ixf.x, ixf.y)
-axis2read(pt::Point2D, xixf::InputXfrm1DSpec, yixf::InputXfrm1DSpec) =
-	Point2D(axis2read(pt.x, xixf), axis2read(pt.y, yixf))
-axis2read(pt::Point2D, ixf::InputXfrm2D) = axis2read(pt, ixf.x, ixf.y)
-read2axis(pt::Point2D, xixf::InputXfrm1DSpec, yixf::InputXfrm1DSpec) =
-	Point2D(read2axis(pt.x, xixf), read2axis(pt.y, yixf))
-read2axis(pt::Point2D, ixf::InputXfrm2D) = read2axis(pt, ixf.x, ixf.y)
+#TODO: define one-off conversion for data2aloc to simplify following?:
+data2aloc(pt::Point2D, xixf::InputXfrm1DSpec, yixf::InputXfrm1DSpec) =
+	Point2D(data2aloc(DReal, xixf)(pt.x), data2aloc(DReal, yixf)(pt.y))
+data2aloc(pt::Point2D, ixf::InputXfrm2D) = data2aloc(pt, ixf.x, ixf.y)
+aloc2axis(pt::Point2D, xixf::InputXfrm1DSpec, yixf::InputXfrm1DSpec) =
+	Point2D(aloc2axis(pt.x, xixf), aloc2axis(pt.y, yixf))
+aloc2axis(pt::Point2D, ixf::InputXfrm2D) = aloc2axis(pt, ixf.x, ixf.y)
+axis2aloc(pt::Point2D, xixf::InputXfrm1DSpec, yixf::InputXfrm1DSpec) =
+	Point2D(axis2aloc(pt.x, xixf), axis2aloc(pt.y, yixf))
+axis2aloc(pt::Point2D, ixf::InputXfrm2D) = axis2aloc(pt, ixf.x, ixf.y)
 
 
 #Map entire data vector:
 #-------------------------------------------------------------------------------
-function map2axis(d::Array{T}, xf::InputXfrm1DSpec) where T<:Number
+function data2aloc(d::Array{T}, xf::InputXfrm1DSpec) where T<:Number
 	#Apparently, passing functions as arguments is not efficient in Julia.
 	#-->Specializing on InputXfrm1DSpec, hoping to improve efficiency on dmap:
-	dmap = map2axis(T, xf)
+	dmap = data2aloc(T, xf)
 
 	result = Array{DReal}(undef, size(d))
 	for i in 1:length(d)
@@ -151,35 +157,35 @@ function map2axis(d::Array{T}, xf::InputXfrm1DSpec) where T<:Number
 	end
 	return result
 end
-map2axis(d::Array{T}, ::InputXfrm1DSpec{:lin}) where T<:Number = d #Optimization: Linear scale does not need re-scaling
+data2aloc(d::Array{T}, ::InputXfrm1DSpec{:lin}) where T<:Number = d #Optimization: Linear scale does not need re-scaling
 
 
 #Extents mapping functions, depending on axis type:
 #-------------------------------------------------------------------------------
 #Shortcut - hardwire type used in extents:
-_extread2axis(t::InputXfrm1DSpec) = read2axis(DReal, t)
-_extaxis2read(t::InputXfrm1DSpec) = axis2read(DReal, t)
+_extaxis2aloc(t::InputXfrm1DSpec) = axis2aloc(DReal, t)
+_extaloc2axis(t::InputXfrm1DSpec) = aloc2axis(DReal, t)
 
-function read2axis(ext::PExtents1D, xf::InputXfrm1D)
-	emap = _extread2axis(xf.spec)
+function axis2aloc(ext::PExtents1D, xf::InputXfrm1D)
+	emap = _extaxis2aloc(xf.spec)
 	return PExtents1D(emap(ext.min), emap(ext.max))
 end
-function read2axis(ext::PExtents2D, xf::InputXfrm2D)
-	xmap = _extread2axis(xf.x)
-	ymap = _extread2axis(xf.y)
+function axis2aloc(ext::PExtents2D, xf::InputXfrm2D)
+	xmap = _extaxis2aloc(xf.x)
+	ymap = _extaxis2aloc(xf.y)
 	return PExtents2D(
 		xmap(ext.xmin), xmap(ext.xmax),
 		ymap(ext.ymin), ymap(ext.ymax)
 	)
 end
 
-function axis2read(ext::PExtents1D, xf::InputXfrm1D)
-	emap = _extaxis2read(xf.spec)
+function aloc2axis(ext::PExtents1D, xf::InputXfrm1D)
+	emap = _extaloc2axis(xf.spec)
 	return PExtents1D(emap(ext.min), emap(ext.max))
 end
-function axis2read(ext::PExtents2D, xf::InputXfrm2D)
-	xmap = _extaxis2read(xf.x)
-	ymap = _extaxis2read(xf.y)
+function aloc2axis(ext::PExtents2D, xf::InputXfrm2D)
+	xmap = _extaloc2axis(xf.x)
+	ymap = _extaloc2axis(xf.y)
 	return PExtents2D(
 		xmap(ext.xmin), xmap(ext.xmax),
 		ymap(ext.ymin), ymap(ext.ymax)
@@ -188,9 +194,9 @@ end
 
 #Pos2DOffset mapping functions:
 #-------------------------------------------------------------------------------
-function map2dev(pos::Pos2DOffset, xf::Transform2D, ixf::InputXfrm2D, graphbb::BoundingBox)
-	pt = read2axis(pos.v, ixf)
-	pt = map2dev(xf, pt)
+function axis2dev(pos::Pos2DOffset, xf::Transform2D, ixf::InputXfrm2D, graphbb::BoundingBox)
+	pt = axis2aloc(pos.v, ixf)
+	pt = apply(xf, pt) #aloc->dev
 	x = pt.x; y = pt.y
 	if isnan(x); x = graphbb.xmin; end
 	if isnan(y); y = graphbb.ymax; end

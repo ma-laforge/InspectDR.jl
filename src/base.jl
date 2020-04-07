@@ -130,6 +130,7 @@ Font(ref::Font; kwargs...) = overwrite!(deepcopy(ref); kwargs...)
 
 mutable struct PlotLayout <: AbstractStyle #Layout/LegendLStyle
 	enable_legend::Bool
+	enable_colorscale::Bool
 	enable_timestamp::Bool
 
 	valloc_data::Float64 #Suggested height of data (graph) area when exporting.
@@ -142,6 +143,8 @@ mutable struct PlotLayout <: AbstractStyle #Layout/LegendLStyle
 	halloc_left::Float64 #Left of data area
 	halloc_right::Float64 #Right of data area - excluding legend area
 	#NOTE: halloc_right needs room for axis scale (ex: ×10⁻²).
+	halloc_colorscale::Float64
+	halloc_colorscale_right::Float64 #Right of color scale (space for tick labels)
 	halloc_legend::Float64
 	halloc_legendlineseg::Float64 #length of line segment to display.
 
@@ -151,7 +154,7 @@ mutable struct PlotLayout <: AbstractStyle #Layout/LegendLStyle
 	voffset_xticklabel::Float64
 
 	hoffset_yaxislabel::Float64 #Centered
-	hoffset_yticklabel::Float64
+	hoffset_yticklabel::Float64 #Used for colorscale as well
 	hoffset_legendtext::Float64 #Spacing between line/symbol and label (% of M character).
 
 	length_tickmajor::Float64
@@ -171,9 +174,11 @@ mutable struct PlotLayout <: AbstractStyle #Layout/LegendLStyle
 
 	format_xtick::TickLabelStyle
 	format_ytick::TickLabelStyle
+	format_ztick::TickLabelStyle #Color scale
 
 	frame_canvas::AreaAttributes #Area under entire plot
 	frame_data::AreaAttributes
+	frame_colorscale::AreaAttributes
 	frame_legend::AreaAttributes
 
 #=TODO:
@@ -183,9 +188,9 @@ mutable struct PlotLayout <: AbstractStyle #Layout/LegendLStyle
 end
 
 PlotLayout(::PreDefaultsType) = PlotLayout(
-	false, false, #enable
+	false, false, false, #enable
 	0, 0, 0, 0, 0, #valloc
-	0, 0, 0, 0, 0, #halloc
+	0, 0, 0, 0, 0, 0, 0, #halloc
 	0, 0, 0, #voffset
 	0, 0, 0, #hoffset
 	Float64(5), Float64(3), #length_tick*
@@ -197,8 +202,8 @@ PlotLayout(::PreDefaultsType) = PlotLayout(
 	Font(PREDEFAULTS), Font(PREDEFAULTS),
 	Font(PREDEFAULTS), Font(PREDEFAULTS),
 	Font(PREDEFAULTS),
-	TickLabelStyle(), TickLabelStyle(),
-	AreaAttributes(), AreaAttributes(), AreaAttributes()
+	TickLabelStyle(), TickLabelStyle(), TickLabelStyle(),
+	AreaAttributes(), AreaAttributes(), AreaAttributes(), AreaAttributes()
 )
 
 const PlotStyle = StyleType{PlotLayout}
@@ -251,7 +256,7 @@ PolylineAnnotation(x, y; line=InspectDR.line(), fillcolor=COLOR_TRANSPARENT, clo
 #Single graph strip of a Plot2D (shared x-coord):
 mutable struct GraphStrip
 	yscale::AxisScale
-	zscale::AxisScale
+	zscale::AxisScale #Might have log color scales in future.
 	ext_data::PExtents2D #Maximum extents of data in strip (typically all finite)
 	yext_full::PExtents1D #y-extents when zoomed out to "full" (NaN values: use ext_data)
 	yext::PExtents1D #Current/active y-extents (typically all finite)
@@ -259,14 +264,14 @@ mutable struct GraphStrip
 	zext_full::PExtents1D #z-extents when zoomed out to "full" (NaN values: use zext_data)
 	zext::PExtents1D #Current/active z-extents (typically all finite)
 	grid::PlotGrid
-	colormap::ColorMap
+	colorscale::ColorScale
 end
 GraphStrip() = GraphStrip(AxisScale(:lin, tgtmajor=8, tgtminor=2),
 	AxisScale(:lin, tgtmajor=8, tgtminor=2),
 	PExtents2D(), PExtents1D(), PExtents1D(),
 	PExtents1D(), PExtents1D(), PExtents1D(),
 	GridRect(vmajor=true, vminor=false, hmajor=true, hminor=false),
-	defaults.colormap)
+	defaults.colorscale)
 
 #2D plot.
 mutable struct Plot2D <: Plot
@@ -482,21 +487,21 @@ function setzextents(plot::Plot2D, ext::PExtents1D, strip::Int = 1)
 	#invalidate_extents(plot)
 end
 
-#NOTE: set/get*extents_axis functions: set/get extents in axis coordinates
-#      (stored in user-"read"-able coordinates).
-getxextents_axis(plot::Plot2D) = read2axis(plot.xext, InputXfrm1D(plot.xscale))
-getyextents_axis(strip::GraphStrip) = read2axis(strip.yext, InputXfrm1D(strip.yscale))
-getyextents_axis(plot::Plot2D, strip::Int) = getyextents_axis(plot.strips[strip])
-getextents_axis(plot::Plot2D, strip::Int) =
-	PExtents2D(getxextents_axis(plot), getyextents_axis(plot.strips[strip]))
+#NOTE: set/get*extents_aloc functions: set/get extents in aloc coordinates
+#      (stored in user-readable "axis" coordinates).
+getxextents_aloc(plot::Plot2D) = axis2aloc(plot.xext, InputXfrm1D(plot.xscale))
+getyextents_aloc(strip::GraphStrip) = axis2aloc(strip.yext, InputXfrm1D(strip.yscale))
+getyextents_aloc(plot::Plot2D, strip::Int) = getyextents_aloc(plot.strips[strip])
+getextents_aloc(plot::Plot2D, strip::Int) =
+	PExtents2D(getxextents_aloc(plot), getyextents_aloc(plot.strips[strip]))
 
-setxextents_axis(plot::Plot2D, ext::PExtents1D) =
-	setxextents(plot, axis2read(ext, InputXfrm1D(plot.xscale)))
-setyextents_axis(plot::Plot2D, ext::PExtents1D, strip::Int) =
-	setyextents(plot, axis2read(ext, InputXfrm1D(plot.strips[strip].yscale)), strip)
-function setextents_axis(plot::Plot2D, ext::PExtents2D, strip::Int)
-	setxextents_axis(plot, xvalues(ext))
-	setyextents_axis(plot, yvalues(ext), strip)
+setxextents_aloc(plot::Plot2D, ext::PExtents1D) =
+	setxextents(plot, aloc2axis(ext, InputXfrm1D(plot.xscale)))
+setyextents_aloc(plot::Plot2D, ext::PExtents1D, strip::Int) =
+	setyextents(plot, aloc2axis(ext, InputXfrm1D(plot.strips[strip].yscale)), strip)
+function setextents_aloc(plot::Plot2D, ext::PExtents2D, strip::Int)
+	setxextents_aloc(plot, xvalues(ext))
+	setyextents_aloc(plot, yvalues(ext), strip)
 end
 
 
@@ -536,10 +541,22 @@ function squarebounds(bb::BoundingBox)
 end
 
 #Get bounding box of plot data area:
+#(Complement function to plotbounds)
 function databounds(plotb::BoundingBox, lyt::PlotLayout)
 	xmin = plotb.xmin + lyt.halloc_left
 	xmax = plotb.xmax
-	xmax -= lyt.enable_legend ? lyt.halloc_legend : lyt.halloc_right
+
+	#TODO: always keep halloc_right?????
+	if lyt.enable_colorscale
+		xmax -= lyt.halloc_right + lyt.halloc_colorscale +
+			lyt.halloc_colorscale_right
+	end
+	if lyt.enable_legend
+		xmax -= lyt.halloc_legend #Don't add halloc_right
+	end
+	if !lyt.enable_legend && !lyt.enable_colorscale
+		xmax -= lyt.halloc_right
+	end
 	ymin = plotb.ymin + lyt.valloc_top
 	ymax = plotb.ymax - lyt.valloc_bottom
 
@@ -605,10 +622,20 @@ function graphbounds_list(datab::BoundingBox, lyt::PlotLayout, nstrips::Int)
 end
 
 #Get bounding box of entire plot:
+#(Complement function to databounds)
 function plotbounds(lyt::PlotLayout, graphbb::BoundingBox)
 	xmin = graphbb.xmin - lyt.halloc_left
 	xmax = graphbb.xmax
-	xmax += lyt.enable_legend ? lyt.halloc_legend : lyt.halloc_right
+	if lyt.enable_colorscale
+		xmax += lyt.halloc_right + lyt.halloc_colorscale +
+			lyt.halloc_colorscale_right
+	end
+	if lyt.enable_legend
+		xmax += lyt.halloc_legend #Don't add halloc_right
+	end
+	if !lyt.enable_legend && !lyt.enable_colorscale
+		xmax += lyt.halloc_right
+	end
 	ymin = graphbb.ymin - lyt.valloc_top
 	ymax = graphbb.ymax + lyt.valloc_bottom
 	return BoundingBox(xmin, xmax, ymin, ymax)
@@ -661,44 +688,52 @@ _reduce(inputlist::Vector{IWaveform}, xext::PExtents1D, pdm::PointDropMatrix, xr
 	map((input)->_reduce(input, xext, pdm, xres_max), inputlist)
 
 function update_displaydata(plot::Plot2D, inputlist::Vector{IWaveform})
-	xext = getxextents_axis(plot) #Read back extents, in transformed coordinates
+	xext = getxextents_aloc(plot) #Read back extents, in transformed coordinates
 	plot.display_data = _reduce(inputlist, xext, plot.pointdropmatrix, plot.xres)
 end
 
 #TODO: Find data reduction method??
-function gen_displaydata(input::IHeatmap, colormap::Transform1DNormToARGB)
-	ds = IDatasetHeat(input.ds.x, input.ds.y, map2axis(input.ds.data, colormap))
-#TODO: compute from size of colormap, do not use colormap
+function gen_displaydata(input::IHeatmap, xflist::Vector{Transform1DToARGB})
+	colorxf = xflist[input.strip]
+	ds = IDatasetHeat(input.ds.x, input.ds.y, apply(colorxf, input.ds.data))
 
 	return DHeatmap(input.ext, input.zext, input.strip, input.visible, ds)
 end
 
 function update_displaydata(plot::Plot2D, inputlist::Vector{IHeatmap})
-	colormap = Transform1DNormToARGB(1,0, 0,0, 0,0, 0,1)
-	plot.display_data_heat = map((input)->gen_displaydata(input, colormap), inputlist)
+	nstrips = length(plot.strips) #WANTCONST
+	xflist = Vector{Transform1DToARGB}(undef, nstrips)
+
+	#Build color map transform for each strip:
+	for i in 1:nstrips
+		strip = plot.strips[i]
+		ext = strip.zext
+		xflist[i] = Transform1DToARGB(strip.colorscale, vmin=ext.min, vmax=ext.max)
+	end
+	plot.display_data_heat = map((input)->gen_displaydata(input, xflist), inputlist)
 end
 
 
 #Rescale input dataset:
 #-------------------------------------------------------------------------------
 
-map2axis(input::T, x::InputXfrm1DSpec, y::InputXfrm1DSpec) where T<:IDataset =
-	T(map2axis(input.x, x), map2axis(input.y, y))
+data2aloc(input::T, x::InputXfrm1DSpec, y::InputXfrm1DSpec) where T<:IDataset =
+	T(data2aloc(input.x, x), data2aloc(input.y, y))
 
-map2axis(input::T, x::InputXfrm1DSpec, y::InputXfrm1DSpec, z::InputXfrm1DSpec) where T<:IDatasetHeat =
-	T(map2axis(input.x, x), map2axis(input.y, y), map2axis(input.data, z))
+data2aloc(input::T, x::InputXfrm1DSpec, y::InputXfrm1DSpec, z::InputXfrm1DSpec) where T<:IDatasetHeat =
+	T(data2aloc(input.x, x), data2aloc(input.y, y), data2aloc(input.data, z))
 
-function map2axis(input::IWaveform, x::InputXfrm1DSpec, y::InputXfrm1DSpec)
-	ds = map2axis(input.ds, x, y)
+function data2aloc(input::IWaveform, x::InputXfrm1DSpec, y::InputXfrm1DSpec)
+	ds = data2aloc(input.ds, x, y)
 	return IWaveform(input.id, ds, input.line, input.glyph, getextents(ds), input.strip, input.visible)
 end
 
-function map2axis(input::IHeatmap, x::InputXfrm1DSpec, y::InputXfrm1DSpec, z::InputXfrm1DSpec)
-	ds = map2axis(input.ds, x, y, z)
+function data2aloc(input::IHeatmap, x::InputXfrm1DSpec, y::InputXfrm1DSpec, z::InputXfrm1DSpec)
+	ds = data2aloc(input.ds, x, y, z)
 	return IHeatmap(getextents(ds), getzextents(ds), input.strip, input.visible, ds)
 end
 
-function map2axis(inputlist::Vector{IWaveform}, xflist::Vector{InputXfrm2D})
+function data2aloc(inputlist::Vector{IWaveform}, xflist::Vector{InputXfrm2D})
 	n = length(inputlist) #WANTCONST
 	nstrips = length(xflist) #WANTCONST
 	emptyds = IDataset{true}([], []) #WANTCONST
@@ -709,7 +744,7 @@ function map2axis(inputlist::Vector{IWaveform}, xflist::Vector{InputXfrm2D})
 		if !input.visible; continue; end #Don't process non-visible waveforms
 		strip = input.strip
 		if strip > 0 && strip <= nstrips
-			wfrm = map2axis(input, xflist[strip].x, xflist[strip].y)
+			wfrm = data2aloc(input, xflist[strip].x, xflist[strip].y)
 		else #No scale for this strip... return empty waveform (still want legend??)
 			wfrm = IWaveform(input.id, emptyds, input.line, input.glyph, PExtents2D(), strip, input.visible)
 		end
@@ -718,7 +753,7 @@ function map2axis(inputlist::Vector{IWaveform}, xflist::Vector{InputXfrm2D})
 	return result
 end
 
-function map2axis(inputlist::Vector{IHeatmap}, xflist::Vector{InputXfrm2D}, zxflist::Vector{InputXfrm1D})
+function data2aloc(inputlist::Vector{IHeatmap}, xflist::Vector{InputXfrm2D}, zxflist::Vector{InputXfrm1D})
 	n = length(inputlist) #WANTCONST
 	nstrips = length(xflist) #WANTCONST
 	emptyds = IDatasetHeat(DReal[], DReal[], Array{DReal}(undef, 0,0)) #WANTCONST
@@ -729,7 +764,7 @@ function map2axis(inputlist::Vector{IHeatmap}, xflist::Vector{InputXfrm2D}, zxfl
 		if !input.visible; continue; end #Don't process non-visible waveforms
 		strip = input.strip
 		if strip > 0 && strip <= nstrips
-			wfrm = map2axis(input, xflist[strip].x, xflist[strip].y, zxflist[strip].spec)
+			wfrm = data2aloc(input, xflist[strip].x, xflist[strip].y, zxflist[strip].spec)
 		else #No scale for this strip... return empty waveform
 			wfrm = IHeatmap(PExtents2D(), strip, input.visible, emptyds)
 		end
@@ -761,25 +796,31 @@ function preprocess_data(plot::Plot2D)
 	#Rescale data
 	#NOTE: data extents are auto calculated here.
 	#TODO: Auto-calculate when added, and add an explicit function to update??
-	wfrmlist = map2axis(plot.data, xflist)
-	heatmaplist = map2axis(plot.data_heat, xflist, zxflist)
+	wfrmlist = data2aloc(plot.data, xflist)
+	heatmaplist = data2aloc(plot.data_heat, xflist, zxflist)
 
 	for i in 1:nstrips
 		strip = plot.strips[i]
 		xf = InputXfrm2D(plot.xscale, strip.yscale)
 
-		#Update extents:
+		#Update maximum x/y-extents of data (from all waveforms):
 		ext_data = getextents(wfrmlist, i)
 		ext_dataheat = getextents(heatmaplist, i)
-		strip.ext_data = axis2read(union(ext_data, ext_dataheat), xf)
-		_setyextents(strip, strip.yext) #Update extents, resolving any NaN fields.
+		strip.ext_data = aloc2axis(union(ext_data, ext_dataheat), xf)
+		#Update y-extents, resolving any NaN fields:
+		_setyextents(strip, strip.yext)
+
+		#Update maximum z-extents of data (from all heatmaps):
 		zext_data = getzextents(heatmaplist, i)
-		_setzextents(strip, strip.zext) #Update extents, resolving any NaN fields.
+		strip.zext = zext_data
+		#Update z-extents, resolving any NaN fields:
+		_setzextents(strip, strip.zext)
 	end
 
-	#Extract maximum xextents from all strips:
+	#Extract maximum xextents from all strips (calculated in above loop):
 	plot.xext_data = union([xvalues(strip.ext_data) for strip in plot.strips])
-	_setxextents(plot, plot.xext) #Update extents, resolving any NaN fields.
+	#Update x-extents, resolving any NaN fields:
+	_setxextents(plot, plot.xext)
 
 	#Update final display data:
 	update_displaydata(plot, wfrmlist)
