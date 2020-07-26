@@ -36,8 +36,42 @@ The following lists various desired ways to display axis scales & labels.
 
  - Provide a means to reverse axis direction.
 
+# Event handlers
 
-# TODO: Documentation
+## Raise event: UpdateStatusMsg instead of using pwidget.eh_plothover.
+Possibly better for encapsulation. That way, you wouldn't necessarily need to store pwidget.mouseover.
+Instead, you could keep mouseover info in input state.
+
+You could use status message to inform about new layout sizes as well, instead of overlaying on plot itself.
+
+## Raise event: pwidget.eh_plothover.
+Could be used by user for other things (instead of being used by GtkPlot for coordinate status message).
+
+# Defaults system
+ - Improve defaults system so that it works better (overwriting system is a bit buggy/clunky).
+ - Start using `getproperty` instead of `getindex`/`setindex!`. (`layout.halloc_legend` instead of `layout[:halloc_legend]`.
+ - Centralize in separate package.
+
+# Improve Layout system
+
+ - Migrate LayoutControlInfo to base/Cairo layers.
+ - Start using bounding boxes in Cairo layers.
+
+Maybe find a way to do something like rename `PlotLayout -> PlotConfig`, then:
+```
+struct PlotLayout
+	legend::BoundingBox
+	data::BoundingBox
+	... #More bounding boxes
+end
+
+function ComputeBoundingBoxes(plotconfig::PlotConfig, bb::BoundingBox)
+	#Where bb is the entire canvas' bounding box
+	return PlotLayout(bblegend, bbdata, ...)
+end
+```
+
+# Documentation
 
  - Document callback/event handler hierarchy and how they are ued.
  - Document defaults system and how it is used.
@@ -45,7 +79,7 @@ The following lists various desired ways to display axis scales & labels.
  - Document plot invalidation and how it is applied.
  - Document scales, transformations and function hierarchy (ex: aloc2axis).
 
-# TODO: Other
+# Other
 
  - Improve differentiation of private vs externally available variables in structures like Plot2D, GraphStrip, etc.
  - GUI: cancel triggered operation if activestrip(w) < 1
@@ -53,6 +87,5 @@ The following lists various desired ways to display axis scales & labels.
  - Fix issues with fractional pixel graph bounds.
  - Fix how we store/manipulate extents
  - REMOVE DUPLICATED CODE WHENEVER POSSIBLE!
-
 
 ...
