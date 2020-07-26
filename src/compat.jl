@@ -30,16 +30,31 @@ function checkcompat_plots()
 
 	vPlots = nothing
 	vInspect = nothing
-	pkglist = Pkg.installed()
+
+	try
+		deps = Pkg.dependencies()
+	catch
+		@info("Old version of Julia. InspectDR <=> Plots.jl compatibility cannot be verified.")
+	end
 
 	try
 		#Adds to load up time... try not to do this...
-		vPlots = get(pkglist, "Plots", nothing)
+		uuid = Base.UUID("91a5bcdd-55d7-5caf-9e0b-520d859cae80")
+		pkginfo = get(deps, "Plots", nothing)
+		if pkginfo != nothing
+			#TODO: check pkginfo.is_direct_dep?
+			vPlots = pkginfo.version
+		end
 	catch
 	end
 	try
 		#Adds to load up time... try not to do this...
-		vInspect = get(pkglist, "InspectDR", nothing)
+		uuid = Base.UUID("d0351b0e-4b05-5898-87b3-e2a8edfddd1d")
+		pkginfo = get(deps, "InspectDR", nothing)
+		if pkginfo != nothing
+			#TODO: check pkginfo.is_direct_dep?
+			vInspect = pkginfo.version
+		end
 	catch
 	end
 
