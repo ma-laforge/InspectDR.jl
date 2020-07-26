@@ -419,7 +419,8 @@ end
 function addheatmap(plot::Plot2D, x::Vector, y::Vector, data::Array{T,2}; id::String="", strip=1, visible=true) where T<:Number
 	ext = PExtents2D() #Don't care at the moment
 	zext = PExtents1D() #Don't care at the moment
-	ensure(isincreasing(x) && isincreasing(x), "Heatmap only supports increasing x/y coordinates")
+	ensure(isincreasing(x) && isincreasing(y),
+		ArgumentError("Heatmap only supports increasing x/y coordinates"))
 	ds = IHeatmap(ext, zext, strip, visible, IDatasetHeat(x, y, data))
 	push!(plot.data_heat, ds)
 	return ds

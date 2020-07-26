@@ -242,7 +242,7 @@ function render(ctx::CairoContext, rstrip::RStrip2D, hm::DHeatmap)
 	ds = hm.ds #alias
 	(nx, ny) = size(ds.data)
 	ensure((length(ds.x) == nx+1) && (length(ds.y) == ny+1),
-		"Heatmap: z-data must have one less value in each dimension than x & y vectors."
+		ArgumentError("Heatmap: z-data must have one less value in each dimension than x & y vectors.")
 	)
 	ctransp = ARGB32(0,0,0,0)
 

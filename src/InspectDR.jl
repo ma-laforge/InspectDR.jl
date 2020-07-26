@@ -71,11 +71,6 @@ function ensure(cond::Bool, err)
 	if !cond; throw(err); end
 end
 
-#Conditionnally generate error using "do" syntax:
-function ensure(fn::Function, cond::Bool)
-	if !cond; throw(fn()); end
-end
-
 include("codegen.jl")
 include("styles.jl")
 include("math.jl")
