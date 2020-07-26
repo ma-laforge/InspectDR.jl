@@ -1,21 +1,14 @@
 #InspectDR: Event handling with Gtk
 #-------------------------------------------------------------------------------
 
-import Gtk: GConstants.GdkModifierType, Gtk.GConstants.GdkScrollDirection
+import Gtk: GConstants.GdkScrollDirection
 
 
 #==Constants
 ===============================================================================#
-const MODIFIER_ALT = GdkModifierType.GDK_MOD1_MASK #Is this bad? How do I query?
-const MODIFIER_CTRL = GdkModifierType.GDK_CONTROL_MASK
-const MODIFIER_SHIFT = GdkModifierType.GDK_SHIFT_MASK
-
-#Other modifiers are ignored... ex: numlock (Mod2)
-const MODIFIERS_SUPPORTED = MODIFIER_ALT|MODIFIER_CTRL|MODIFIER_SHIFT
-
-#Symbols not currently supported by Gtk package:
-const GdkKeySyms_Plus = 0xffab
-const GdkKeySyms_Minus = 0xffad
+#Symbols not currently supported by Gtk.GdkKeySyms:
+const GdkKeySyms_Plus = Gtk.GConstants.GDK_KEY_KP_Add
+const GdkKeySyms_Minus = Gtk.GConstants.GDK_KEY_KP_Subtract
 
 
 #==Main types

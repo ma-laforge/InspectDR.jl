@@ -7,10 +7,12 @@
 const MARKER_COLORANT = ARGB32(0, 0, 0, 0.5)
 const MARKER_LINE = LineAttributes(:solid, 2.5, MARKER_COLORANT)
 const CTRLPOINT_RADIUS = Float64(4)
-const CTRLPOINT_ATTR = AreaAttributes(
+const CTRLPOINT_AREAATTR = AreaAttributes(
 	line=LineAttributes(:solid, 2.5, MARKER_COLORANT), fillcolor=COLOR_TRANSPARENT
 )
-
+const ΔINFO_AREAATTR = AreaAttributes(
+	line(style=:solid, width=1.5, color=COLOR_BLACK), COLOR_WHITE
+)
 
 #==Types
 ===============================================================================#
@@ -41,13 +43,13 @@ end
 function render_ctrlpoint(ctx::CairoContext, rstrip::RStrip2D, pt::Point2D)
 	pt = axis2aloc(pt, rstrip.ixf)
 	pt = apply(rstrip.xf, pt)
-	setlinestyle(ctx, LineStyle(CTRLPOINT_ATTR.line))
+	setlinestyle(ctx, LineStyle(CTRLPOINT_AREAATTR.line))
 	#TODO: Deprecate workaround if behaviour is changed.
 	#NOTE: Will draw line if we don't "move to" 0rad point on arc before drawing:
 	#      why is this?  is this a bug? why does this not show up elsewhere?
 	Cairo.move_to(ctx, pt.x+CTRLPOINT_RADIUS, pt.y) #Workaround
 	cairo_circle(ctx, pt.x, pt.y, CTRLPOINT_RADIUS)
-	renderfill(ctx, CTRLPOINT_ATTR.fillcolor)
+	renderfill(ctx, CTRLPOINT_AREAATTR.fillcolor)
 	Cairo.stroke(ctx)
 	return
 end
@@ -68,9 +70,6 @@ function render_Δinfo(ctx::CairoContext, rstrip::RStrip2D,
 	align = ALIGN_TOP | ALIGN_LEFT #WANTCONST
 	mfmt = number_fmt(ndigits=4, decfloating=true) #WANTCONST
 	xfmt = hoverfmt(rstrip.xfmt); yfmt = hoverfmt(rstrip.yfmt) #WANTCONST
-	boxattr = AreaAttributes(
-		line(style=:solid, width=1.5, color=COLOR_BLACK), COLOR_WHITE
-	) #WANTCONST
 	Δx = p2.x - p1.x; Δy = p2.y - p1.y
 	m = Δy/Δx
 	Δxstr = formatted(Δx, xfmt); Δxstr = "Δx=$Δxstr"
@@ -93,7 +92,7 @@ function render_Δinfo(ctx::CairoContext, rstrip::RStrip2D,
 	x -= w/2; y -= h/2
 	pad = Δh
 	rect = BoundingBox(x-pad, x+w+pad, y-pad, y+h+pad)
-	drawrectangle(ctx, rect, boxattr)
+	drawrectangle(ctx, rect, ΔINFO_AREAATTR)
 	render(ctx, Δxstr, Point2D(x, y), font, align=align)
 	y += hx + Δh
 	render(ctx, Δystr, Point2D(x, y), font, align=align)
@@ -138,7 +137,7 @@ end
 #==Helper functions
 ===============================================================================#
 function hittest(marker::CtrlMarker, rstrip::RStrip2D, x::Float64, y::Float64)
-	Δhit = Float64(CTRLPOINT_RADIUS+CTRLPOINT_ATTR.line.width/2) #WANTCONST
+	Δhit = Float64(CTRLPOINT_RADIUS+CTRLPOINT_AREAATTR.line.width/2) #WANTCONST
 
 	pt = axis2aloc(marker.prop.pos, rstrip.ixf)
 	pt = apply(rstrip.xf, pt)

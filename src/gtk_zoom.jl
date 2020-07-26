@@ -6,6 +6,7 @@
 ===============================================================================#
 const PAN_STEPRATIO = 0.25 #Percentage of current extents
 const ZOOM_STEPRATIO = 2.0 #How much to zoom in/out with mousewheel + keybindings
+const SELECTIONBOX_LINESTYLE = LineStyle(:dash, 1.0, COLOR_BLACK)
 
 
 #==Types
@@ -39,7 +40,7 @@ function selectionbox_draw(ctx::CairoContext, selbb::BoundingBox, graphbb::Bound
 	end
 
 	Cairo.save(ctx) #-----
-	setlinestyle(ctx, LineStyle(:dash, 1.0, COLOR_BLACK))
+	setlinestyle(ctx, SELECTIONBOX_LINESTYLE)
 	Cairo.rectangle(ctx, BoundingBox(xmin, xmax, ymin, ymax))
 	Cairo.stroke(ctx)
 	Cairo.restore(ctx) #-----
@@ -47,8 +48,7 @@ function selectionbox_draw(ctx::CairoContext, selbb::BoundingBox, graphbb::Bound
 	nothing
 end
 
-function selectionbox_draw(ctx::CairoContext, w::PlotWidget)
-	if !isa(w.state, ISSelectingArea); return; end
+function drawoverlay(s::ISSelectingArea, w::PlotWidget, ctx::CairoContext, bb::BoundingBox)
 	graphbb = w.rplot.strips[activestrip(w)].bb
 	selectionbox_draw(ctx, w.state.bb, graphbb, w.hallowed, w.vallowed)
 end

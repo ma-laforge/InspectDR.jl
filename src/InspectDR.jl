@@ -54,6 +54,14 @@ const DEFAULT_FONTNAME = (@static Sys.iswindows() ? "Cambria" : "Serif")
 NullOr{T} = Union{Nothing, T}
 
 
+#==Type definitions
+===============================================================================#
+#Type used to dispatch on a symbol & minimize namespace pollution:
+#-------------------------------------------------------------------------------
+struct DS{Symbol}; end; #Dispatchable symbol
+DS(v::Symbol) = DS{v}()
+
+
 #==Ensure interface (similar to assert)
 ===============================================================================#
 #=Similar to assert.  However, unlike assert, "ensure" is not meant for
@@ -97,6 +105,7 @@ if GtkAvailable
 include("gtk_base.jl")
 include("gtk_events.jl")
 include("gtk_zoom.jl")
+include("gtk_layout.jl")
 include("gtk_markers.jl")
 include("gtk_traces.jl")
 include("gtk_input.jl")

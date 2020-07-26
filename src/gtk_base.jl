@@ -7,7 +7,25 @@ import Gtk: get_gtk_property, set_gtk_property!, signal_connect, @guarded
 #TODO: Figure out why constants are Int32 instead of Int???
 import Gtk: GdkKeySyms
 import Gtk: GtkPositionType, GdkEventType, GdkEventMask
+import Gtk: GConstants.GdkModifierType
 import Gtk: GConstants.GtkShadowType
+import Gtk: GConstants.GtkAccelFlags
+
+
+#==Constants
+===============================================================================#
+#Control x-scale widget behaviour:
+const XAXIS_SCALEMAX = 1000
+const XAXIS_POS_STEPRES = 1/500
+
+const MODIFIER_ALT = GdkModifierType.GDK_MOD1_MASK #Is this bad? How do I query?
+const MODIFIER_CTRL = GdkModifierType.GDK_CONTROL_MASK
+const MODIFIER_SHIFT = GdkModifierType.GDK_SHIFT_MASK
+
+#Other modifiers are ignored... ex: numlock (Mod2)
+const MODIFIERS_SUPPORTED = MODIFIER_ALT|MODIFIER_CTRL|MODIFIER_SHIFT
+
+const GTK_ACCEL_VISIBLE = GtkAccelFlags.GTK_ACCEL_VISIBLE
 
 
 #==Extensions
@@ -71,11 +89,10 @@ function initialize_cursors()
 	global CURSOR_DEFAULT = Gtk.C_NULL #WANTCONST
 	global CURSOR_PAN = gdk_cursor_new("grabbing") #WANTCONST
 	global CURSOR_MOVE = gdk_cursor_new("move") #WANTCONST
+	global CURSOR_COLRESIZE = gdk_cursor_new("col-resize") #WANTCONST
+	global CURSOR_ROWRESIZE = gdk_cursor_new("row-resize") #WANTCONST
 	global CURSOR_BOXSELECT = gdk_cursor_new("crosshair") #WANTCONST
 end
-
-const XAXIS_SCALEMAX = 1000
-const XAXIS_POS_STEPRES = 1/500
 
 
 #==Display types
@@ -244,6 +261,10 @@ dev2aloc(rstrip::RStrip2D, pt::Point2D) = apply_inv(rstrip.xf, pt)
 function dev2axis(rstrip::RStrip2D, pt::Point2D)
 	_pt = apply_inv(rstrip.xf, pt) #dev->aloc
 	return aloc2axis(_pt, rstrip.ixf)
+end
+
+function drawoverlay(s::InputState, w::PlotWidget, ctx::CairoContext, bb::BoundingBox)
+	#Default: do nothing
 end
 
 #Render PlotWidget widget to buffer:

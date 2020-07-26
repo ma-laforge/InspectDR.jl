@@ -79,6 +79,32 @@ end
 	tracedialog_show(gplot)
 	nothing #Known value
 end
+@guarded function cb_mnulytadjust_enter(w::Ptr{Gtk.GObject}, gplot::GtkPlot)
+	for pwidget in gplot.subplots
+		setstate_editlayout(pwidget)
+		refresh(pwidget, refreshdata=true)
+	end
+	nothing #Known value
+end
+@guarded function cb_mnulytadjust_exit(w::Ptr{Gtk.GObject}, gplot::GtkPlot)
+	for pwidget in gplot.subplots
+		setstate_normal(pwidget)
+		refresh(pwidget, refreshdata=true)
+	end
+	nothing #Known value
+end
+@guarded function cb_mnulegend_toggle(w::Ptr{Gtk.GObject}, gplot::GtkPlot)
+	active = active_subplot(gplot)
+	if active > 0
+		pwidget = gplot.subplots[active]
+		lyt = pwidget.src.layout
+		lyt[:enable_legend] = !lyt[:enable_legend]
+		refresh(pwidget, refreshdata=true)
+	else
+		@error("No active subplot.")
+	end
+	nothing #Known value
+end
 
 
 #==Higher-level event handlers
@@ -116,6 +142,10 @@ function Gtk_addmenuitem(mnu::_Gtk.Menu, name::String)
 	item = _Gtk.MenuItem(name)
 	push!(mnu, item)
 	return item
+end
+function Gtk_addsep(mnu::_Gtk.Menu)
+	push!(mnu, _Gtk.SeparatorMenuItem())
+	return
 end
 
 
@@ -193,7 +223,7 @@ function PlotWidget(plot::Plot)
 		wipe(ctx, bb, COLOR_WHITE)
 		Cairo.set_source_surface(ctx, pwidget.plotbuf.surf, 0, 0)
 		Cairo.paint(ctx) #Applies contents of plotbuf.surf
-		selectionbox_draw(ctx, pwidget) #TODO: use more generic method name??
+		drawoverlay(pwidget.state, pwidget, ctx, bb)
 		#TODO: Can/should we explicitly Cairo.destroy(ctx)???
 	end
 
@@ -248,8 +278,13 @@ function GtkPlot(mp::Multiplot)
 	mb = _Gtk.MenuBar()
 	mnufile = Gtk_addmenu(mb, "_File")
 		mnuexport = Gtk_addmenuitem(mnufile, "_Export")
-		push!(mnufile, _Gtk.SeparatorMenuItem())
+		Gtk_addsep(mnufile)
 		mnuquit = Gtk_addmenuitem(mnufile, "_Quit")
+	mnuprop = Gtk_addmenu(mb, "_Properties")
+		mnulytadjust_enter = Gtk_addmenuitem(mnuprop, "E_nter layout adjust mode")
+		mnulytadjust_exit = Gtk_addmenuitem(mnuprop, "E_xit layout adjust mode")
+		Gtk_addsep(mnuprop)
+		mnulegend_toggle = Gtk_addmenuitem(mnuprop, "Toggle _legend")
 	mnudata = Gtk_addmenu(mb, "_Data")
 		mnutraces = Gtk_addmenuitem(mnudata, "_Traces")
 	grd = Gtk.Grid() #Main grid with different subplots.
@@ -269,6 +304,13 @@ function GtkPlot(mp::Multiplot)
 		push!(vbox, sbar_frame) #status bar
 	wnd = Gtk.Window(vbox, "", 640, 480, true)
 
+	#Add acelerator keys to menu items:
+	accel_group = Gtk.GtkAccelGroupLeaf()
+		push!(wnd, accel_group)
+		push!(mnulegend_toggle, "activate", accel_group, Gtk.GConstants.GDK_KEY_L,
+			GdkModifierType.GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE
+		)
+
 	gplot = GtkPlot(false, wnd, grd, [], mp, status)
 	refresh_title(gplot)
 	sync_subplots(gplot)
@@ -282,6 +324,9 @@ function GtkPlot(mp::Multiplot)
 	signal_connect(cb_mnufileexport, mnuexport, "activate", Nothing, (), false, gplot)
 	signal_connect(cb_mnufileclose, mnuquit, "activate", Nothing, (), false, gplot)
 	signal_connect(cb_mnudatatraces, mnutraces, "activate", Nothing, (), false, gplot)
+	signal_connect(cb_mnulytadjust_enter, mnulytadjust_enter, "activate", Nothing, (), false, gplot)
+	signal_connect(cb_mnulytadjust_exit, mnulytadjust_exit, "activate", Nothing, (), false, gplot)
+	signal_connect(cb_mnulegend_toggle, mnulegend_toggle, "activate", Nothing, (), false, gplot)
 
 	return gplot
 end
