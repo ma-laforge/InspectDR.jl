@@ -335,7 +335,7 @@ DEFAULTS_INSPECTDR = Dict(
 
 Extensive compatibility testing of InspectDR.jl has not been performed.  The module has been tested using the following environment(s):
 
-- Windows / Linux / Julia-1.3.1 / Gtk 1.1.3 (GTK+ 3) / Cairo 1.0.2
+- Windows / Linux / Julia-1.3.1 / Gtk 1.1.4 (GTK+ 3) / Cairo 1.0.4
 
 ## Disclaimer
 
