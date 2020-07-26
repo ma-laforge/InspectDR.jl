@@ -178,9 +178,6 @@ typedef struct {
 	return tuple(xoff, yoff)
 end
 
-#Extract text dimensions (w/h) from cairo_text_extents_t "structure":
-text_dims(t_ext::Array{Float64}) = tuple(t_ext[3], t_ext[4]) #w, h
-
 #Set active font on a CairoContext
 #-------------------------------------------------------------------------------
 function setfont(ctx::CairoContext, font::Font)
@@ -237,10 +234,10 @@ function render_power(ctx::CairoContext, tbase::String, val::DReal, pt::Point2D,
 	fontexp._size = font._size*EXP_SCALE
 
 	setfont(ctx, font)
-	(wbase, hbase) = text_dims(Cairo.text_extents(ctx, tbase))
+	(wbase, hbase) = textextents_wh(ctx, tbase)
 	setfont(ctx, fontexp)
 	texp = @sprintf("%0.0f", val)
-	(wexp, hexp) = text_dims(Cairo.text_extents(ctx, texp))
+	(wexp, hexp) = textextents_wh(ctx, texp)
 
 	#Compute bounding box:
 	voffset_exp = EXP_SHIFT * hbase

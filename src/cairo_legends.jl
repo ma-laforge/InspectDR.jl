@@ -28,7 +28,7 @@ function render_legend(ctx::CairoContext, rstrip::RStrip2D, display_data::Vector
 
 	Cairo.save(ctx)
 	setfont(ctx, lyt.font_legend)
-	(w, h) = text_dims(Cairo.text_extents(ctx, "M"))
+	(w, h) = textextents_wh(ctx, "M")
 	ypitch = h*(1+lyt.valloc_legenditemsp)
 
 	#Compute absolute values:
