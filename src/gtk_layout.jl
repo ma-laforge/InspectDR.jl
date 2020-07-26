@@ -11,7 +11,7 @@ const EDITINGLAYOUT_TEXTBOX_AREAATTR = AreaAttributes(
 	fillcolor=ARGB32(1, 1, 1, 0.8)
 )
 const LAYOUTELEM_LIST = [
-	:valloc_top, :valloc_bottom, #:valloc_mid,
+	:valloc_top, :valloc_mid, :valloc_bottom,
 	:halloc_left, :halloc_right,
 	:halloc_legend,
 ]
@@ -46,8 +46,6 @@ LayoutControlInfo(elem, ctrlline, bb) = LayoutControlInfo(elem, ctrlline, bb, tr
 #==Helper functions
 ===============================================================================#
 isvert(lci::LayoutControlInfo) = lci.ctrlline == :ymin || lci.ctrlline == :ymax
-isvert(elem::Symbol, lyt) =
-	isvert(LayoutControlInfo(DS(elem), BoundingBox(0,0,0,0), lyt))
 
 function _linepoints(lci::LayoutControlInfo)
 	bb = lci.bb
@@ -88,34 +86,42 @@ end
 
 #==Layout control elements
 ===============================================================================#
-function LayoutControlInfo(::DS{:valloc_top}, bb::BoundingBox, lyt)
-	v = lyt[:valloc_top]
+function LayoutControlInfo(::DS{:valloc_top}, rplot::RPlot2D, lyt)
+	bb = rplot.bb;	v = lyt[:valloc_top]
 	return LayoutControlInfo(:valloc_top, :ymax,
 		BoundingBox(bb.xmin, bb.xmax, bb.ymin, bb.ymin+v),
 	)
 end
-function LayoutControlInfo(::DS{:valloc_bottom}, bb::BoundingBox, lyt)
-	v = lyt[:valloc_bottom]
+function LayoutControlInfo(::DS{:valloc_mid}, rplot::RPlot2D, lyt)
+	bb = rplot.bb;	v = lyt[:valloc_mid]
+	visible = false
+	return LayoutControlInfo(:valloc_mid, :ymax,
+		BoundingBox(bb.xmin, bb.xmax, bb.ymin, bb.ymin+v),
+		visible
+	)
+end
+function LayoutControlInfo(::DS{:valloc_bottom}, rplot::RPlot2D, lyt)
+	bb = rplot.bb;	v = lyt[:valloc_bottom]
 	return LayoutControlInfo(:valloc_bottom, :ymin,
 		BoundingBox(bb.xmin, bb.xmax, bb.ymax-v, bb.ymax),
 	)
 end
-function LayoutControlInfo(::DS{:halloc_left}, bb::BoundingBox, lyt)
-	v = lyt[:halloc_left]
+function LayoutControlInfo(::DS{:halloc_left}, rplot::RPlot2D, lyt)
+	bb = rplot.bb;	v = lyt[:halloc_left]
 	return LayoutControlInfo(:halloc_left, :xmax,
 		BoundingBox(bb.xmin, bb.xmin+v, bb.ymin, bb.ymax),
 	)
 end
-function LayoutControlInfo(::DS{:halloc_right}, bb::BoundingBox, lyt)
-	v = lyt[:halloc_right]
+function LayoutControlInfo(::DS{:halloc_right}, rplot::RPlot2D, lyt)
+	bb = rplot.bb;	v = lyt[:halloc_right]
 	xmax = bb.xmax# - lyt[:halloc_legend]
 	return LayoutControlInfo(:halloc_right, :xmin,
 		BoundingBox(xmax-v, xmax, bb.ymin, bb.ymax),
 		!lyt[:enable_legend]
 	)
 end
-function LayoutControlInfo(::DS{:halloc_legend}, bb::BoundingBox, lyt)
-	v = lyt[:halloc_legend]
+function LayoutControlInfo(::DS{:halloc_legend}, rplot::RPlot2D, lyt)
+	bb = rplot.bb;	v = lyt[:halloc_legend]
 	return LayoutControlInfo(:halloc_legend, :xmin,
 		BoundingBox(bb.xmax-v, bb.xmax, bb.ymin, bb.ymax),
 		lyt[:enable_legend]
@@ -138,8 +144,8 @@ end
 
 #==Draw functions
 ===============================================================================#
-function editlyt_drawelem(ctx::CairoContext, bb::BoundingBox, elem::Symbol, lyt)
-	lci = LayoutControlInfo(DS(elem), bb, lyt)
+function editlyt_drawelem(ctx::CairoContext, rplot::RPlot2D, lyt, elem::Symbol)
+	lci = LayoutControlInfo(DS(elem), rplot, lyt)
 	if !lci.visible; return; end
 	p1, p2 = _linepoints(lci)
 
@@ -151,13 +157,13 @@ function editlyt_drawelem(ctx::CairoContext, bb::BoundingBox, elem::Symbol, lyt)
 	return
 end
 
-function editlyt_drawall(ctx::CairoContext, bb::BoundingBox, lyt)
+function editlyt_drawall(ctx::CairoContext, rplot::RPlot2D, lyt)
 	for elem in LAYOUTELEM_LIST
-		editlyt_drawelem(ctx, bb, elem, lyt)
+		editlyt_drawelem(ctx, rplot, lyt, elem)
 	end
 end
 
-function editlyt_draweleminfo(ctx::CairoContext, bb::BoundingBox, elem::Symbol, lyt)
+function editlyt_draweleminfo(ctx::CairoContext, lyt, elem::Symbol)
 	v = lyt[elem]
 	msg = ":$elem = $v"
 
@@ -174,12 +180,12 @@ function editlyt_draweleminfo(ctx::CairoContext, bb::BoundingBox, elem::Symbol, 
 	Cairo.restore(ctx) #-----
 end
 
-function drawoverlay(s::ISWaitingToEditLayout, w::PlotWidget, ctx::CairoContext, bb::BoundingBox)
-	editlyt_drawall(ctx, bb, w.src.layout)
+function drawoverlay(s::ISWaitingToEditLayout, ctx::CairoContext, rplot::RPlot2D, lyt)
+	editlyt_drawall(ctx, rplot, lyt)
 end
-function drawoverlay(s::ISEditingLayout, w::PlotWidget, ctx::CairoContext, bb::BoundingBox)
-	editlyt_drawelem(ctx, bb, s.elem, w.src.layout)
-	editlyt_draweleminfo(ctx, bb, s.elem, w.src.layout)
+function drawoverlay(s::ISEditingLayout, ctx::CairoContext, rplot::RPlot2D, lyt)
+	editlyt_drawelem(ctx, rplot, lyt, s.elem)
+	editlyt_draweleminfo(ctx, lyt, s.elem)
 end
 
 
@@ -188,7 +194,7 @@ end
 function hittest(s::ISWaitingToEditLayout, pwidget::PlotWidget, x::Float64, y::Float64)
 	lyt = pwidget.src.layout
 	for elem in LAYOUTELEM_LIST
-		lci = LayoutControlInfo(DS(elem), pwidget.rplot.bb, lyt)
+		lci = LayoutControlInfo(DS(elem), pwidget.rplot, lyt)
 		if hittest(lci, x, y)
 			return lci
 		end
@@ -226,7 +232,7 @@ end
 #Complete a layout mouse-move operation:
 function editlyt_mousemove(s::ISEditingLayout, pwidget::PlotWidget, x::Float64, y::Float64)
 	s.pmouse = Point2D(x, y)
-	lci = LayoutControlInfo(DS(s.elem), pwidget.rplot.bb, pwidget.src.layout)
+	lci = LayoutControlInfo(DS(s.elem), pwidget.rplot, pwidget.src.layout)
 	pwidget.src.layout[s.elem] = _computenewval(s, lci)
 	Gtk.draw(pwidget.canvas)
 	return

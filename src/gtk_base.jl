@@ -158,10 +158,6 @@ mutable struct PlotWidget
 	markers::CtrlMarkerGroup
 	refmarker::NullOr{CtrlMarker} #Used as ref
 
-	#Restrict h/v motion:
-	hallowed::Bool
-	vallowed::Bool
-
 	#External event handlers:
 	eh_plothover::NullOr{HandlerInfo}
 end
@@ -263,7 +259,7 @@ function dev2axis(rstrip::RStrip2D, pt::Point2D)
 	return aloc2axis(_pt, rstrip.ixf)
 end
 
-function drawoverlay(s::InputState, w::PlotWidget, ctx::CairoContext, bb::BoundingBox)
+function drawoverlay(s::InputState, ctx::CairoContext, rplot::RPlot2D, lyt)
 	#Default: do nothing
 end
 

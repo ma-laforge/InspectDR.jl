@@ -11,30 +11,39 @@ const SELECTIONBOX_LINESTYLE = LineStyle(:dash, 1.0, COLOR_BLACK)
 
 #==Types
 ===============================================================================#
+#Restrict x/y changes for pan/zoom operations:
+struct AxisLock
+	x::Bool
+	y::Bool
+end
+AxisLock() = AxisLock(false, false)
+
 #User input states
 mutable struct ISPanningData <: InputState #Typically with mouse
 	p0::Point2D #Start
 	pmouse::Point2D #move
 	ext_start::PExtents2D #Extents @ start of operation
 	#Store ext_start to avoid accumulation of numerical errors.
+	lock::AxisLock
 	istrip::Int
 end
 mutable struct ISSelectingArea <: InputState #Box-zoom
 	bb::BoundingBox
+	lock::AxisLock
 	istrip::Int
 end
 
 
 #==Drawing functions
 ===============================================================================#
-function selectionbox_draw(ctx::CairoContext, selbb::BoundingBox, graphbb::BoundingBox, hallowed::Bool, vallowed::Bool)
+function selectionbox_draw(ctx::CairoContext, selbb::BoundingBox, graphbb::BoundingBox, lock::AxisLock)
 	xmin = selbb.xmin; xmax = selbb.xmax
 	ymin = selbb.ymin; ymax = selbb.ymax
-	if !hallowed
+	if lock.x
 		xmin = graphbb.xmin
 		xmax = graphbb.xmax
 	end
-	if !vallowed
+	if lock.y
 		ymin = graphbb.ymin
 		ymax = graphbb.ymax
 	end
@@ -48,28 +57,9 @@ function selectionbox_draw(ctx::CairoContext, selbb::BoundingBox, graphbb::Bound
 	nothing
 end
 
-function drawoverlay(s::ISSelectingArea, w::PlotWidget, ctx::CairoContext, bb::BoundingBox)
-	graphbb = w.rplot.strips[activestrip(w)].bb
-	selectionbox_draw(ctx, w.state.bb, graphbb, w.hallowed, w.vallowed)
-end
-
-
-#==Switching to h/v lock (or releasing both)
-===============================================================================#
-function locdir_h(pwidget::PlotWidget)
-	pwidget.hallowed = true
-	pwidget.vallowed = false
-	refresh(pwidget, refreshdata=false)
-end
-function locdir_v(pwidget::PlotWidget)
-	pwidget.hallowed = false
-	pwidget.vallowed = true
-	refresh(pwidget, refreshdata=false)
-end
-function locdir_any(pwidget::PlotWidget)
-	pwidget.hallowed = true
-	pwidget.vallowed = true
-	refresh(pwidget, refreshdata=false)
+function drawoverlay(s::ISSelectingArea, ctx::CairoContext, rplot::RPlot2D, lyt)
+	graphbb = rplot.strips[s.istrip].bb
+	selectionbox_draw(ctx, s.bb, graphbb, s.lock)
 end
 
 
@@ -107,10 +97,20 @@ function scalectrl_apply(pwidget::PlotWidget)
 end
 
 
+#==State modifiers
+===============================================================================#
+#Change x/y lock (or releasing both)
+function changelock(s::Union{ISPanningData,ISSelectingArea},
+	pwidget::PlotWidget;	x = false, y = false)
+	s.lock = AxisLock(x, y)
+	refresh(pwidget, refreshdata=false)
+end
+
+
 #==Basic zoom control
 ===============================================================================#
 #Zoom to bounding box (in device coordinates):
-function zoom(pwidget::PlotWidget, bb::BoundingBox, istrip::Int)
+function _zoom_bb(pwidget::PlotWidget, bb::BoundingBox, lock::AxisLock, istrip::Int)
 	p1 = Point2D(bb.xmin, bb.ymin)
 	p2 = Point2D(bb.xmax, bb.ymax)
 
@@ -118,11 +118,11 @@ function zoom(pwidget::PlotWidget, bb::BoundingBox, istrip::Int)
 	p1 = dev2aloc(rstrip, p1)
 	p2 = dev2aloc(rstrip, p2)
 
-	if pwidget.hallowed
+	if !lock.x
 		setxextents_aloc(pwidget.src, PExtents1D(min(p1.x, p2.x), max(p1.x, p2.x)))
 	end
 
-	if pwidget.vallowed
+	if !lock.y
 		setyextents_aloc(pwidget.src, PExtents1D(min(p1.y, p2.y), max(p1.y, p2.y)), istrip)
 	end
 
@@ -131,7 +131,7 @@ function zoom(pwidget::PlotWidget, bb::BoundingBox, istrip::Int)
 end
 
 #Zoom in/out @ point (pt in plot coordinates)
-function zoom(pwidget::PlotWidget, ext::PExtents2D, pt::Point2D, ratio::Float64, istrip::Int)
+function zoom_byratio(pwidget::PlotWidget, ext::PExtents2D, pt::Point2D, ratio::Float64, istrip::Int)
 	xspan = ext.xmax - ext.xmin
 	yspan = ext.ymax - ext.ymin
 	Δx = pt.x - ext.xmin
@@ -147,41 +147,41 @@ function zoom(pwidget::PlotWidget, ext::PExtents2D, pt::Point2D, ratio::Float64,
 end
 
 #Zoom in/out, centered on current extents
-function zoom(pwidget::PlotWidget, ratio::Float64, istrip::Int)
+function zoom_centered(pwidget::PlotWidget, ratio::Float64, istrip::Int)
 	ext = pwidget.rplot.strips[istrip].ext
 	pt = Point2D((ext.xmin+ext.xmax)/2, (ext.ymin+ext.ymax)/2)
-	zoom(pwidget, ext, pt, ratio, istrip)
+	zoom_byratio(pwidget, ext, pt, ratio, istrip)
 end
 zoom_out(pwidget::PlotWidget, stepratio::Float64=ZOOM_STEPRATIO) =
-	zoom(pwidget, stepratio, activestrip(pwidget))
+	zoom_centered(pwidget, stepratio, activestrip(pwidget))
 zoom_in(pwidget::PlotWidget, stepratio::Float64=ZOOM_STEPRATIO) =
-	zoom(pwidget, 1/stepratio, activestrip(pwidget))
+	zoom_centered(pwidget, 1/stepratio, activestrip(pwidget))
 
 #Zoom in/out around specified device coordinates:
-function zoom(pwidget::PlotWidget, x::Float64, y::Float64, ratio::Float64, istrip::Int)
+function zoom_atpt(pwidget::PlotWidget, x::Float64, y::Float64, ratio::Float64, istrip::Int)
 	rstrip = pwidget.rplot.strips[istrip]
 	ext = rstrip.ext #(aloc coordinates)
 	pt = dev2aloc(rstrip, Point2D(x, y))
-	zoom(pwidget, ext, pt, ratio, istrip)
+	zoom_byratio(pwidget, ext, pt, ratio, istrip)
 end
 zoom_out(pwidget::PlotWidget, x::Float64, y::Float64, stepratio::Float64=ZOOM_STEPRATIO) =
-	zoom(pwidget, x, y, stepratio, activestrip(pwidget))
+	zoom_atpt(pwidget, x, y, stepratio, activestrip(pwidget))
 zoom_in(pwidget::PlotWidget, x::Float64, y::Float64, stepratio::Float64=ZOOM_STEPRATIO) =
-	zoom(pwidget, x, y, 1/stepratio, activestrip(pwidget))
+	zoom_atpt(pwidget, x, y, 1/stepratio, activestrip(pwidget))
 
 function zoom_xfull(pwidget::PlotWidget)
 	#TODO
 end
-function zoom_full(pwidget::PlotWidget, hallowed::Bool, vallowed::Bool, istrip::Int)
+function _zoom_full(pwidget::PlotWidget, xlock::Bool, ylock::Bool, istrip::Int)
 	#Reset desired extents:
-	if hallowed
+	if !xlock
 		setxextents(pwidget.src, PExtents1D())
 	end
-	if vallowed
+	if !ylock
 		setyextents(pwidget.src, PExtents1D(), istrip)
 	end
 
-	if hallowed
+	if !xlock
 		scalectrl_enabled(pwidget, false) #Suppress updates from set_gtk_property!
 		set_gtk_property!(pwidget.xscale, :value, Int(1))
 		set_gtk_property!(pwidget.xpos, :value, Float64(0))
@@ -192,23 +192,22 @@ function zoom_full(pwidget::PlotWidget, hallowed::Bool, vallowed::Bool, istrip::
 		refresh(pwidget, refreshdata=true)
 	end
 end
-zoom_full(pwidget::PlotWidget, hallowed::Bool=true, vallowed::Bool=true) =
-	zoom_full(pwidget, hallowed, vallowed, activestrip(pwidget))
-zoom_hfull(pwidget::PlotWidget) = zoom_full(pwidget, true, false)
-zoom_vfull(pwidget::PlotWidget) = zoom_full(pwidget, false, true)
+zoom_full(pwidget::PlotWidget, xlock::Bool=false, ylock::Bool=false) =
+	_zoom_full(pwidget, xlock, ylock, activestrip(pwidget))
+zoom_hfull(pwidget::PlotWidget) = zoom_full(pwidget, false, true)
+zoom_vfull(pwidget::PlotWidget) = zoom_full(pwidget, true, false)
 
 
 #==Box-zoom control
 ===============================================================================#
 function boxzoom_setstart(pwidget::PlotWidget, x::Float64, y::Float64)
-	locdir_any(pwidget)
 	bb = BoundingBox(x, x, y, y)
 	istrip = activestrip(pwidget)
 	gdk_window_set_cursor(pwidget.canvas, CURSOR_BOXSELECT)
-	pwidget.state = ISSelectingArea(bb, istrip)
+	pwidget.state = ISSelectingArea(bb, AxisLock(), istrip)
 	return
 end
-function boxzoom_cancel(pwidget::PlotWidget)
+function boxzoom_cancel(s::ISSelectingArea, pwidget::PlotWidget)
 	setstate_normal(pwidget)
 	Gtk.draw(pwidget.canvas)
 	return
@@ -216,7 +215,7 @@ end
 function boxzoom_complete(s::ISSelectingArea, pwidget::PlotWidget, x::Float64, y::Float64)
 	setstate_normal(pwidget)
 	bb = BoundingBox(s.bb.xmin, x, s.bb.ymin, y)
-	zoom(pwidget, bb, s.istrip)
+	_zoom_bb(pwidget, bb, s.lock, s.istrip)
 	return
 end
 #Change end point of boxzoom area:
@@ -254,18 +253,20 @@ pan_down(pwidget::PlotWidget) = pan_yratio(pwidget, -PAN_STEPRATIO)
 
 #==Mouse-pan control
 ===============================================================================#
-#Δy/Δy: in device coordinates
-function mousepan_delta(pwidget::PlotWidget, ext::PExtents2D, Δx::Float64, Δy::Float64, istrip::Int)
+#Apply changes from mouse-pan operation (Δy/Δy: in device coordinates):
+function mousepan_delta(pwidget::PlotWidget, ext::PExtents2D, Δx::Float64, Δy::Float64,
+   lock::AxisLock, istrip::Int
+)
 	#Convert to plot coordinates:
 	rstrip = pwidget.rplot.strips[istrip]
 	Δvec = apply_inv(rstrip.xf, Vector2D(-Δx, -Δy))
 
 	setextents_aloc(pwidget.src, ext, istrip) #Restore original extents before overwriting
 
-	if pwidget.hallowed
+	if !lock.x
 		setxextents_aloc(pwidget.src, PExtents1D(ext.xmin+Δvec.x, ext.xmax+Δvec.x))
 	end
-	if pwidget.vallowed
+	if !lock.y
 		setyextents_aloc(pwidget.src, PExtents1D(ext.ymin+Δvec.y, ext.ymax+Δvec.y), istrip)
 	end
 
@@ -273,16 +274,15 @@ function mousepan_delta(pwidget::PlotWidget, ext::PExtents2D, Δx::Float64, Δy:
 	refresh(pwidget, refreshdata=true)
 end
 function mousepan_setstart(pwidget::PlotWidget, x::Float64, y::Float64)
-	locdir_any(pwidget)
 	istrip = activestrip(pwidget)
 	ext_start = pwidget.rplot.strips[istrip].ext
 	p0 = Point2D(x, y)
 	gdk_window_set_cursor(pwidget.canvas, CURSOR_PAN)
-	pwidget.state = ISPanningData(p0, p0, ext_start, istrip)
+	pwidget.state = ISPanningData(p0, p0, ext_start, AxisLock(), istrip)
 	return
 end
 function mousepan_cancel(s::ISPanningData, pwidget::PlotWidget)
-	mousepan_delta(pwidget, s.ext_start, 0.0, 0.0, s.istrip)
+	mousepan_delta(pwidget, s.ext_start, 0.0, 0.0, s.lock, s.istrip)
 	setstate_normal(pwidget)
 	return
 end
@@ -295,7 +295,7 @@ end
 function mousepan_move(s::ISPanningData, pwidget::PlotWidget, x::Float64, y::Float64)
 	s.pmouse = Point2D(x, y)
 	Δx = s.pmouse.x-s.p0.x; Δy = s.pmouse.y-s.p0.y
-	mousepan_delta(pwidget, s.ext_start, Δx, Δy, s.istrip)
+	mousepan_delta(pwidget, s.ext_start, Δx, Δy, s.lock, s.istrip)
 end
 
 
@@ -305,11 +305,11 @@ function handleevent_keypress(s::ISPanningData, pwidget::PlotWidget, event::Gtk.
 	if GdkKeySyms.Escape == event.keyval
 		mousepan_cancel(s, pwidget)
 	elseif Int('h') == event.keyval || Int('H') == event.keyval
-		locdir_h(pwidget)
+		changelock(s, pwidget, x=false, y=true)
 	elseif Int('v') == event.keyval || Int('V') == event.keyval
-		locdir_v(pwidget)
+		changelock(s, pwidget, x=true, y=false)
 	elseif Int('b') == event.keyval || Int('B') == event.keyval
-		locdir_any(pwidget)
+		changelock(s, pwidget, x=false, y=false)
 	end
 end
 function handleevent_mouserelease(::ISPanningData, pwidget::PlotWidget, event::Gtk.GdkEventButton)
@@ -325,15 +325,15 @@ end
 
 #==Event handlers for state: ISSelectingArea (for box-zoom)
 ===============================================================================#
-function handleevent_keypress(::ISSelectingArea, pwidget::PlotWidget, event::Gtk.GdkEventKey)
+function handleevent_keypress(s::ISSelectingArea, pwidget::PlotWidget, event::Gtk.GdkEventKey)
 	if GdkKeySyms.Escape == event.keyval
-		boxzoom_cancel(pwidget)
+		boxzoom_cancel(s, pwidget)
 	elseif Int('h') == event.keyval
-		locdir_h(pwidget)
+		changelock(s, pwidget, x=false, y=true)
 	elseif Int('v') == event.keyval
-		locdir_v(pwidget)
+		changelock(s, pwidget, x=true, y=false)
 	elseif Int('b') == event.keyval
-		locdir_any(pwidget)
+		changelock(s, pwidget, x=false, y=false)
 	end
 end
 function handleevent_mouserelease(s::ISSelectingArea, pwidget::PlotWidget, event::Gtk.GdkEventButton)

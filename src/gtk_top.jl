@@ -189,7 +189,7 @@ function PlotWidget(plot::Plot)
 	pwidget = PlotWidget(vbox, canvas, plot, RPlot2D(plot, bb), ISNormal(),
 		w_xscale, xscale, w_xpos, xpos,
 		plotbuf, curstrip, GtkMouseOver(),
-		CtrlMarkerGroup(plot.layout[:font_annotation]), nothing, true, true,
+		CtrlMarkerGroup(plot.layout[:font_annotation]), nothing,
 		#Event handlers:
 		nothing
 	)
@@ -223,7 +223,7 @@ function PlotWidget(plot::Plot)
 		wipe(ctx, bb, COLOR_WHITE)
 		Cairo.set_source_surface(ctx, pwidget.plotbuf.surf, 0, 0)
 		Cairo.paint(ctx) #Applies contents of plotbuf.surf
-		drawoverlay(pwidget.state, pwidget, ctx, bb)
+		drawoverlay(pwidget.state, ctx, pwidget.rplot, pwidget.src.layout)
 		#TODO: Can/should we explicitly Cairo.destroy(ctx)???
 	end
 
