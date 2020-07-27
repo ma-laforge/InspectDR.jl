@@ -21,6 +21,7 @@ const PDM_DEFAULTS = Dict(
 ===============================================================================#
 mutable struct Defaults
 	rendersvg::Bool #Might want to dissalow SVG renderings for performance reasons
+	xaxiscontrol_visible::Bool
 	pointdropmatrix::PointDropMatrix
 	colorscale::ColorScale
 
@@ -28,7 +29,7 @@ mutable struct Defaults
 	mplotlayout::MultiplotLayout
 end
 Defaults() = Defaults(
-	false, PDM_NEVER, ColorScale(),
+	false, false, PDM_NEVER, ColorScale(),
 	PlotLayout(PREDEFAULTS), MultiplotLayout(PREDEFAULTS)
 )
 
@@ -80,6 +81,7 @@ function _initialize(dflt::Defaults)
 	end
 
 	dflt.rendersvg = condget(userdefaults, :rendersvg, Bool, true)
+	dflt.xaxiscontrol_visible = condget(userdefaults, :xaxiscontrol_visible, Bool, false)
 	notation_x = condget(userdefaults, :notation_x, Symbol, :ENG)
 	notation_y = condget(userdefaults, :notation_y, Symbol, :ENG)
 	notation_z = condget(userdefaults, :notation_z, Symbol, :ENG)

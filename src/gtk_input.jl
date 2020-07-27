@@ -109,8 +109,8 @@ function handleevent_mousescroll(::InputState, pwidget::PlotWidget, event::Gtk.G
 	end
 end
 function handleevent_scalechanged(::InputState, pwidget::PlotWidget)
-	if !scalectrl_enabled(pwidget); return; end #Should not really happen
-	scalectrl_apply(pwidget)
+	if !xaxisctrl_enabled(pwidget); return; end #Should not really happen
+	xaxisctrl_apply(pwidget)
 end
 
 

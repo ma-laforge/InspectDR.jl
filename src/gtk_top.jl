@@ -93,17 +93,28 @@ end
 	end
 	nothing #Known value
 end
+@guarded function cb_mnuxaxisctrl_toggle(w::Ptr{Gtk.GObject}, gplot::GtkPlot)
+	active = active_subplot(gplot)
+	if !(active > 0)
+		@error("No active subplot.")
+		return
+	end
+	pwidget = gplot.subplots[active]
+	visible = xaxisctrl_visible(pwidget)
+	xaxisctrl_visible(pwidget, !visible)
+	return #Known value
+end
 @guarded function cb_mnulegend_toggle(w::Ptr{Gtk.GObject}, gplot::GtkPlot)
 	active = active_subplot(gplot)
-	if active > 0
-		pwidget = gplot.subplots[active]
-		lyt = pwidget.src.layout
-		lyt[:enable_legend] = !lyt[:enable_legend]
-		refresh(pwidget, refreshdata=true)
-	else
+	if !(active > 0)
 		@error("No active subplot.")
+		return
 	end
-	nothing #Known value
+	pwidget = gplot.subplots[active]
+	lyt = pwidget.src.layout
+	lyt[:enable_legend] = !lyt[:enable_legend]
+	refresh(pwidget, refreshdata=true)
+	return #Known value
 end
 
 
@@ -193,6 +204,11 @@ function PlotWidget(plot::Plot)
 		#Event handlers:
 		nothing
 	)
+
+	#Configure with defaults:
+	set_gtk_property!(w_xscale, "no-show-all", true) #Otherwise visibility keeps coming back.
+	set_gtk_property!(w_xpos, "no-show-all", true)
+	xaxisctrl_visible(pwidget, InspectDR.defaults.xaxiscontrol_visible)
 
 	#Take control of parentannot:
 	plot.parentannot = [pwidget.markers]
@@ -284,6 +300,7 @@ function GtkPlot(mp::Multiplot)
 		mnulytadjust_enter = Gtk_addmenuitem(mnuprop, "E_nter layout adjust mode")
 		mnulytadjust_exit = Gtk_addmenuitem(mnuprop, "E_xit layout adjust mode")
 		Gtk_addsep(mnuprop)
+		mnuxaxisctrl_toggle = Gtk_addmenuitem(mnuprop, "Toggle x-_axis control")
 		mnulegend_toggle = Gtk_addmenuitem(mnuprop, "Toggle _legend")
 	mnudata = Gtk_addmenu(mb, "_Data")
 		mnutraces = Gtk_addmenuitem(mnudata, "_Traces")
@@ -319,15 +336,16 @@ function GtkPlot(mp::Multiplot)
 		set_focus(wnd, gplot.subplots[end].widget)
 	end
 
-	Gtk.showall(wnd)
 	signal_connect(cb_wnddestroyed, wnd, "destroy", Nothing, (), false, gplot)
 	signal_connect(cb_mnufileexport, mnuexport, "activate", Nothing, (), false, gplot)
 	signal_connect(cb_mnufileclose, mnuquit, "activate", Nothing, (), false, gplot)
 	signal_connect(cb_mnudatatraces, mnutraces, "activate", Nothing, (), false, gplot)
 	signal_connect(cb_mnulytadjust_enter, mnulytadjust_enter, "activate", Nothing, (), false, gplot)
 	signal_connect(cb_mnulytadjust_exit, mnulytadjust_exit, "activate", Nothing, (), false, gplot)
+	signal_connect(cb_mnuxaxisctrl_toggle, mnuxaxisctrl_toggle, "activate", Nothing, (), false, gplot)
 	signal_connect(cb_mnulegend_toggle, mnulegend_toggle, "activate", Nothing, (), false, gplot)
 
+	Gtk.showall(wnd)
 	return gplot
 end
 
@@ -342,6 +360,11 @@ GtkPlot(args...; kwargs...) = GtkPlot(Plot2D(), args...; kwargs...)
 
 #==High-level interface
 ===============================================================================#
+"""
+    clearsubplots(gplot::GtkPlot)
+
+Remove all `Plot` objects registered a `Multiplot` object (i.e. its "subplots").
+"""
 function clearsubplots(gplot::GtkPlot)
 	for s in gplot.subplots
 		Gtk.destroy(s.widget)
@@ -351,6 +374,11 @@ function clearsubplots(gplot::GtkPlot)
 	return gplot
 end
 
+"""
+    refresh(gplot::GtkPlot)
+
+Completely refresh `GtkPlot` window by synchronizing with its `Multiplot` object.
+"""
 function refresh(gplot::GtkPlot)
 	if !gplot.destroyed
 		refresh_title(gplot)

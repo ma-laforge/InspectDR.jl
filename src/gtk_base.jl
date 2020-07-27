@@ -287,6 +287,13 @@ function render(pwidget::PlotWidget; refreshdata::Bool=true)
 	return
 end
 
+"""
+    refresh(gplot::PlotWidget; refreshdata::Bool=true)
+
+Redraw `PlotWidget` canvas.
+
+Will synchronize to its associated `Plot` object & re-render all data if `refreshdata=true`.
+"""
 function refresh(w::PlotWidget; refreshdata::Bool=true)
 	render(w, refreshdata=refreshdata)
 	Gtk.draw(w.canvas)

@@ -107,6 +107,7 @@ include("gtk_input.jl")
 include("gtk_top.jl")
 end
 
+include("docstrings.jl")
 include("show.jl")
 
 
