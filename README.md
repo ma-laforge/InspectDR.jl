@@ -21,17 +21,25 @@
 
  1. [Description](#Description)
     1. [Features/Highlights](#Highlights)
- 1. [Programming Interface](doc/api.md).
-    1. [Main Plot Objects](doc/api.md#MainPlotObjects).
-    1. [Display/Render System](doc/api.md#DisplaySystem).
-    1. [Plot Templates/Axis Scales](doc/api.md#Templates_Scales).
-    1. [Layout & Stylesheets](doc/api.md#Layout_Stylesheets).
- 1. [Code Documentation & Architecture](doc/api.md#CodeDoc_Arch).
- 1. [Configuration/Defaults](doc/config.md).
- 1. [Mouse/keybindings](doc/input_bindings.md).
- 1. [Usage Examples](#UsageExamples).
- 1. [Known Limitations](#KnownLimitations).
-    1. [TODO](TODO.md).
+ 1. [Programming Interface](doc/api.md)
+    1. [Main Plot Objects](doc/api.md#MainPlotObjects)
+    1. [Creating Plots](doc/api.md#CreatingPlots)
+    1. [Plot Creation Templates](doc/api.md#PlotCreationTemplates)
+    1. [Axis Scale Identifiers](doc/api.md#AxisScaleIdentifiers)
+    1. [Displaying Plots](doc/api.md#DisplayingPlots)
+    1. [Secondary Plot Objects](doc/api.md#SecondaryPlotObjects)
+    1. [Function Listing](doc/api.md#FunctionListing)
+    1. [Plot Templates/Axis Scales](doc/api.md#Templates_Scales)
+    1. [Layout & Stylesheets](doc/api.md#Layout_Stylesheets)
+ 1. [Advanced Usage](doc/advanced.md)
+    1. [Display/Render System](doc/advanced.md#DisplaySystem)
+    1. [Creating Plot Templates](doc/advanced.md#CreatingPlotTemplates)
+ 1. [Code Documentation & Architecture](doc/api.md#CodeDoc_Arch)
+ 1. [Configuration/Defaults](doc/config.md)
+ 1. [Mouse/keybindings](doc/input_bindings.md)
+ 1. [Usage Examples](#UsageExamples)
+ 1. [Known Limitations](#KnownLimitations)
+    1. [TODO](TODO.md)
 
 <a name="Description"></a>
 ## Description
@@ -53,23 +61,24 @@ Users are encouraged to open an issue if it is unclear how to utilize a particul
 
 The following highlights a few interesting features of InspectDR:
 
-- Publication-quality output.
-- Included as a "backend" of [JuliaPlots/Plots.jl](https://github.com/JuliaPlots/Plots.jl).
-- Relatively short load times / time to first plot.
-- Designed with larger datasets in mind:
-  - Responsive even with moderate (>200k points) datasets.
-  - Confirmed to handle 2GB datsets with reasonable speed on older desktop running Windows 7 (drag+pan of data area highly discouraged).
-- Support for Smith charts (admittance & impedance - see [Plot Templates](#Templates_Scales)).
-- Support for various types of annotation:
-  - User-programmable text, polyline, vertical & horizontal bars.
-  - Drag & drop &Delta;-markers (Measures/displays &Delta;x, &Delta;y & slope).
-- Interactive [mouse/keybindings](doc/input_bindings.md).
-  - Fast & simple way to pan/zoom into data.
-  - In line with other similar tools.
-  - Create drag & drop &Delta;-markers.
-- [Layout & Stylesheets](#Layout_Stylesheets).
-  - See [demo targeting IEEE publications @300 dpi](sample/demo12.jl)
-  - Add custom stylesheets.
+ - Publication-quality output.
+ - Included as a "backend" of [JuliaPlots/Plots.jl](https://github.com/JuliaPlots/Plots.jl).
+ - Relatively short load times / time to first plot.
+ - Designed with larger datasets in mind:
+   - Responsive even with moderate (>200k points) datasets.
+   - Confirmed to handle 2GB datsets with reasonable speed on older desktop running Windows 7 (drag+pan of data area highly discouraged).
+ - Support for stacked, multi-***strip*** plots with common x-axis values.
+ - Support for Smith charts (admittance & impedance - see [Plot Templates](doc/api.md#PlotCreationTemplates)).
+ - Support for various types of annotation:
+   - User-programmable text, polyline, vertical & horizontal bars.
+   - Drag & drop &Delta;-markers (Measures/displays &Delta;x, &Delta;y & slope).
+ - Interactive [mouse/keybindings](doc/input_bindings.md).
+   - Fast & simple way to pan/zoom into data.
+   - In line with other similar tools.
+   - Create drag & drop &Delta;-markers.
+ - [Layout & Stylesheets](doc/api.md#Layout_Stylesheets).
+   - See [demo targeting IEEE publications @300 dpi](sample/demo12.jl)
+   - Add custom stylesheets.
 
 See following subsections for more information.
 
@@ -92,7 +101,7 @@ Examples of "F1" datasets include **time domain** (`y(x=time)`) and **frequncy d
 
 ***IMPORTANT:*** "F1" acceleration tends to generate erroneous-looking plots whenever glyphs are displayed.  This is because the dropped points may become very noticeable.  Consequently, InspectDR will, by default, only apply "F1" acceleration on datasets drawn without glyphs (lines only).
 
-To change when InspectDR applies "F1" acceleration to drop points, look for the `:droppoints` entry in the [Configuration/Defaults](#Config_Defaults) section.
+To change when InspectDR applies "F1" acceleration to drop points, look for the `:droppoints` entry in the [Configuration/Defaults](doc/config.md) section.
 
 ### 2D Plot Support
 
@@ -118,19 +127,20 @@ Examples of of such plots (where x-values are not guaranteed to be sorted) inclu
 
 ### [TODO](TODO.md)
 
-- Stability of [IJulia (Jupyter) notebooks](notebook/) is not very good at the moment.  Also: many examples are not yet ported to Julia 1.0.
-- Documentation is a bit limited at the moment.  See [Usage Examples](#UsageExamples) to learn from examples.
-- API is still a bit rough.  User often has to manipulate data structures directly.
+- API is too verbose for interactive plotting applications (designed for scripting).
   - Workaround: Use [JuliaPlots/Plots.jl](https://github.com/JuliaPlots/Plots.jl) as a "frontend" (increases plot times).
+- Only `Vector` data can be added (`AbstractVector`/`Range` not currently supported).
+- [Sample Jupyter notebooks](notebook/) are not very good at the moment.  Also: many examples are not yet ported to Julia 1.0.
+- SVG `MIME` output (using `show`) does not show up properly in Jupyter notebooks.  There appears to be an issue in determining image extents (bounding box).
 - Font control is not ideal.  The default font might not be available on all platforms - and the fallback font might not have Unicode characters to display exponent values (ex: `10⁻¹⁵`).  Some Greek characters might also be missing.
-  - Workaround: Overwrite default font, as described in [Configuration/Defaults](#Config_Defaults).
+  - Workaround: Overwrite default font, as described in [Configuration/Defaults](doc/config.md).
 - Legends not very configurable (currently optimized to display many labels @ cost of horizontal real-estate).
 - Does not yet render plot data in separate thread (will improve interactive experience with large datasets).
 - Mouse events currently function even outside data area (a bit odd).
 - Significant slowdowns observed when zooming **deep** into non-F1 data... Can likely be solved by discarding data outside plot extents.
   - Workaround: make sure x-values are sorted (F1-acceleration discards data & is less prone to slowdowns).
 - By default, "F1"-acceleration is only applied to datasets drawn without glyphs (lines only).
-  - Look for the `:droppoints` entry in the [Configuration/Defaults](#Config_Defaults) section to change this behaviour.
+  - Look for the `:droppoints` entry in the [Configuration/Defaults](doc/config.md) section to change this behaviour.
 
 ### Compatibility
 

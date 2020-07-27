@@ -1,8 +1,6 @@
-# InspectDR: Axes Documentation
+# InspectDR: Object Hierarchy
 
-This file describes the scheme used describe axes and scales.
-
-## Types:
+## Axis/Scale objects:
  - AxisScale: Abstract
  - LinScale{1/:dB10/:dB20/...}: Scale is linear despite having to apply nonlinear transform.
  - LogScale{:e/1/10/...}: Different log scales.
@@ -15,9 +13,10 @@ This file describes the scheme used describe axes and scales.
   - Probably wanted to tag coordinates depending on where they were on the chain of transforms.
   - Maybe bring back a version of them in order to simplify how InspectDR deals with coordinates.
 
-## Comments
-HUGE room for improvement in function/type names, and how solution is broken down.  Very confusing patchwork.
+# Stacked, multi-strip plots
+In order to support stacked graphs with independent y-axes (tied to the same x-axis), specifying axis scales is a bit involved:
 
-## TODO:
+ - `InspectDR.Plot2D.xscale` controls the x-axis scale.
+ - `InspectDR.Plot2D.strips[STRIP_INDEX].yscale` controls the y-axis scale.
 
 

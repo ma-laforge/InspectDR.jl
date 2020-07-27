@@ -87,5 +87,8 @@ end
  - Fix issues with fractional pixel graph bounds.
  - Fix how we store/manipulate extents
  - REMOVE DUPLICATED CODE WHENEVER POSSIBLE!
+ - There is HUGE room for improvement in function/type names, and how solution is broken down. There has been some very confusing patchwork.
 
+# Deprecation
+rename `refresh()` -> `refresh!()`?? or vice-versa?? Strange to have both.
 ...
