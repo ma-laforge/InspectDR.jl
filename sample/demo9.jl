@@ -42,6 +42,7 @@ mplot.layout[:ncolumns] = 1
 plot = add(mplot, InspectDR.transientplot(:lin, title="Transient Data",
 	xlabel="Time (s)", ylabels=["Voltage (V)"])
 )
+	plot.layout[:enable_legend] = false
 	plot.displayNaN = true #Enable hilighting of NaN values (slower)
 	wfrm = add(plot, x, y)
 	wfrm.line = line(color=blue, width=3)
