@@ -27,6 +27,7 @@ function render_legend(ctx::CairoContext, rstrip::RStrip2D, display_data::Vector
 	Cairo.restore(ctx)
 
 	Cairo.save(ctx)
+	setclip(ctx, bbleg)
 	setfont(ctx, lyt.font_legend)
 	(w, h) = textextents_wh(ctx, "M")
 	ypitch = h*(1+lyt.valloc_legenditemsp)
