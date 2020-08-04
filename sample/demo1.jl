@@ -33,8 +33,11 @@ t_lres = collect(0:(tmax/10):tmax)
 
 #==Generate plot
 ===============================================================================#
-plot = InspectDR.transientplot(:lin, title="Sample Plot (λ)")
+plot = InspectDR.transientplot(:lin, title="Sample Plot (π𝜋α𝛼β𝛽γ𝛾Ω𝛺℧ϕ𝜑𝜙ω𝜔f𝑓ϵ𝜀λ𝜆,⇒x∊ℝ)")
 	InspectDR.overwritefont!(plot.layout, fontname="monospace", fontscale=1.5)
+#TODO: change how layout[] works. Not obvious that you can't just set .bold property of a font
+tf = plot.layout[:font_title]; tf.bold = false #Must read first
+plot.layout[:font_title] = tf #Then assign to flag property changed
 plot.layout[:enable_legend] = true
 plot.layout[:halloc_legend] = 150
 plot.layout[:enable_timestamp] = true
