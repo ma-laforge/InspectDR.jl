@@ -52,6 +52,12 @@ Could be used by user for other things (instead of being used by GtkPlot for coo
  - Start using `getproperty` instead of `getindex`/`setindex!`. (`layout.halloc_legend` instead of `layout[:halloc_legend]`.
  - Centralize in separate package.
 
+# Function/Datatype overlap/confusion
+
+ - Mutable vs immutable structs: convenience vs side effects vs performance, etc.
+ - LineAttributes vs LineStyle: Very confusing.
+ - Defaults vs templates vs stylesheets: VERY confusing!!!! => Consolidate a bit more / make more coherent.
+
 # Improve Layout system
 
  - Migrate LayoutControlInfo to base/Cairo layers.
@@ -75,6 +81,7 @@ end
 
  - Document callback/event handler hierarchy and how they are ued.
  - Document defaults system and how it is used.
+ - Document templates and stylesheets systems (not the same thing).
  - Document Plot object hierarchy and how to use it.
  - Document plot invalidation and how it is applied.
  - Document scales, transformations and function hierarchy (ex: aloc2axis).
