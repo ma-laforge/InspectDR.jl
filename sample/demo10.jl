@@ -24,7 +24,7 @@ ppcycle = 40 #Points per cycle (divisible by 4 to get notches)
 T=1/60 #Clock period
 ncycles = 15
 VSUPPLY = 120 #VRMS - mains
-VRECT = 80 #Rectifier voltage
+VREG = 80 #Rectifier voltage
 τ = T/2 #Time constant for discharge (output load)
 
 
@@ -34,9 +34,9 @@ mains_fn(t) = VSUPPLY*sqrt(2)*cos.(2pi*(t./T))
 #Find time where mains crosses given threshold:
 mains_xfn(thresh) = acos(thresh/(VSUPPLY*sqrt(2)))*(T/(2pi))
 
-function update_discharge(vrect, Δt, i)
-	if 0==vrect[i] #On discharge cycle:
-		vrect[i] = VRECT*exp(-Δt/τ)
+function update_discharge(vreg, Δt, i)
+	if 0==vreg[i] #On discharge cycle:
+		vreg[i] = VREG*exp(-Δt/τ)
 	end
 end
 
@@ -47,18 +47,19 @@ npts = length(t); hpts = div(npts, 2) #npts should match ppcycle
 
 mains = mains_fn(t)
 mains_rect = abs.(mains)
-rectactive = mains_rect .> VRECT
-rectactive_sig = rectactive * 1.0
-vrect = rectactive_sig*VRECT #Voltage @ rectifier
+regactive = mains_rect .> VREG
+regactive_sig = regactive * 1.0 #Not bool
+vreg = regactive_sig*VREG #Voltage @ rectifier - not yet filtered
+#Emulate filtering/discharge:
 	#Really dumb algorithm:
-	d_start = mains_xfn(VRECT) #Start of 1st discharge cycle
+	d_start = mains_xfn(VREG) #Start of 1st discharge cycle
 #	d_end = d_start+2*(T/4-d_start)
 	for i in 1:hpts
-		update_discharge(vrect, t[i]-d_start, i)
+		update_discharge(vreg, t[i]-d_start, i)
 	end
 	d_start += T/2 #Next discharge cycle
 	for i in hpts:npts
-		update_discharge(vrect, t[i]-d_start, i)
+		update_discharge(vreg, t[i]-d_start, i)
 	end
 
 #Extend data for multiple cycles:
@@ -66,8 +67,8 @@ vrect = rectactive_sig*VRECT #Voltage @ rectifier
 t = collect(range(0, stop=ncycles*T, length=ncycles*ppcycle+1)[1:end-1]) #Time
 mains = repeat(mains, outer=ncycles)
 mains_rect = repeat(mains_rect, outer=ncycles)
-vrect = repeat(vrect, outer=ncycles)
-rectactive_sig = repeat(rectactive_sig, outer=ncycles)
+vreg = repeat(vreg, outer=ncycles)
+regactive_sig = repeat(regactive_sig, outer=ncycles)
 
 gaterange_list = [4.6:6.1, 9.4:12.9] #In # of cycles
 gate_b = 1.0 .+ zero(t) #Active low
@@ -77,52 +78,45 @@ for gaterange in gaterange_list
 	istop = round(Int, maximum(irange))
 	gate_b[istart:istop] .= 0
 end
-vrect_gated = vrect.*gate_b
+vrect_gated = vreg.*gate_b
+vrect_thresh = zero(t) .+ VREG
 
 
 #==Generate plot
 ===============================================================================#
-mplot = InspectDR.Multiplot(title="Mixed-Signal \"Simulation\"")
-mplot.layout[:ncolumns] = 1
-ext_digital = InspectDR.PExtents1D(-0.2, 1.2) #"Digital" signals
-_E = InspectDR.PExtents1D #Succinct alias for extents.
+mplot = InspectDR.Multiplot(title="Mixed-Signal \"Simulation\": $(VREG)V Regulator")
+nstrips = 4
 
-#To be plotted:
-siginfolist = [
-	("rectifier", vrect, _E(0,1.2*VRECT)),
-	("|mains|>thresh", rectactive_sig, ext_digital),
-	("|mains|", mains_rect, _E()),
-	("mains", mains, _E()),
-]
-
-plot = add(mplot, InspectDR.transientplot([:lin for i in siginfolist],
-	title="$(VRECT)V Rectifier",
-	ylabels=["(V)" for i in siginfolist])
-)
+plot = add(mplot, InspectDR.transientplot([:lin for i in 1:nstrips],
+	title="", #No title - use strip labels instead
+	ylabels=["Potential (V)" for i in 1:nstrips]
+))
 plot.layout[:enable_legend] = true
 plot.layout[:halloc_legend] = 150
+ystriplabels = plot.annotation.ystriplabels #Shortcut
+yext_digital = InspectDR.PExtents1D(-0.2, 1.2) #"Digital" signals (pad)
+yext_output = InspectDR.PExtents1D(0,1.2*VREG) #Ouptut: pad above
 
-let wfrm #HIDEWARN_0.7
-	for (i, siginfo) in enumerate(siginfolist)
-		id, sig, ext = siginfo
-		plot.strips[i].yext_full = ext
-		wfrm = add(plot, t, sig, id=id, strip=i)
-			wfrm.line = line_default
-#			wfrm.glyph = InspectDR.glyph(shape=:o, size=3)
-	end
-end
-
-	#Overlay threshold onto |mains|, for convenience
-	wfrm = add(plot, t, zero(t) .+ VRECT, id="thresh", strip=3)
-		wfrm.line = line_overlay
-
-	#Overlay gate onto gated output:
-	wfrm = add(plot, t, gate_b, id="gate_b", strip=2)
-		wfrm.line = line_overlay
-
+#Add waveforms & overlay useful signals:
+push!(ystriplabels, "Regulator Output")
+plot.strips[1].yext_full = yext_output
+	wfrm = add(plot, t, vreg, id="regulated", strip=1); wfrm.line = line_default
 	#Overlay gated output onto internal:
-	wfrm = add(plot, t, vrect_gated, id="output (gated)", strip=1)
-		wfrm.line = line_overlay
+	wfrm = add(plot, t, vrect_gated, id="output (gated)", strip=1); wfrm.line = line_overlay
+
+push!(ystriplabels, "Digital Sensor Output & Control Signals")
+plot.strips[2].yext_full = yext_digital
+	wfrm = add(plot, t, regactive_sig, id="|mains|>thresh", strip=2); wfrm.line = line_default
+	#Overlay gate onto gated output:
+	wfrm = add(plot, t, gate_b, id="gate_b", strip=2); wfrm.line = line_overlay
+
+push!(ystriplabels, "Rectifier Ouptut")
+	wfrm = add(plot, t, mains_rect, id="|mains|", strip=3); wfrm.line = line_default
+	#Overlay threshold onto |mains|, for convenience
+	wfrm = add(plot, t, vrect_thresh, id="thresh", strip=3); wfrm.line = line_overlay
+
+push!(ystriplabels, "Input: Mains")
+	wfrm = add(plot, t, mains, id="mains", strip=4); wfrm.line = line_default
 
 gplot = display(InspectDR.GtkDisplay(), mplot)
 
