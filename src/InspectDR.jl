@@ -17,6 +17,7 @@ using Colors
 using Graphics
 using NumericIO
 using Pkg
+import Base.MathConstants: π #Just in case
 import Printf: @sprintf
 import Cairo
 import Cairo: CairoContext

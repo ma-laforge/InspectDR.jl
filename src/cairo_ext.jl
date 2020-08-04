@@ -11,19 +11,23 @@ NOTE: might be useful to move to a separate module.
 #==Constants
 ===============================================================================#
 struct CAlignment #Cairo alignment
-	v::Int
+	bitfield::Int
 end
-Base.:|(a::CAlignment, b::CAlignment) = CAlignment(a.v|b.v)
+Base.:|(a::CAlignment, b::CAlignment) = CAlignment(a.bitfield|b.bitfield)
 
 const ALIGN_LEFT = CAlignment(0)
 const ALIGN_HCENTER = CAlignment(1)
 const ALIGN_RIGHT = CAlignment(2)
+const ALIGN_HSHIFT = 0
 const ALIGN_HMASK = 0x3
+ALIGN_HVALUE(a::CAlignment) = (a.bitfield & ALIGN_HMASK) >> ALIGN_HSHIFT
 
 const ALIGN_BOTTOM = CAlignment(0)
 const ALIGN_VCENTER = CAlignment(4)
 const ALIGN_TOP = CAlignment(8)
-const ALIGN_VMASK = (0x3<<2)
+const ALIGN_VSHIFT = 2
+const ALIGN_VMASK = (0x3<<ALIGN_VSHIFT)
+ALIGN_VVALUE(a::CAlignment) = (a.bitfield & ALIGN_VMASK) >> ALIGN_VSHIFT
 
 #Symbols not currently supported by Cairo package:
 #-------------------------------------------------------------------------------
@@ -136,18 +140,7 @@ end
 
 #==Rendering text
 ===============================================================================#
-
-#Extract text width from result of Cairo.text_extents:
-_textwidth(t_ext::Array{Float64}) = t_ext[3]
-_textheight(t_ext::Array{Float64}) = t_ext[4]
-function textextents_wh(ctx::Cairo.CairoContext, str::AbstractString)
-	t_ext = Cairo.text_extents(ctx, str)
-	return (_textwidth(t_ext), _textheight(t_ext))
-end
-
-#Compute text offsets in order to achieve a particular alignment
-function textoffset(t_ext::Array{Float64}, align::CAlignment)
-#=
+#= INFO:
 typedef struct {
 	double x_bearing, y_bearing;
 	double width, height;
@@ -155,61 +148,42 @@ typedef struct {
 } cairo_text_extents_t;
 =#
 
-	halign = align.v & ALIGN_HMASK
-	_size = t_ext[3]; bearing = t_ext[1]
-	xoff = -bearing #ALIGN_LEFT
-
-	if ALIGN_HCENTER.v == halign
-		xoff -= _size/2
-	elseif ALIGN_RIGHT.v == halign
-		xoff -= _size
-	end
-
-	valign = align.v & ALIGN_VMASK
-	_size = t_ext[4]; bearing = t_ext[2]
-	yoff = -bearing #ALIGN_TOP
-
-	if ALIGN_VCENTER.v == valign
-		yoff -= _size/2
-	elseif ALIGN_BOTTOM.v == valign
-		yoff -= _size
-	end
-
-	return tuple(xoff, yoff)
+#Extract text width/height from result of Cairo.set_text/Cairo.get_layout_size:
+function textextents_wh(ctx::Cairo.CairoContext, str::AbstractString, markup::Bool=false)
+	Cairo.set_text(ctx, str, markup)
+	t_ext = Cairo.get_layout_size(ctx)
+	return (t_ext[1], t_ext[2])
 end
 
 #Set active font on a CairoContext
 #-------------------------------------------------------------------------------
 function setfont(ctx::CairoContext, font::Font)
-	weight = font.bold ? Cairo.FONT_WEIGHT_BOLD : Cairo.FONT_WEIGHT_NORMAL #WANTCONST
-	noitalic = Cairo.FONT_SLANT_NORMAL #WANTCONST
+	FSCALE = DTPPOINTS_PER_INCH/96 #Pango appears to be preset to 96 PPI
 	Cairo.set_source(ctx, font.color)
-	Cairo.select_font_face(ctx, font.name, noitalic, weight)
-	Cairo.set_font_size(ctx, font._size)
+	weight = font.bold ? " bold" : ""
+	facestr = @sprintf("%s%s %0.1f", font.name, weight, font._size*FSCALE)
+	Cairo.set_font_face(ctx, facestr)
 end
 
 #Render text using "advanced" properties.
 #-------------------------------------------------------------------------------
 #angle: radians
 function render(ctx::CairoContext, t::String, pt::Point2D,
-	align::CAlignment, angle::Float64)
-	t_ext = Cairo.text_extents(ctx, t)
-	(xoff, yoff) = textoffset(t_ext, align)
+	align::CAlignment, angle::Float64, markup::Bool=false)
 
 	if !isfinite(pt.x) || !isfinite(pt.y)
 		return #Seems to muck up context when accidentally drawing @ NaN.
 	end
 
+	#TODO: Create own function to avoid using strings???
+	halignstr = ["left", "center", "right", "left"] #Last is default in case of error
+	halign = halignstr[1+Int(ALIGN_HVALUE(align))]
+  	valignstr = ["bottom", "center", "top", "bottom"] #Last is default in case of error
+	valign = valignstr[1+Int(ALIGN_VVALUE(align))]
+
 	Cairo.save(ctx) #-----
-
-	Cairo.translate(ctx, pt.x, pt.y)
-	if angle != 0 #In case is a bit faster...
-		Cairo.rotate(ctx, angle)
-	end
-
-	Cairo.move_to(ctx, xoff, yoff)
-	Cairo.show_text(ctx, t)
-
+	angle *= -(180/π) #Cairo.text() wants angles in degrees and has opposite rotation
+	bb=Cairo.text(ctx, pt.x, pt.y, t, halign=halign, valign=valign, angle=angle, markup=markup)
 	Cairo.restore(ctx) #-----
 	return
 end
@@ -219,46 +193,40 @@ render(ctx::CairoContext, t::String, pt::Point2D;
 
 #Convenience: also set font.
 function render(ctx::CairoContext, t::String, pt::Point2D, font::Font;
-	align::CAlignment=ALIGN_BOTTOM|ALIGN_LEFT, angle::Real=0)
+	align::CAlignment=ALIGN_BOTTOM|ALIGN_LEFT, angle::Real=0, markup::Bool=false)
+	Cairo.save(ctx) #-----
 	setfont(ctx, font)
-	render(ctx, t, pt, align, Float64(angle))
+	render(ctx, t, pt, align, Float64(angle), markup)
+	Cairo.restore(ctx) #-----
 end
 
 
 #Draws number as base, raised to a power (ex: 10^9):
 #-------------------------------------------------------------------------------
 function render_power(ctx::CairoContext, tbase::String, val::DReal, pt::Point2D, font::Font, align::CAlignment)
-	EXP_SCALE = 0.75 #WANTCONST
-	EXP_SHIFT = 0.5 #WANTCONST
+	EXP_SCALE = 0.7 #WANTCONST
+	EXP_SHIFT = 0.4 #WANTCONST
 	fontexp = deepcopy(font)
 	fontexp._size = font._size*EXP_SCALE
 
+	Cairo.save(ctx) #-----
 	setfont(ctx, font)
 	(wbase, hbase) = textextents_wh(ctx, tbase)
 	setfont(ctx, fontexp)
 	texp = @sprintf("%0.0f", val)
 	(wexp, hexp) = textextents_wh(ctx, texp)
+	Cairo.restore(ctx) #-----
 
 	#Compute bounding box:
 	voffset_exp = EXP_SHIFT * hbase
 	w = wbase+wexp
 	h = max(hbase, voffset_exp+hexp)
 
-	halign = align.v & ALIGN_HMASK
-	xoff = 0 #ALIGN_LEFT
-	if ALIGN_HCENTER.v == halign
-		xoff -= w/2
-	elseif ALIGN_RIGHT.v == halign
-		xoff -= w
-	end
+	#Alignment factor (depending on CAlignment bitfield):
+	KALIGN = DReal[0, 0.5, 1, 0] #Last is default in case of error
 
-	valign = align.v & ALIGN_VMASK
-	yoff = 0 #ALIGN_BOTTOM
-	if ALIGN_VCENTER.v == valign
-		yoff += h/2
-	elseif ALIGN_TOP.v == valign
-		yoff += h
-	end
+	xoff = -w * KALIGN[1+Int(ALIGN_HVALUE(align))]
+	yoff = +h * KALIGN[1+Int(ALIGN_VVALUE(align))]
 
 	pt = Point2D(pt.x + xoff, pt.y + yoff)
 	render(ctx, tbase, pt, font, align=ALIGN_LEFT|ALIGN_BOTTOM)

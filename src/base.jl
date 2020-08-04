@@ -104,11 +104,12 @@ const DHeatmap = Heatmap{IDatasetHeat{ARGB32}}
 
 mutable struct Annotation
 	title::String
-	xlabel::String
-	ylabels::Vector{String}
+	xlabel::String #xaxis
+	ylabels::Vector{String} #yaxis
+	ystriplabels::Vector{String} #entire strip
 	timestamp::String
 end
-Annotation(;title="") = Annotation(title, "", [], Libc.strftime(time()))
+Annotation(;title="") = Annotation(title, "", [], [], Libc.strftime(time()))
 
 mutable struct Font
 	name::String
@@ -150,6 +151,7 @@ mutable struct PlotLayout <: AbstractStyle #Layout/LegendLStyle
 
 	#Offsets to center of text:
 	voffset_title::Float64
+	voffset_ystriplabel::Float64 #Centered
 	voffset_xaxislabel::Float64 #Centered
 	voffset_xticklabel::Float64
 
@@ -166,6 +168,7 @@ mutable struct PlotLayout <: AbstractStyle #Layout/LegendLStyle
 	line_smithminor::LineStyle
 
 	font_title::Font
+	font_striplabel::Font
 	font_axislabel::Font
 	font_ticklabel::Font
 	font_annotation::Font
@@ -191,14 +194,14 @@ PlotLayout(::PreDefaultsType) = PlotLayout(
 	false, false, false, #enable
 	0, 0, 0, 0, 0, #valloc
 	0, 0, 0, 0, 0, 0, 0, #halloc
-	0, 0, 0, #voffset
+	0, 0, 0, 0, #voffset
 	0, 0, 0, #hoffset
 	Float64(5), Float64(3), #length_tick*
 	LineStyle(:dash, Float64(2), RGB24(.7, .7, .7)), #line_gridmajor
 	LineStyle(:dash, Float64(1), RGB24(.7, .7, .7)), #line_gridminor
 	LineStyle(:solid, Float64(2), COLOR_BLACK), #line_smithmajor
 	LineStyle(:solid, Float64(1), RGB24(.7, .7, .7)), #line_smithminor
-	Font(PREDEFAULTS),
+	Font(PREDEFAULTS), Font(PREDEFAULTS),
 	Font(PREDEFAULTS), Font(PREDEFAULTS),
 	Font(PREDEFAULTS), Font(PREDEFAULTS),
 	Font(PREDEFAULTS),

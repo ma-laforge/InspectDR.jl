@@ -43,32 +43,80 @@ end
 
 #==Useful functions
 ===============================================================================#
-#Try to size allocations & offsets appropriately for font selections:
-function autofit2font!(lyt::PlotLayout)
-	#IMPORTANT: update PROPSET_PLOTAUTOFIT if more properties are modified!
+#Round select layout values to avoid fractional pixel lines
+function _round!(lyt::PlotLayout)
+	_r!(font::Font) = (font._size = round(font._size, digits=1)) #Some fraction is ok
+	_r(v::DReal) = round(v, digits=0) #No fractions.
 
-	#Allocations for different elements:
-	h_title = lyt.font_title._size
-	h_axislabel = lyt.font_axislabel._size
-	h_ticklabel = lyt.font_ticklabel._size
-	w_axislabel = lyt.font_axislabel._size
-	w_ticklabel = lyt.font_ticklabel._size
+	#Also round font values in case:
+	_r!(lyt.font_title)
+	_r!(lyt.font_striplabel)
+	_r!(lyt.font_axislabel)
+	_r!(lyt.font_ticklabel)
+	_r!(lyt.font_annotation)
+	_r!(lyt.font_time)
+	_r!(lyt.font_legend)
 
-	lyt.valloc_top = h_title + h_ticklabel/2
-	lyt.valloc_mid = h_ticklabel * 1.5
-	lyt.valloc_bottom = h_axislabel + 1.75*h_ticklabel
 
-	lyt.halloc_left = w_axislabel + 4.25*w_ticklabel
-	lyt.halloc_right = w_ticklabel * 3.75 #Room for x10^EXP
-	lyt.halloc_colorscale_right = 4.25*w_ticklabel
+	lyt.valloc_top = _r(lyt.valloc_top)
+	lyt.valloc_mid = _r(lyt.valloc_mid)
+	lyt.valloc_bottom = _r(lyt.valloc_bottom)
 
-	lyt.voffset_title = h_title*0.5
-	lyt.voffset_xticklabel = h_ticklabel*0.5
-	lyt.hoffset_yticklabel = w_ticklabel*0.25
-	lyt.voffset_xaxislabel = h_axislabel*0.5
-	lyt.hoffset_yaxislabel = w_axislabel*0.5
+	lyt.halloc_data = _r(lyt.halloc_data)
+	lyt.halloc_left = _r(lyt.halloc_left)
+	lyt.halloc_right = _r(lyt.halloc_right)
+	lyt.halloc_colorscale = _r(lyt.halloc_colorscale)
+	lyt.halloc_colorscale_right = _r(lyt.halloc_colorscale_right)
+	lyt.halloc_legend = _r(lyt.halloc_legend)
+	return lyt
+end
+_round!(lyt::MultiplotLayout) = lyt #No need
 
-	lyt.halloc_legend = lyt.font_legend._size * (100/12)
+"""
+    autofit2font!(lyt::PlotLayout; legend_width::Float64=10.0)
+
+Try to size allocations & offsets appropriately for font selections.
+
+# Arguments
+ - legend_width: In EM ("M" character widths)
+"""
+function autofit2font!(lyt::PlotLayout; legend_width::Float64=10.0)
+#=IMPORTANT:
+	-update PROPSET_PLOTAUTOFIT if more properties are modified!
+	-We force pt2px=1 here because font sizes already scaled to get desired ppi effect.
+	 This is BAD!!!!! Find a better way to capture effect of dpi @ drawing layer
+	 instead of here.
+=#
+
+	pt2px = 1; #ppi/DTPPOINTS_PER_INCH Assumes 12pt height will translate to 12 pixel height.
+	KHEIGHT = 1.4 #Factor to pad up label text "height" (irrespective of orientation)
+	KOFFSET = 0.2 #Text "height"-to-offset factor
+
+	#"M" width (=height) for different elements:
+	em_title = lyt.font_title._size * pt2px
+	em_striplabel = lyt.font_striplabel._size * pt2px
+	em_axislabel = lyt.font_axislabel._size * pt2px
+	em_ticklabel = lyt.font_ticklabel._size * pt2px
+	em_font_legend = lyt.font_legend._size * pt2px
+
+	#Compute label offsets wrt em-height/widths:
+	lyt.voffset_title = em_title*KOFFSET
+	lyt.voffset_xticklabel = em_ticklabel*KOFFSET
+	lyt.hoffset_yticklabel = em_ticklabel*KOFFSET
+	lyt.voffset_xaxislabel = lyt.hoffset_yticklabel + em_ticklabel + em_axislabel*KOFFSET
+	lyt.hoffset_yaxislabel = em_axislabel*KOFFSET + 4*em_ticklabel + lyt.hoffset_yticklabel
+
+	#Compute vertical allocations:
+	lyt.valloc_top = max(em_title, em_striplabel) * KHEIGHT #Should not have both
+	lyt.valloc_mid = max(em_striplabel, em_axislabel) * KHEIGHT #Room for x10^EXP
+	lyt.valloc_bottom = lyt.voffset_xaxislabel + em_axislabel*KHEIGHT
+
+	#Compute horizontal allocations:
+	lyt.halloc_left = em_axislabel*KHEIGHT + 4*em_ticklabel + lyt.hoffset_yticklabel
+	lyt.halloc_right = 3.75*em_ticklabel #Room for x10^EXP
+	lyt.halloc_colorscale_right = 4.25*em_ticklabel #TODO: makes no sense
+
+	lyt.halloc_legend = em_font_legend*legend_width
 	return lyt
 end
 
@@ -94,6 +142,7 @@ function _overwritefont!(lyt::T, propset, fontname, fontscale::DReal, autofit::B
 	if autofit
 		autofit2font!(lyt)
 	end
+	return _round!(lyt)
 end
 
 overwritefont!(lyt::PlotLayout; fontname=nothing, fontscale::Number=1.0, autofit::Bool=true) =
@@ -135,6 +184,7 @@ function getstyle(::Type{PlotLayout}, ::StyleID{:screen},
 	lyt.enable_timestamp = false
 
 	lyt.font_title = Font(lyt.font_title.name, 14*fontscale, bold=true)
+	lyt.font_striplabel._size = 12*fontscale
 	lyt.font_axislabel._size = 14*fontscale
 	lyt.font_ticklabel._size = 12*fontscale
 	lyt.font_annotation._size = 12*fontscale
@@ -146,8 +196,8 @@ function getstyle(::Type{PlotLayout}, ::StyleID{:screen},
 
 	lyt.halloc_colorscale = 20
 	lyt.halloc_legendlineseg = 20
-	lyt.hoffset_legendtext = 0.5
-	lyt.valloc_legenditemsp = 0.25
+	lyt.hoffset_legendtext = 0.5 #EMs
+	lyt.valloc_legenditemsp = -0.1 #Tighter than normal
 
 	lyt.voffset_xticklabel = 7
 	lyt.hoffset_yticklabel = 3
@@ -170,7 +220,7 @@ function getstyle(::Type{PlotLayout}, ::StyleID{:screen},
 	lyt.frame_colorscale = AreaAttributes(
 		line=InspectDR.line(style=:solid, color=COLOR_BLACK, width=2)
 	)
-	return autofit2font!(lyt) #Compute offsets
+	return _round!(autofit2font!(lyt)) #Compute offsets
 end
 
 #Default ":screen" MultiplotLayout stylesheet:
@@ -198,7 +248,8 @@ getstyle(::Type{T}, ID::StyleID{:screen}; fontscale::Real=1.0,
 #-------------------------------------------------------------------------------
 #":IEEE" PlotLayout stylesheet:
 function getstyle(::Type{PlotLayout}, ::StyleID{:IEEE},
-		ppi::Float64, fontscale::Float64, enable_legend::Bool #ppi: pixels per inch
+		ppi::Float64, fontscale::Float64, legend_width::Float64, #ppi: pixels per inch
+		enable_legend::Bool
 	)
 	pt2px = ppi/DTPPOINTS_PER_INCH #WANTCONST
 	lyt = PlotLayout(PREDEFAULTS)
@@ -207,53 +258,54 @@ function getstyle(::Type{PlotLayout}, ::StyleID{:IEEE},
 	=#
 
 	#IEEE Plot: Must ensure readable axis & tick labels
+	#Yuk, mutables: Changing one font will change the other!
 	fntaxis = Font(lyt.font_axislabel.name, fontscale*7*pt2px)
 	fnttick = fntaxis
 	fntannot = Font(lyt.font_annotation.name, fontscale*5*pt2px)
 	lyt.font_title = fntaxis
+	lyt.font_striplabel = fntaxis
 	lyt.font_axislabel = fntaxis
 	lyt.font_ticklabel = fnttick
 	lyt.font_annotation = fntannot
 	lyt.font_time = fntannot
 	lyt.font_legend = fntannot
 
-	#Allocations for different elements:
-	h_title = lyt.font_title._size
-	h_axislabel = lyt.font_axislabel._size
-	h_ticklabel = lyt.font_ticklabel._size
-	w_axislabel = lyt.font_axislabel._size
-	w_ticklabel = lyt.font_ticklabel._size
-
-	#Optimize plot for maximum data area:
-	lyt.valloc_top = h_ticklabel/2
-	lyt.valloc_mid = h_ticklabel
-	lyt.valloc_bottom = h_axislabel + 1.75*h_ticklabel
-	lyt.halloc_left = w_axislabel + 2.5*h_ticklabel
-	lyt.halloc_right = w_ticklabel * 3.75 #Room for x10^EXP
-	lyt.halloc_colorscale = 20*pt2px
-	lyt.halloc_colorscale_right = 2.5*h_ticklabel
-
-	lyt.voffset_title = 0
-	lyt.voffset_xticklabel = h_ticklabel*0.5
-	lyt.hoffset_yticklabel = w_ticklabel*0.25
-	lyt.voffset_xaxislabel = h_axislabel*0.5
-	lyt.hoffset_yaxislabel = w_axislabel*0.5
-
-	lyt.enable_legend = enable_legend
-	lyt.halloc_legend = 50*pt2px
 	lyt.halloc_legendlineseg = 10*pt2px
-	lyt.valloc_legenditemsp = 0.25
-	lyt.hoffset_legendtext = 0.5
+	lyt.valloc_legenditemsp = -0.1 #Tighter than normal
+	lyt.hoffset_legendtext = 0.5 #EMs
 
-	lyt.frame_data.line = line(style=:solid, color=COLOR_BLACK, width=1*pt2px)
-	lyt.frame_colorscale.line = line(style=:solid, color=COLOR_BLACK, width=1*pt2px)
-	return lyt
+	autofit2font!(lyt, legend_width=legend_width)
+
+	#Re-tweak:
+	em_ticklabel = lyt.font_ticklabel._size
+	#No title, so only tick label:
+	lyt.valloc_top = (em_ticklabel * .7) #A bit more than half
+	Δyaxislabel = -2*em_ticklabel #Space for fewer digits on ticks
+		lyt.halloc_left += Δyaxislabel
+		lyt.hoffset_yaxislabel += Δyaxislabel
+
+	function _scaleline(l::LineStyle, f::Float64)
+		return LineStyle(l.style, l.width*f, l.color)
+	end
+
+	lyt.length_tickmajor *= pt2px
+	lyt.length_tickminor *= pt2px
+	lyt.line_gridmajor = _scaleline(lyt.line_gridmajor, .5*pt2px)
+	lyt.line_gridminor = _scaleline(lyt.line_gridminor, .5*pt2px)
+	lyt.line_smithmajor = _scaleline(lyt.line_smithmajor, .5*pt2px)
+	lyt.line_smithminor = _scaleline(lyt.line_smithminor, .5*pt2px)
+	lyt.frame_data.line = #Make sure we cover grid lines:
+		line(style=:solid, color=COLOR_BLACK, width=lyt.line_gridmajor.width)
+	lyt.frame_colorscale.line =
+		line(style=:solid, color=COLOR_BLACK, width=lyt.line_gridmajor.width)
+	lyt.enable_legend = enable_legend
+	return _round!(lyt)
 end
 
 #":IEEE" MultiplotLayout stylesheet:
 #(Write/export `Multiplot` instead of `Plot` to control full plot dimensions - not just data area)
 function getstyle(::Type{MultiplotLayout}, ::StyleID{:IEEE},
-		ppi::Float64, fontscale::Float64, enable_legend::Bool
+		ppi::Float64, fontscale::Float64, legend_width::Float64, enable_legend::Bool
 	)
 	pt2px = ppi/DTPPOINTS_PER_INCH #WANTCONST
 	wplot = 3.5*ppi #Inches => Pixels #WANTCONST
@@ -270,13 +322,25 @@ end
 
 #":IEEE" stylesheet: High-level interface:
 getstyle(::Type{T}, ID::StyleID{:IEEE};
-		ppi::Real=300, fontscale::Real=1.0, enable_legend::Bool=true) where T =
-	getstyle(T, ID, Float64(ppi), Float64(fontscale), enable_legend)
+		ppi::Real=300, fontscale::Real=1, legend_width::Real=12, enable_legend::Bool=true) where T =
+	getstyle(T, ID, Float64(ppi), Float64(fontscale), Float64(legend_width), enable_legend)
 
 
 #==Preset Stylesheets: high-level interface
 ===============================================================================#
 
+"""
+    getstyle(::PlotLayout/::MultiplotLayout, styleid::Symbol; kwargs...)
+
+See InspectDR/src/stylesheets.jl
+
+TODO: Improve how this is done. Interface not clear.
+
+# To list methods
+```julia-repl
+julia> methods(InspectDR.getstyle)
+```
+"""
 getstyle(::Type{T}, styleid::Symbol; kwargs...) where T =
 	getstyle(T, StyleID(styleid); kwargs...)
 

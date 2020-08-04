@@ -15,34 +15,49 @@
 #Render main plot annotation (titles, axis labels, ...)
 #-------------------------------------------------------------------------------
 function render_baseannotation(ctx::CairoContext, rplot::RPlot2D, lyt::PlotLayout, a::Annotation)
+	usemarkup=false #want user to be able to make fancy labels - but can cause crashes.
 	TIMESTAMP_OFFSET = 3 #WANTCONST
 	bb =  rplot.bb #WANTCONST
 	databb =  rplot.databb #WANTCONST
 
 	#Title
 #	xcenter = (bb.xmin+bb.xmax)/2 #Entire plot BB.
-	xcenter = (databb.xmin+databb.xmax)/2 #Data-area BB only.
-	pt = Point2D(xcenter, bb.ymin+lyt.voffset_title)
-	render(ctx, a.title, pt, lyt.font_title, align=ALIGN_HCENTER|ALIGN_VCENTER)
+	xcenter = (databb.xmin+databb.xmax)/2 #Data-area BB only (looks less odd).
+	pt = Point2D(xcenter, databb.ymin-lyt.voffset_title)
+	render(ctx, a.title, pt, lyt.font_title, align=ALIGN_HCENTER|ALIGN_BOTTOM, markup=usemarkup)
 
 	#X-axis label
 	xcenter = (databb.xmin+databb.xmax)/2
-	pt = Point2D(xcenter, bb.ymax-lyt.voffset_xaxislabel)
-	render(ctx, a.xlabel, pt, lyt.font_axislabel, align=ALIGN_HCENTER|ALIGN_VCENTER)
+	pt = Point2D(xcenter, databb.ymax+lyt.voffset_xaxislabel)
+	render(ctx, a.xlabel, pt, lyt.font_axislabel, align=ALIGN_HCENTER|ALIGN_TOP, markup=usemarkup)
 
-	#Y-axis labels
+	#Strip annotation
 	nstrips = min(length(a.ylabels), length(rplot.strips))
 	for i in 1:nstrips
 		rstrip = rplot.strips[i]
-		ycenter = (rstrip.bb.ymin+rstrip.bb.ymax)/2
-		pt = Point2D(bb.xmin+lyt.hoffset_yaxislabel, ycenter)
-		render(ctx, a.ylabels[i], pt, lyt.font_axislabel, align=ALIGN_HCENTER|ALIGN_VCENTER, angle=-π/2)
+		sbb = rstrip.bb
+		ycenter = (sbb.ymin+sbb.ymax)/2
+		xcenter = (sbb.xmin+sbb.xmax)/2
+
+		#Strip label
+		if i <= length(a.ystriplabels)
+			lbl = a.ystriplabels[i]
+			pt = Point2D(xcenter, sbb.ymin-lyt.voffset_ystriplabel)
+			render(ctx, lbl, pt, lyt.font_striplabel, align=ALIGN_HCENTER|ALIGN_BOTTOM, markup=usemarkup)
+		end
+
+		#Y-axis label
+		if i <= length(a.ylabels)
+			lbl = a.ylabels[i]
+			pt = Point2D(sbb.xmin-lyt.hoffset_yaxislabel, ycenter)
+			render(ctx, lbl, pt, lyt.font_axislabel, align=ALIGN_HCENTER|ALIGN_BOTTOM, angle=-π/2, markup=usemarkup)
+		end
 	end
 
 	#Time stamp
 	if lyt.enable_timestamp
 		pt = Point2D(bb.xmax-TIMESTAMP_OFFSET, bb.ymax-TIMESTAMP_OFFSET)
-		render(ctx, a.timestamp, pt, lyt.font_time, align=ALIGN_RIGHT|ALIGN_BOTTOM)
+		render(ctx, a.timestamp, pt, lyt.font_time, align=ALIGN_RIGHT|ALIGN_BOTTOM, markup=usemarkup)
 	end
 end
 
@@ -139,10 +154,17 @@ function render_xticks(ctx::CairoContext, rstrip::RStrip2D, lyt::PlotLayout, xli
 	graphbb = rstrip.bb
 	xs = rstrip.xscale
 
-	tframe = DReal(lyt.frame_data.line.width) #WANTCONST TODO: Fix LineAttributes to have concrete type
+	#TODO: Fix LineAttributes to have concrete type:
+	line_frame = LineStyle(lyt.frame_data.line) #Convert/do some validation
+	line_major = LineStyle(line_frame.style, lyt.line_gridmajor.width, line_frame.color)
+	line_minor = LineStyle(line_frame.style, lyt.line_gridminor.width, line_frame.color)
+	tframe = line_frame.width #WANTCONST 
 	fmt = TickLabelFormatting(lyt.format_xtick, xlines.rnginfo)
 	yframe = graphbb.ymax
 	ylabel = graphbb.ymax + lyt.voffset_xticklabel
+
+Cairo.save(ctx) #-----
+	setlinestyle(ctx, line_major)
 	for xtick in xlines.major
 		x = apply(rstrip.xf, Point2D(xtick, 0)).x
 		if ticklabels
@@ -150,6 +172,7 @@ function render_xticks(ctx::CairoContext, rstrip::RStrip2D, lyt::PlotLayout, xli
 		end
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-lyt.length_tickmajor))
 	end
+	setlinestyle(ctx, line_minor)
 	for xtick in xlines.minor
 		x = apply(rstrip.xf, Point2D(xtick, 0)).x
 		drawline(ctx, Point2D(x, yframe), Point2D(x, yframe-lyt.length_tickminor))
@@ -158,19 +181,27 @@ function render_xticks(ctx::CairoContext, rstrip::RStrip2D, lyt::PlotLayout, xli
 		xlabel = graphbb.xmax + tframe
 		render_axisscalelabel(ctx, Point2D(xlabel, yframe), lyt.font_ticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, xs)
 	end
+Cairo.restore(ctx) #-----
 end
 function render_yticks(ctx::CairoContext, rstrip::RStrip2D, lyt::PlotLayout, ylines::GridLines)
+	#TODO: Fix LineAttributes to have concrete type:
+	line_frame = LineStyle(lyt.frame_data.line) #Convert/do some validation
+	line_major = LineStyle(line_frame.style, lyt.line_gridmajor.width, line_frame.color)
+	line_minor = LineStyle(line_frame.style, lyt.line_gridminor.width, line_frame.color)
+	tframe = line_frame.width #WANTCONST 
 	graphbb = rstrip.bb
 	ys = rstrip.yscale
-	tframe = DReal(lyt.frame_data.line.width) #WANTCONST TODO: Fix LineAttributes to have concrete type
 	fmt = TickLabelFormatting(lyt.format_ytick, ylines.rnginfo)
 	xframe = graphbb.xmin
 	xlabel = graphbb.xmin - lyt.hoffset_yticklabel
+Cairo.save(ctx) #-----
+	setlinestyle(ctx, line_major)
 	for ytick in ylines.major
 		y = apply(rstrip.xf, Point2D(0, ytick)).y
 		render_ticklabel(ctx, ytick, Point2D(xlabel, y), lyt.font_ticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, ys)
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+lyt.length_tickmajor, y))
 	end
+	setlinestyle(ctx, line_minor)
 	for ytick in ylines.minor
 		y = apply(rstrip.xf, Point2D(0, ytick)).y
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+lyt.length_tickminor, y))
@@ -179,6 +210,7 @@ function render_yticks(ctx::CairoContext, rstrip::RStrip2D, lyt::PlotLayout, yli
 		ylabel = graphbb.ymin - tframe
 		render_axisscalelabel(ctx, Point2D(xframe, ylabel), lyt.font_ticklabel, ALIGN_BOTTOM|ALIGN_LEFT, fmt, ys)
 	end
+Cairo.restore(ctx) #-----
 end
 #Render ticks for colorscale (z-values)
 function render_zticks(ctx::CairoContext, rstrip::RStrip2D, lyt::PlotLayout, csbb::BoundingBox,
