@@ -181,14 +181,14 @@ end
 #==Non-MIME write interface (convenience functions)
 ===============================================================================#
 
-write_png(path::String, mplot::Multiplot) = _write(path, MIMEpng(), mplot)
-write_svg(path::String, mplot::Multiplot) = _write(path, MIMEsvg(), mplot)
-write_eps(path::String, mplot::Multiplot) = _write(path, MIMEeps(), mplot)
-write_pdf(path::String, mplot::Multiplot) = _write(path, MIMEpdf(), mplot)
+write_png(path::String, mplot::Multiplot, args...) = _write(path, MIMEpng(), mplot, args...)
+write_svg(path::String, mplot::Multiplot, args...) = _write(path, MIMEsvg(), mplot, args...)
+write_eps(path::String, mplot::Multiplot, args...) = _write(path, MIMEeps(), mplot, args...)
+write_pdf(path::String, mplot::Multiplot, args...) = _write(path, MIMEpdf(), mplot, args...)
 
-write_png(path::String, plot::Plot) = _write(path, MIMEpng(), plot)
-write_svg(path::String, plot::Plot) = _write(path, MIMEsvg(), plot)
-write_eps(path::String, plot::Plot) = _write(path, MIMEeps(), plot)
-write_pdf(path::String, plot::Plot) = _write(path, MIMEpdf(), plot)
+write_png(path::String, plot::Plot, args...) = _write(path, MIMEpng(), plot, args...)
+write_svg(path::String, plot::Plot, args...) = _write(path, MIMEsvg(), plot, args...)
+write_eps(path::String, plot::Plot, args...) = _write(path, MIMEeps(), plot, args...)
+write_pdf(path::String, plot::Plot, args...) = _write(path, MIMEpdf(), plot, args...)
 
 #Last line
