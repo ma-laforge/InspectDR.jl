@@ -24,7 +24,7 @@
 
 # :warning: Alternative APIs
 
-The InspectDR programming interface in not particularly refined. Code used to generate more complex plots can therefore be a bit difficult to read/maintain.
+The InspectDR programming interface is not particularly refined. Code used to generate more complex plots can therefore be a bit difficult to read/maintain.
 
 It will most likely be easier to generate `InspectDR` plots by leveraging higher-level APIs (unless you have stringent requirements on time-to-first-plot or number of dependencies).  Alternative APIs supporting `InspectDR` include:
  - [Plots.jl][PlotsJL]: Succinct plotting interface ideal for interactive exploration (supports multiple backends).
