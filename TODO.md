@@ -56,7 +56,7 @@ Could be used by user for other things (instead of being used by GtkPlot for coo
 
  - Mutable vs immutable structs: convenience vs side effects vs performance, etc.
  - LineAttributes vs LineStyle: Very confusing.
- - Defaults vs templates vs stylesheets: VERY confusing!!!! => Consolidate a bit more / make more coherent.
+ - Defaults vs stylesheets: Confusing!!!! => Consolidate a bit more / make more coherent.
 
 # Improve Layout system
 
@@ -64,7 +64,7 @@ Could be used by user for other things (instead of being used by GtkPlot for coo
  - Start using bounding boxes in Cairo layers.
 
 Maybe find a way to do something like rename `PlotLayout -> PlotConfig`, then:
-```
+```julia
 struct PlotLayout
 	legend::BoundingBox
 	data::BoundingBox
@@ -81,7 +81,7 @@ end
 
  - Document callback/event handler hierarchy and how they are ued.
  - Document defaults system and how it is used.
- - Document templates and stylesheets systems (not the same thing).
+ - Document plot generator and stylesheets systems.
  - Document Plot object hierarchy and how to use it.
  - Document plot invalidation and how it is applied.
  - Document scales, transformations and function hierarchy (ex: aloc2axis).

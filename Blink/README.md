@@ -2,7 +2,7 @@
 
 Samples in this directory require the user to first install Interact, Blink & NumericIO:
 
-```
+```julia
 julia> ]
 (v1.0) pkg> add Interact
 (v1.0) pkg> add Blink

@@ -70,7 +70,7 @@ pmargin = 180+phase0
 
 #==Generate plot
 ===============================================================================#
-mplot = InspectDR.Multiplot(title="Bode Template Test")
+mplot = InspectDR.Multiplot(title="Sample Bode Plot")
 #Bode plot looks better with wider aspect ratio:
 mplot.layout[:valloc_plot] = mplot.layout[:valloc_plot]*.6
 

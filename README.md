@@ -1,13 +1,18 @@
-# :art: Galleries (Sample Output) :art:
+<!-- Reference-style links to make tables & lists more readable -->
+[Gallery]: <https://github.com/ma-laforge/FileRepo/tree/master/InspectDR/sampleplots/README.md>
+[GallerySProc]: <https://github.com/ma-laforge/FileRepo/tree/master/SignalProcessing/sampleplots/README.md>
+[GalleryPlotsJL]: <https://github.com/ma-laforge/FileRepo/blob/master/InspectDR/sampleplots_Plots/README.md>
+[MDDatasetsJL]: <https://github.com/ma-laforge/MDDatasets.jl>
+[CMDimDataJL]: <https://github.com/ma-laforge/CMDimData.jl>
+[CMDimCircuitsJL]: <https://github.com/ma-laforge/CMDimCircuits.jl>
+[PlotsJL]: <https://github.com/JuliaPlots/Plots.jl>
+[BlinkJL]: <https://github.com/JunoLab/Blink.jl>
+[Electron]: <https://github.com/electron/electron>
+[Cairo]: <https://cairographics.org>
+[GTK]: <https://www.gtk.org>
 
-[:chart_with_upwards_trend: Sample plots](https://github.com/ma-laforge/FileRepo/tree/master/InspectDR/sampleplots/README.md) (might be out of date).
-
-**Generated With Other Modules:**
-
-- [:chart_with_upwards_trend: CData.jl output](https://github.com/ma-laforge/FileRepo/tree/master/SignalProcessing/sampleplots/README.md).
-- [:chart_with_upwards_trend: JuliaPlots/Plots.jl output](https://github.com/ma-laforge/FileRepo/blob/master/InspectDR/sampleplots_Plots/README.md).
-
-# InspectDR.jl: Fast, Interactive Plots
+# InspectDR.jl: Fast, interactive plots
+**Galleries:** [:art: Output from ./sample/][Gallery] / [:art: SignalProcessing module][GallerySProc] / [:art: Plots.jl package][GalleryPlotsJL]
 
 [![Build Status](https://travis-ci.org/ma-laforge/InspectDR.jl.svg?branch=master)](https://travis-ci.org/ma-laforge/InspectDR.jl)
 
@@ -17,28 +22,27 @@
 | <img src="https://github.com/ma-laforge/FileRepo/blob/master/SignalProcessing/sampleplots/demo15.png" width="850"> |
 | :---: |
 
-## Table of Contents
+# :warning: Alternative APIs
+
+The InspectDR programming interface in not particularly refined. Code used to generate more complex plots can therefore be a bit difficult to read/maintain.
+
+It will most likely be easier to generate `InspectDR` plots by leveraging higher-level APIs (unless you have stringent requirements on time-to-first-plot or number of dependencies).  Alternative APIs supporting `InspectDR` include:
+ - [Plots.jl][PlotsJL]: Succinct plotting interface ideal for interactive exploration (supports multiple backends).
+ - [CMDimData.jl][CMDimDataJL]: Facilitates parametric analysis with continous <var>f(x)</var> interpolation & multi-dimensional plots. Built using [MDDatasets.jl][MDDatasetsJL] module.
+ - [CMDimCircuits.jl][CMDimCircuitsJL]: Extends [CMDimData.jl][CMDimDataJL] with circuit-specific functionnality (ex: signal processing, network analysis, ...).
+
+Note: In instances where higher-level APIs have limited control over the plot, it is typically possible to tweak the final apearance of the "rendered" `::InspectDR.Plot` object using the `InspectDR` API.
+
+## Table of contents
 
  1. [Description](#Description)
     1. [Features/Highlights](#Highlights)
- 1. [Programming Interface](doc/api.md)
-    1. [Main Plot Objects](doc/api.md#MainPlotObjects)
-    1. [Creating Plots](doc/api.md#CreatingPlots)
-    1. [Plot Creation Templates](doc/api.md#PlotCreationTemplates)
-    1. [Axis Scale Identifiers](doc/api.md#AxisScaleIdentifiers)
-    1. [Displaying Plots](doc/api.md#DisplayingPlots)
-    1. [Secondary Plot Objects](doc/api.md#SecondaryPlotObjects)
-    1. [Function Listing](doc/api.md#FunctionListing)
-    1. [Plot Templates/Axis Scales](doc/api.md#Templates_Scales)
-    1. [Layout & Stylesheets](doc/api.md#Layout_Stylesheets)
- 1. [Advanced Usage](doc/advanced.md)
-    1. [Display/Render System](doc/advanced.md#DisplaySystem)
-    1. [Creating Plot Templates](doc/advanced.md#CreatingPlotTemplates)
- 1. [Code Documentation & Architecture](doc/api.md#CodeDoc_Arch)
+ 1. [Mouse/Keybindings](doc/input_bindings.md)
+ 1. [Usage examples](#UsageExamples)
+ 1. [Programming interface](doc/api.md)
+ 1. [Code documentation & architecture](src/doc/README.md)
  1. [Configuration/Defaults](doc/config.md)
- 1. [Mouse/keybindings](doc/input_bindings.md)
- 1. [Usage Examples](#UsageExamples)
- 1. [Known Limitations](#KnownLimitations)
+ 1. [Known limitations](#KnownLimitations)
     1. [TODO](TODO.md)
 
 <a name="Description"></a>
@@ -50,9 +54,9 @@ InspectDR is a fast plotting tool with a responsive GUI, targeting quick navigat
 
 The InspectDR library is implemented using **3 distinct plot layers**:
 
-- **Plot image layer:** Implemented with the [Cairo library](https://cairographics.org/), the plot image layer allows the user to render (multi-) plots as simple images.
-- **Plot widget layer:** Library users can also integrate plots to their own [GTK+](https://www.gtk.org/) application by instantiating a single InspectDR widget.
-- **Plot application layer:** Most end users will likely display/interact with plots/data using the built-in Julia/[GTK+](https://www.gtk.org/) multi-plot application.
+ - **Plot image layer:** Implemented with the [Cairo library][Cairo], the plot image layer allows the user to render (multi-) plots as simple images.
+ - **Plot widget layer:** Library users can also integrate plots to their own [GTK+][GTK] application by instantiating a single InspectDR widget.
+ - **Plot application layer:** Most end users will likely display/interact with plots/data using the built-in Julia/[GTK+][GTK] multi-plot application.
 
 Users are encouraged to open an issue if it is unclear how to utilize a particular layer.  Documentation is a bit limited at the moment.
 
@@ -62,13 +66,13 @@ Users are encouraged to open an issue if it is unclear how to utilize a particul
 The following highlights a few interesting features of InspectDR:
 
  - Publication-quality output.
- - Included as a "backend" of [JuliaPlots/Plots.jl](https://github.com/JuliaPlots/Plots.jl).
+ - Included as a "backend" of [Plots.jl][PlotsJL].
  - Relatively short load times / time to first plot.
  - Designed with larger datasets in mind:
    - Responsive even with moderate (>200k points) datasets.
    - Confirmed to handle 2GB datsets with reasonable speed on older desktop running Windows 7 (drag+pan of data area highly discouraged).
  - Support for stacked, multi-***strip*** plots with common x-axis values.
- - Support for Smith charts (admittance & impedance - see [Plot Templates](doc/api.md#PlotCreationTemplates)).
+ - Support for Smith charts (admittance & impedance - see [Plot generators](doc/api.md#PlotGenerators)).
  - Support for various types of annotation:
    - User-programmable text, polyline, vertical & horizontal bars.
    - Drag & drop &Delta;-markers (Measures/displays &Delta;x, &Delta;y & slope).
@@ -76,7 +80,7 @@ The following highlights a few interesting features of InspectDR:
    - Fast & simple way to pan/zoom into data.
    - In line with other similar tools.
    - Create drag & drop &Delta;-markers.
- - [Layout & Stylesheets](doc/api.md#Layout_Stylesheets).
+ - [Layout & stylesheets](doc/api.md#Layout_Stylesheets).
    - See [demo targeting IEEE publications @300 dpi](sample/demo12.jl)
    - Add custom stylesheets.
 
@@ -87,7 +91,7 @@ See following subsections for more information.
 Quick to first plot, and easy to navigate data using supported [mouse/keybindings](doc/input_bindings.md)
 
 <a name="F1Accel"></a>
-### "F1" Acceleration
+### "F1" acceleration
 
 InspectDR.jl includes specialized algorithms to accellerate plotting of large "F1" datasets (functions of 1 argument) in order to maintain a good "real-time" (interactive) user experience.
 
@@ -103,7 +107,7 @@ Examples of "F1" datasets include **time domain** (`y(x=time)`) and **frequncy d
 
 To change when InspectDR applies "F1" acceleration to drop points, look for the `:droppoints` entry in the [Configuration/Defaults](doc/config.md) section.
 
-### 2D Plot Support
+### 2D plot support
 
 InspectDR.jl also supports generic 2D plotting.  More specifically, the tool is capable of plotting arbitrary 2D datasets that satisfy:
 
@@ -116,19 +120,19 @@ Examples of of such plots (where x-values are not guaranteed to be sorted) inclu
 - Smith/polar (S-Parameter) charts
 
 <a name="UsageExamples"></a>
-## Usage Examples
+## Usage examples
 
  - Sample code to construct InspectDR objects can be found [here](sample/).
  - **(DEPRECATED)** Sample IJulia (Jupyter) notebooks can be found [here](notebook/).
- - Sample [Blink](https://github.com/JunoLab/Blink.jl) ([Electron](https://github.com/electron/electron) backend) projects can be found [here](Blink/).
+ - Sample [Blink.jl][BlinkJL]/[Electron] projects can be found [here](Blink/).
 
 <a name="KnownLimitations"></a>
-## Known Limitations
+## Known limitations
 
 ### [TODO](TODO.md)
 
 - API is too verbose for interactive plotting applications (designed for scripting).
-  - Workaround: Use [JuliaPlots/Plots.jl](https://github.com/JuliaPlots/Plots.jl) as a "frontend" (increases plot times).
+  - Workaround: Use [Plots.jl][PlotsJL] as a "frontend" (increases plot times).
 - Only `Vector` data can be added (`AbstractVector`/`Range` not currently supported).
 - [Sample Jupyter notebooks](notebook/) are not very good at the moment.  Also: many examples are not yet ported to Julia 1.0.
 - SVG `MIME` output (using `show`) does not show up properly in Jupyter notebooks.  There appears to be an issue in determining image extents (bounding box).

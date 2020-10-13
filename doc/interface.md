@@ -4,17 +4,17 @@
 
 ## Extended Interface
 Displaying a `Plot` object:
-```
+```julia
 	Base.display(d::InspectDR.GtkDisplay, p::Plot) #Gtk mutltiplot window
 ```
 
 Closing a Gtk plot window:
-```
+```julia
 	Base.close(::GtkPlot)
 ```
 
 Writing plot to `IO` stream:
-```
+```julia
 	Base.show(::IO, ::MIME, ::Plot2D)
 ```
 for the following `MIME`s:

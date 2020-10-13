@@ -2,7 +2,7 @@
 
 Default InspectDR.jl settings can be overwritten once the module is loaded by editing the `InspectDR.defaults` structure:
 
-```
+```julia
 #Dissalow SVG MIME output for performance reasons:
 InspectDR.defaults.rendersvg = false
 
@@ -27,12 +27,12 @@ InspectDR.defaults.mplotlayout[:ncolumns] = 2
 ```
 
 Until better documentation is available, one is encouraged to look at the fields of the `PlotLayout` for more information:
-```
+```julia
 ?InspectDR.PlotLayout
 ```
 
 Defaults can also be specified *before* importing InspectDR.jl with the help of `Main.DEFAULTS_INSPECTDR::Dict`.  Simply create the variable in your `~/.julia/config/startup.jl` file, using the following pattern:
-```
+```julia
 DEFAULTS_INSPECTDR = Dict(
 	:rendersvg => false,
 
