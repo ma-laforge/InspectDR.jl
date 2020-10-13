@@ -10,10 +10,10 @@ Note that many types & functions are not exported from InspectDR in order to avo
  1. [Plot generators](#PlotGenerators)
  1. [Displaying plots](#DisplayingPlots)
  1. [Layout & stylesheets](#Layout_Stylesheets)
- 1. [Advanced usage](doc/advanced.md)
-    1. [Display/Render System](doc/advanced.md#DisplaySystem)
-    1. [Custom plot generators](doc/advanced.md#CustomGenerators)
-    1. [Custom stylesheets](doc/advanced.md#CustomStylesheets)
+ 1. [Advanced usage](advanced.md)
+    1. [Display/Render System](advanced.md#DisplaySystem)
+    1. [Custom plot generators](advanced.md#CustomGenerators)
+    1. [Custom stylesheets](advanced.md#CustomStylesheets)
 
 
 <a name="MainPlotObjects"></a>
