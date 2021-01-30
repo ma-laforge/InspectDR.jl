@@ -286,6 +286,31 @@ function _eval(alines::GridLinesAuto, s::LinScale, emin::DReal, emax::DReal)
 	)
 	return lines
 end
+function _eval(l::T, s::AxisScale, emin::DReal, emax::DReal) where T <: Union{GridLines,GridLinesCustom}
+	#Strip out any major/minor positions that are outside extents {emin,emax}
+	#Otherwise, they would get displayed
+	TM = eltype(l.major) #Might be DReal or TickCustom
+	newmajor = TM[]
+	newminor = DReal[]
+
+	function _in(pos, emin, emax)
+		pos = tick_postion(pos)
+		return (emin<=pos && pos<=emax)
+	end
+
+	for tick in l.major
+		if _in(tick, emin, emax)
+			push!(newmajor, tick)
+		end
+	end
+	for tick in l.minor
+		if _in(tick, emin, emax)
+			push!(newminor, tick)
+		end
+	end
+
+	return T(l.displaymajor, l.displayminor, newmajor, newminor, l.rnginfo)
+end
 
 #Default: use specified grid lines:
 _eval(lines::AbstractGridLines, s::AxisScale, emin::DReal, emax::DReal) = lines
