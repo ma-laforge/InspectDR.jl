@@ -9,6 +9,7 @@
 #==Main types
 ===============================================================================#
 
+
 #==Rendering base plot elements
 ===============================================================================#
 
@@ -76,11 +77,11 @@ end
 #==Render grid
 ===============================================================================#
 render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, xlines::AbstractGridLines) = nothing
-function render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, xlines::GridLines)
+function render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, xlines::Union{GridLines,GridLinesCustom})
 	if xlines.displaymajor
 		setlinestyle(ctx, lyt.line_gridmajor)
 		for xline in xlines.major
-			x = apply(xf, Point2D(xline, 0)).x
+			x = apply(xf, Point2D(tick_postion(xline), 0)).x
 			drawline(ctx, Point2D(x, graphbb.ymin), Point2D(x, graphbb.ymax))
 		end
 	end
@@ -93,11 +94,11 @@ function render_vlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D,
 	end
 end
 render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, ylines::AbstractGridLines) = nothing
-function render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, ylines::GridLines)
+function render_hlines(ctx::CairoContext, graphbb::BoundingBox, xf::Transform2D, lyt::PlotLayout, ylines::Union{GridLines,GridLinesCustom})
 	if ylines.displaymajor
 		setlinestyle(ctx, lyt.line_gridmajor)
 		for yline in ylines.major
-			y = apply(xf, Point2D(0, yline)).y
+			y = apply(xf, Point2D(0, tick_postion(yline))).y
 			drawline(ctx, Point2D(graphbb.xmin, y), Point2D(graphbb.xmax, y))
 		end
 	end
@@ -143,6 +144,10 @@ render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::
 render_ticklabel(ctx::CairoContext, val::DReal, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, scale::LogScale{10}) =
 	render_power(ctx, "10", val, pt, font, align)
 
+function render_ticklabel(ctx::CairoContext, val::TickCustom, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, ::AxisScale)
+	render(ctx, val.label, pt, font, align=align)
+end
+
 function render_axisscalelabel(ctx::CairoContext, pt::Point2D, font::Font, align::CAlignment, fmt::TickLabelFormatting, ::AxisScale)
 	tstr = formatted_exp(fmt.fmt)
 	render(ctx, tstr, pt, font, align=align)
@@ -150,7 +155,7 @@ end
 
 #Render ticks: Well-defined GridLines
 #-------------------------------------------------------------------------------
-function render_xticks(ctx::CairoContext, rstrip::RStrip2D, lyt::PlotLayout, xlines::GridLines, ticklabels::Bool)
+function render_xticks(ctx::CairoContext, rstrip::RStrip2D, lyt::PlotLayout, xlines::Union{GridLines,GridLinesCustom}, ticklabels::Bool)
 	graphbb = rstrip.bb
 	xs = rstrip.xscale
 
@@ -166,7 +171,7 @@ function render_xticks(ctx::CairoContext, rstrip::RStrip2D, lyt::PlotLayout, xli
 Cairo.save(ctx) #-----
 	setlinestyle(ctx, line_major)
 	for xtick in xlines.major
-		x = apply(rstrip.xf, Point2D(xtick, 0)).x
+		x = apply(rstrip.xf, Point2D(tick_postion(xtick), 0)).x
 		if ticklabels
 			render_ticklabel(ctx, xtick, Point2D(x, ylabel), lyt.font_ticklabel, ALIGN_TOP|ALIGN_HCENTER, fmt, xs)
 		end
@@ -183,7 +188,7 @@ Cairo.save(ctx) #-----
 	end
 Cairo.restore(ctx) #-----
 end
-function render_yticks(ctx::CairoContext, rstrip::RStrip2D, lyt::PlotLayout, ylines::GridLines)
+function render_yticks(ctx::CairoContext, rstrip::RStrip2D, lyt::PlotLayout, ylines::Union{GridLines,GridLinesCustom})
 	#TODO: Fix LineAttributes to have concrete type:
 	line_frame = LineStyle(lyt.frame_data.line) #Convert/do some validation
 	line_major = LineStyle(line_frame.style, lyt.line_gridmajor.width, line_frame.color)
@@ -197,7 +202,7 @@ function render_yticks(ctx::CairoContext, rstrip::RStrip2D, lyt::PlotLayout, yli
 Cairo.save(ctx) #-----
 	setlinestyle(ctx, line_major)
 	for ytick in ylines.major
-		y = apply(rstrip.xf, Point2D(0, ytick)).y
+		y = apply(rstrip.xf, Point2D(0, tick_postion(ytick))).y
 		render_ticklabel(ctx, ytick, Point2D(xlabel, y), lyt.font_ticklabel, ALIGN_RIGHT|ALIGN_VCENTER, fmt, ys)
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe+lyt.length_tickmajor, y))
 	end
@@ -214,14 +219,14 @@ Cairo.restore(ctx) #-----
 end
 #Render ticks for colorscale (z-values)
 function render_zticks(ctx::CairoContext, rstrip::RStrip2D, lyt::PlotLayout, csbb::BoundingBox,
-		zext::PExtents1D, zlines::GridLines, zs::AxisScale)
+		zext::PExtents1D, zlines::Union{GridLines,GridLinesCustom}, zs::AxisScale)
 	tframe = DReal(lyt.frame_colorscale.line.width) #WANTCONST TODO: Fix LineAttributes to have concrete type
 	fmt = TickLabelFormatting(lyt.format_ztick, zlines.rnginfo)
 	xf = LinearTransform(zext, csbb.ymax, csbb.ymin) #ymax corresponds to min z value
 	xframe = csbb.xmax
 	xlabel = xframe + lyt.hoffset_yticklabel
 	for ztick in zlines.major
-		y = apply(xf, ztick)
+		y = apply(xf, tick_postion(ztick))
 		render_ticklabel(ctx, ztick, Point2D(xlabel, y), lyt.font_ticklabel, ALIGN_LEFT|ALIGN_VCENTER, fmt, zs)
 		drawline(ctx, Point2D(xframe, y), Point2D(xframe-lyt.length_tickmajor, y))
 	end

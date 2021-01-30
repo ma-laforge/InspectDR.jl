@@ -26,6 +26,11 @@ const GRID_MINORDIV = DReal[
 #==Types
 ===============================================================================#
 
+struct TickCustom
+	pos::DReal
+	label::String
+end
+
 abstract type AbstractGridLines end
 
 #Identifies where to place ticks/grid lines
@@ -38,6 +43,21 @@ mutable struct GridLines <: AbstractGridLines
 end
 GridLines(displaymajor=true, displayminor=true) =
 	GridLines(displaymajor, displayminor, [], [], NoRangeDisplayInfo())
+
+#Allows custom placement of gridlines and tick labels
+mutable struct GridLinesCustom <: AbstractGridLines
+	displaymajor::Bool
+	displayminor::Bool
+	major::Vector{TickCustom}
+	minor::Vector{DReal}
+	#Force to NoRangeDisplayInfo (could remove if code was refactored downstream).
+	rnginfo::NoRangeDisplayInfo
+end
+GridLinesCustom(displaymajor=true, displayminor=true) =
+	GridLinesCustom(displaymajor, displayminor, [], [], NoRangeDisplayInfo())
+GridLinesCustom(g::GridLines) = GridLinesCustom(g.displaymajor, g.displayminor,
+	TickCustom[TickCustom(v, string(v)) for v in g.major], g.minor, NoRangeDisplayInfo()
+)
 
 #GridLinesAuto: Auto-calculate grid lines from extents
 mutable struct GridLinesAuto <: AbstractGridLines
@@ -103,6 +123,12 @@ function GridSmith(t::Symbol, ref::Float64)
 	return GridSmith(:Z == t, ref)
 end
 GridSmith(t::Symbol; ref::Number=1.0) = GridSmith(t, Float64(ref))
+
+
+#==Accessors
+===============================================================================#
+tick_postion(t::DReal) = t
+tick_postion(t::TickCustom) = t.pos
 
 
 #==Main algorithm
