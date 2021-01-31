@@ -14,7 +14,7 @@
 # InspectDR.jl: Fast, interactive plots
 **Galleries:** [:art: Output from ./sample/][Gallery] / [:art: SignalProcessing module][GallerySProc] / [:art: Plots.jl package][GalleryPlotsJL]
 
-[![Build Status](https://travis-ci.org/ma-laforge/InspectDR.jl.svg?branch=master)](https://travis-ci.org/ma-laforge/InspectDR.jl)
+[![Build Status](https://github.com/ma-laforge/InspectDR.jl/workflows/CI/badge.svg)](https://github.com/ma-laforge/InspectDR.jl/actions?query=workflow%3ACI)
 
 | <img src="https://github.com/ma-laforge/FileRepo/blob/master/InspectDR/sampleplots/demo11.png" width="425"> | <img src="https://github.com/ma-laforge/FileRepo/blob/master/InspectDR/sampleplots/demo2.png" width="425"> |
 | :---: | :---: |
@@ -150,7 +150,7 @@ Examples of of such plots (where x-values are not guaranteed to be sorted) inclu
 
 Extensive compatibility testing of InspectDR.jl has not been performed.  The module has been tested using the following environment(s):
 
-- Windows / Linux / Julia-1.3.1 / Gtk 1.1.4 (GTK+ 3) / Cairo 1.0.4
+- Windows / Linux / Julia-1.5.3 / Gtk 1.1.4 (GTK+ 3) / Cairo 1.0.4
 
 ## Disclaimer
 
