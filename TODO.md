@@ -58,8 +58,20 @@ Could be used by user for other things (instead of being used by GtkPlot for coo
  - LineAttributes vs LineStyle: Very confusing.
  - Defaults vs stylesheets: Confusing!!!! => Consolidate a bit more / make more coherent.
 
-# Improve Layout system
+# Re-org base.jl/math_graphics.jl/math_coordinates.jl
+ - math_coordinates -> coord_tranforms.jl?
+   - AxisScale stuff, InputXfrm*, data2aloc, ...
+ - math_graphics -> cartesian.jl
+   - Move some stuff to coord_transforms.jl
+ - Many things in base.jl pertain to layouts.
+   - Split base layout functions to a file called layout.jl?
+   - Split Plot/Multiplot-based layout functions to a file caled plot_layout.jl?
+ - Move plot update/refresh functions in base.jl -> plot_update.jl?
+ - layout.jl could house:
+   - PlotLayout, grid1, databounds, plotbounds, graphbounds
+   - griddims_auto, size_auto, plotbblist_auto
 
+# Improve Layout system
  - Migrate LayoutControlInfo to base/Cairo layers.
  - Start using bounding boxes in Cairo layers.
 

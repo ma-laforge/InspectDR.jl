@@ -72,8 +72,7 @@ function _show(stream::IO, mime::MIME, mplot::Multiplot, w::Float64, h::Float64)
 	refresh!(mplot.layout) #Copy in values from defaults
 	layout = mplot.layout.values
 	yoffset = layout.valloc_title
-	nrows, ncols = griddims_auto(mplot)
-	wplot = w/ncols; hplot = (h-yoffset)/nrows
+	hadj = max(0.0, (h-yoffset)) #Adjusted for title (height left)
 
 	withsurf(stream, mime, w, h) do ctx
 		_reset(ctx)
@@ -85,19 +84,21 @@ function _show(stream::IO, mime::MIME, mplot::Multiplot, w::Float64, h::Float64)
 			layout.font_title, align=ALIGN_HCENTER|ALIGN_VCENTER
 		)
 
-		for (i, plot) in enumerate(mplot.subplots)
-			bb = plot.plotbb
-			if nothing == bb
-				#Use auto-computed grid layout:
-				row = div(i-1, ncols) + 1
-				col = i - (row-1)*ncols
-				xmin = (col-1)*wplot; ymin = yoffset+(row-1)*hplot
-				bb = BoundingBox(xmin, xmin+wplot, ymin, ymin+hplot)
-			end
+		#Figure out where to plot
+		bblist = mplot.bblist
+		if nothing == bblist; bblist = plotbblist_auto(mplot); end
+		#Only display what is requested:
+		nplots = min(length(mplot.subplots), length(bblist))
+
+		for i in 1:nplots
+			bb_norm = bblist[i] #Normalized 1 = full width
+				xmin = bb_norm.xmin*w; xmax = bb_norm.xmax*w
+				ymin = yoffset+bb_norm.ymin*hadj; ymax = yoffset+bb_norm.ymax*hadj
+			bbplot = BoundingBox(xmin, xmax, ymin, ymax)
 
 			Cairo.save(ctx) #-----
-			setclip(ctx, bb) #Avoid accidental overwrites.
-			render(ctx, plot, bb)
+			setclip(ctx, bbplot) #Avoid accidental overwrites.
+			render(ctx, mplot.subplots[i], bbplot)
 			Cairo.restore(ctx) #-----
 		end
 	end

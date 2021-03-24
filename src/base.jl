@@ -287,8 +287,6 @@ mutable struct Plot2D <: Plot
 	xext_full::PExtents1D #x-extents when zoomed out to "full" (NaN values: use xext_data)
 	xext::PExtents1D #Current/active x-extents (typically all finite)
 
-	plotbb::NullOr{BoundingBox} #User can specify where to draw on Multiplot
-
 	strips::Vector{GraphStrip}
 	data::Vector{IWaveform}
 	data_heat::Vector{IHeatmap}
@@ -315,7 +313,7 @@ end
 Plot2D(;title="") = Plot2D(AxisScale(:lin, tgtmajor=3.5, tgtminor=4),
 	StyleType(defaults.plotlayout), Annotation(title=title),
 	PExtents1D(), PExtents1D(), PExtents1D(),
-	nothing, [GraphStrip()], [], [], [], [], true, [], [],
+	[GraphStrip()], [], [], [], [], true, [], [],
 	false, defaults.pointdropmatrix, 1000
 )
 
@@ -343,6 +341,7 @@ mutable struct Multiplot
 	title::String
 	subplots::Vector{Plot}
 	layout::MultiplotStyle
+	bblist::NullOr{Vector{BoundingBox}} #User can specify where to draw plots
 end
 #TODO: ok to deprecate titlefont=??
 function Multiplot(;style::MultiplotLayout=defaults.mplotlayout, title="",
@@ -351,7 +350,7 @@ function Multiplot(;style::MultiplotLayout=defaults.mplotlayout, title="",
 	layout[:ncolumns] = ncolumns
 	layout[:valloc_plot] = valloc_plot
 	layout[:halloc_plot] = halloc_plot
-	return Multiplot(title, [], layout)
+	return Multiplot(title, [], layout, nothing)
 end
 
 
@@ -675,6 +674,27 @@ function size_auto(mplot::Multiplot)
 	w = Float64(mplot.layout.values.halloc_plot*ncols)
 	h = Float64(mplot.layout.values.valloc_plot*nrows+yoffset)
 	return (w, h)
+end
+
+"""`plotbblist_auto(mplot::Multiplot)`
+
+Auto-compute list of plot bounding boxes for default case:
+ - Each successive plot in a new (equal-width) column, up to `ncols`.
+ - Each plot after than in next row.
+"""
+function plotbblist_auto(mplot::Multiplot)
+	result = BoundingBox[]
+	nplots = length(mplot.subplots)
+	nrows, ncols = griddims_auto(mplot)
+	wplot = 1/ncols; hplot = 1/nrows
+	for i in 1:nplots
+		#Use auto-computed grid layout:
+		row = div(i-1, ncols) + 1
+		col = i - (row-1)*ncols
+		xmin = (col-1)*wplot; ymin = (row-1)*hplot
+		push!(result, BoundingBox(xmin, xmin+wplot, ymin, ymin+hplot))
+	end
+	return result
 end
 
 
