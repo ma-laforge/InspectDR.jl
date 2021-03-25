@@ -227,7 +227,7 @@ end
 #Don't use "text"... high probability of collisions when exported...
 atext(text::String; x=DNaN, y=DNaN,
 	xoffset_rel=0, yoffset_rel=0, xoffset=0, yoffset=0,
-	font=Font(10), angle=0, align=:bl, strip=1) =
+	font=Font(PREDEFAULTS), angle=0, align=:bl, strip=1) =
 	TextAnnotation(text,
 		Pos2DOffset(Point2D(x,y), Vector2D(xoffset_rel, yoffset_rel), Vector2D(xoffset, yoffset)),
 		font, angle, align, strip
