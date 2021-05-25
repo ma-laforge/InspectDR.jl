@@ -81,7 +81,7 @@ function _initialize(dflt::Defaults)
 	end
 
 	dflt.rendersvg = condget(userdefaults, :rendersvg, Bool, true)
-	dflt.xaxiscontrol_visible = condget(userdefaults, :xaxiscontrol_visible, Bool, false)
+	dflt.xaxiscontrol_visible = condget(userdefaults, :xaxiscontrol_visible, Bool, true)
 	notation_x = condget(userdefaults, :notation_x, Symbol, :ENG)
 	notation_y = condget(userdefaults, :notation_y, Symbol, :ENG)
 	notation_z = condget(userdefaults, :notation_z, Symbol, :ENG)

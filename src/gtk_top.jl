@@ -171,20 +171,14 @@ function PlotWidget(plot::Plot)
 #		set_gtk_property!(vbox, :focus_on_click, true)
 	canvas = Gtk.Canvas()
 		set_gtk_property!(canvas, :vexpand, true)
-	w_xscale = _Gtk.Scale(false, 1:XAXIS_SCALEMAX)
-		xscale = _Gtk.Adjustment(w_xscale)
-		set_gtk_property!(xscale, :value, 1)
-#		draw_value(w_xscale, false)
-		value_pos(w_xscale, Int(GtkPositionType.GTK_POS_RIGHT))
-	w_xpos = _Gtk.Scale(false, -.5:XAXIS_POS_STEPRES:.5)
+	w_xpos = _Gtk.Scale(false, 0:(1/100):1) #Initial behavour (should get overwritten)
 		xpos = _Gtk.Adjustment(w_xpos)
 		set_gtk_property!(xpos, :value, 0)
-#		draw_value(w_xpos, false)
-		value_pos(w_xpos, Int(GtkPositionType.GTK_POS_RIGHT))
+#		GAccessor.draw_value(w_xpos, false)
+		GAccessor.value_pos(w_xpos, Int(GtkPositionType.GTK_POS_RIGHT))
 
 	push!(vbox, canvas)
 	push!(vbox, w_xpos)
-	push!(vbox, w_xscale)
 
 	w = width(canvas); h = height(canvas)
 	plotbuf = CairoBufferedPlot(
@@ -198,23 +192,21 @@ function PlotWidget(plot::Plot)
 
 	bb = BoundingBox(0, w, 0, h)
 	pwidget = PlotWidget(vbox, canvas, plot, RPlot2D(plot, bb), ISNormal(),
-		w_xscale, xscale, w_xpos, xpos,
-		plotbuf, curstrip, GtkMouseOver(),
+		w_xpos, xpos,
+		plotbuf, curstrip, DisplayedRegion(), GtkMouseOver(),
 		CtrlMarkerGroup(plot.layout[:font_annotation]), nothing,
 		#Event handlers:
 		nothing
 	)
 
 	#Configure with defaults:
-	set_gtk_property!(w_xscale, "no-show-all", true) #Otherwise visibility keeps coming back.
-	set_gtk_property!(w_xpos, "no-show-all", true)
+	set_gtk_property!(w_xpos, "no-show-all", true) #Otherwise visibility keeps coming back.
 	xaxisctrl_visible(pwidget, InspectDR.defaults.xaxiscontrol_visible)
 
 	#Take control of parentannot:
 	plot.parentannot = [pwidget.markers]
 
 	#Register callback functions:
-	signal_connect(cb_scalechanged, xscale, "value-changed", Nothing, (), false, pwidget)
 	signal_connect(cb_scalechanged, xpos, "value-changed", Nothing, (), false, pwidget)
 	signal_connect(cb_keypress, vbox, "key-press-event", Nothing, (Ref{Gtk.GdkEventKey},), false, pwidget)
 	signal_connect(cb_mousepress, vbox, "button-press-event", Nothing, (Ref{Gtk.GdkEventButton},), false, pwidget)
@@ -241,8 +233,11 @@ function PlotWidget(plot::Plot)
 		Cairo.paint(ctx) #Applies contents of plotbuf.surf
 		drawoverlay(pwidget.state, ctx, pwidget.rplot, pwidget.src.layout)
 		#TODO: Can/should we explicitly Cairo.destroy(ctx)???
+		return
 	end
 
+	render(pwidget, refreshdata=true) #update extents for xaxisctrl_update()
+	xaxisctrl_update(pwidget)
 	return pwidget
 end
 #Build a PlotWidget & register event handlers for GtkPlot object

@@ -1,12 +1,12 @@
 #InspectDR: Base functionnality and types for Gtk layer
-#-------------------------------------------------------------------------------
+#------------------------------ -------------------------------------------------
 
 import Gtk: get_gtk_property, set_gtk_property!, signal_connect, @guarded
 
 #Create module aliasese to access constants:
 #TODO: Figure out why constants are Int32 instead of Int???
-import Gtk: GdkKeySyms
-import Gtk: GtkPositionType, GdkEventType, GdkEventMask
+import Gtk: GAccessor, GtkPositionType
+import Gtk: GdkKeySyms, GdkEventType, GdkEventMask
 import Gtk: GConstants.GdkModifierType
 import Gtk: GConstants.GtkShadowType
 import Gtk: GConstants.GtkAccelFlags
@@ -14,9 +14,8 @@ import Gtk: GConstants.GtkAccelFlags
 
 #==Constants
 ===============================================================================#
-#Control x-scale widget behaviour:
-const XAXIS_SCALEMAX = 1000
-const XAXIS_POS_STEPRES = 1/500
+#Control axis control widget behaviour:
+const AXISCTRL_STEPS_PER_WINDOW = 4
 
 const MODIFIER_ALT = GdkModifierType.GDK_MOD1_MASK #Is this bad? How do I query?
 const MODIFIER_CTRL = GdkModifierType.GDK_CONTROL_MASK
@@ -72,7 +71,7 @@ function gdk_cursor_new(id::String)
 end
 
 function gdk_window_set_cursor(wnd, cursor::Ptr{Nothing})
-	wptr = Gtk.GAccessor.window(wnd)
+	wptr = GAccessor.window(wnd)
 	ccall((:gdk_window_set_cursor,Gtk.libgdk),Nothing,(Ptr{Nothing},Ptr{Nothing}), wptr, cursor)
 	return
 end
@@ -80,6 +79,10 @@ end
 function gtk_tree_path_new_from_string(pstr::Ptr{Cchar})
 	tp = ccall((:gtk_tree_path_new_from_string, Gtk.libgtk), Ptr{_Gtk.TreePath}, (Ptr{Cchar},), pstr)
 	return Gtk.GtkTreePath(tp, true)
+end
+
+function redraw(widget::Gtk.GtkWidget)
+	return ccall((:gtk_widget_queue_draw, Gtk.libgtk), Nothing, (Ptr{Gtk.GObject},), widget)
 end
 
 
@@ -111,6 +114,18 @@ abstract type CtrlElement end #Controllable element
 TODO: explain interface
 =#
 
+"""`DisplayedRegion`
+
+Tracks plot region currently being displayed.
+"""
+mutable struct DisplayedRegion
+	#NOTE: Only need to track x-values at the moment for x-axis control widget.
+	xcenter::DReal
+	#Buffering span avoids accumulation of errors as user sweeps center value:
+	xspan::DReal
+end
+DisplayedRegion() = DisplayedRegion(0,0)
+
 mutable struct CtrlMarker <: CtrlElement
 	prop::HVMarker #Properties
 	Δinfo::Vector2D #Offset of Δ-information block
@@ -141,9 +156,7 @@ mutable struct PlotWidget
 	rplot::RPlot2D
 	state::InputState
 
-	#Scrollbars to control x-scale & position:
-	w_xscale::_Gtk.Scale
-	xscale::_Gtk.Adjustment
+	#Scrollbars to control x-axis position control widget:
 	w_xpos::_Gtk.Scale
 	xpos::_Gtk.Adjustment
 
@@ -152,6 +165,7 @@ mutable struct PlotWidget
 #	bufbb::BoundingBox
 
 	curstrip::Int #Currently active strip
+	region::DisplayedRegion #Region f plot shown to user
 	mouseover::GtkMouseOver #Where is mouse
 
 	#Control elements:
@@ -218,7 +232,7 @@ end
 
 #Tree views that model "ListStore"s can access indicies in a simpler fashion:
 function listindex(treepath::_Gtk.TreePath)
-	_indices = Gtk.GAccessor.indices(treepath)
+	_indices = GAccessor.indices(treepath)
 	#For arbitrary tres, see: Gtk.depth(treepath)
 	return convert(Int, unsafe_load(_indices, 1))
 end

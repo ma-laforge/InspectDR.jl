@@ -66,22 +66,58 @@ end
 #==X-axis scale/position control widget
 ===============================================================================#
 function xaxisctrl_visible(pwidget::PlotWidget)
-	return get_gtk_property(pwidget.w_xscale, :visible, Bool)
+	return get_gtk_property(pwidget.w_xpos, :visible, Bool)
 end
 function xaxisctrl_visible(pwidget::PlotWidget, v::Bool)
-	set_gtk_property!(pwidget.w_xscale, :visible, v)
-	set_gtk_property!(pwidget.w_xpos, :visible, v)
+	result = set_gtk_property!(pwidget.w_xpos, :visible, v)
+	redraw(pwidget.w_xpos)
+	return result
 end
 function xaxisctrl_enabled(pwidget::PlotWidget)
-	return Gtk.GAccessor.sensitive(pwidget.w_xscale)
+	return GAccessor.sensitive(pwidget.w_xpos)
 end
 function xaxisctrl_enabled(pwidget::PlotWidget, v::Bool)
-	Gtk.GAccessor.sensitive(pwidget.w_xscale, v)
-	Gtk.GAccessor.sensitive(pwidget.w_xpos, v)
+	result = GAccessor.sensitive(pwidget.w_xpos, v)
+	redraw(pwidget.w_xpos)
+	return result
+end
+function xaxisctrl_update(pwidget::PlotWidget, xcenter::DReal, xspan::DReal)
+	xspan = abs(xspan) #Don't yet support negative spans
+	pwidget.region.xcenter = xcenter
+	pwidget.region.xspan = xspan
+	enabled = isfinite(xspan) && xspan > 0
+
+	plot = pwidget.src
+	ixf = InputXfrm1D(plot.xscale)
+	xext_full = axis2aloc(getxextents_full(plot), ixf)
+	#TODO: store xext_full in pwidget.region???
+	xspan_full = xext_full.max - xext_full.min
+	xnorm = (xcenter - xext_full.min) / xspan_full
+	enabled = enabled && (xnorm >= 0 && xnorm <=1)
+
+	step = 1/100; page = 1/10 #Defaults
+	if enabled #Compute actual step size
+		nsteps = ceil((xspan_full/xspan)*AXISCTRL_STEPS_PER_WINDOW)
+		step = 1/nsteps; page = 1/10
+	end
+
+	#Update values while disbled:
+	xaxisctrl_enabled(pwidget, false)
+	GAccessor.value(pwidget.w_xpos, xnorm) #set value
+	GAccessor.increments(pwidget.w_xpos, step, page)
+
+	xaxisctrl_enabled(pwidget, enabled)
+	return enabled
+end
+function xaxisctrl_update(pwidget::PlotWidget) #Use current extents to update state
+	plot = pwidget.src
+	xext = getxextents_aloc(plot)
+	xcenter = (xext.min+xext.max)/2
+	xspan = xext.max-xext.min
+	return xaxisctrl_update(pwidget, xcenter, xspan)
 end
 #Apply current scale/position scrollbar values to plot extents:
 function xaxisctrl_apply(pwidget::PlotWidget)
-	xscale = get_gtk_property(pwidget.xscale, :value, Int)
 	xpos = get_gtk_property(pwidget.xpos, :value, Float64)
 
 	plot = pwidget.src #WANTCONST
@@ -89,11 +125,12 @@ function xaxisctrl_apply(pwidget::PlotWidget)
 
 	#Use transformed coordinate system:
 	xext_full = axis2aloc(getxextents_full(plot), ixf)
-	span = xext_full.max - xext_full.min
-	center = (xext_full.max + xext_full.min) / 2
-	vspan = span/xscale #Visible span
-	xmin = center + span*xpos - vspan/2
-	xmax = xmin + vspan
+	xspan_full = xext_full.max - xext_full.min
+	xcenter = xext_full.min + xpos*xspan_full
+	pwidget.region.xcenter = xcenter
+	xspan = pwidget.region.xspan
+	xmin = xcenter - xspan/2
+	xmax = xmin + xspan
 
 	#Update extents & redraw
 	xext_new = PExtents1D(xmin, xmax)
@@ -101,6 +138,8 @@ function xaxisctrl_apply(pwidget::PlotWidget)
 	setxextents_aloc(plot, xext)
 
 	refresh(pwidget, refreshdata=true)
+	redraw(pwidget.w_xpos)
+	return
 end
 
 
@@ -133,7 +172,7 @@ function _zoom_bb(pwidget::PlotWidget, bb::BoundingBox, lock::AxisLock, istrip::
 		setyextents_aloc(pwidget.src, PExtents1D(min(p1.y, p2.y), max(p1.y, p2.y)), istrip)
 	end
 
-	xaxisctrl_enabled(pwidget, false) #Scroll bar control no longer valid
+	xaxisctrl_update(pwidget)
 	refresh(pwidget, refreshdata=true)
 end
 
@@ -149,7 +188,7 @@ function zoom_byratio(pwidget::PlotWidget, ext::PExtents2D, pt::Point2D, ratio::
 	setxextents_aloc(pwidget.src, PExtents1D(xmin, xmin + ratio*xspan))
 	setyextents_aloc(pwidget.src, PExtents1D(ymin, ymin + ratio*yspan), istrip)
 
-	xaxisctrl_enabled(pwidget, false) #Scroll bar control no longer valid
+	xaxisctrl_update(pwidget)
 	refresh(pwidget, refreshdata=true)
 end
 
@@ -188,16 +227,8 @@ function _zoom_full(pwidget::PlotWidget, xlock::Bool, ylock::Bool, istrip::Int)
 		setyextents(pwidget.src, PExtents1D(), istrip)
 	end
 
-	if !xlock
-		xaxisctrl_enabled(pwidget, false) #Suppress updates from set_gtk_property!
-		set_gtk_property!(pwidget.xscale, :value, Int(1))
-		set_gtk_property!(pwidget.xpos, :value, Float64(0))
-		xaxisctrl_enabled(pwidget, true)
-		xaxisctrl_apply(pwidget)
-		#Will refresh
-	else
-		refresh(pwidget, refreshdata=true)
-	end
+	xaxisctrl_update(pwidget)
+	refresh(pwidget, refreshdata=true)
 end
 zoom_full(pwidget::PlotWidget, xlock::Bool=false, ylock::Bool=false) =
 	_zoom_full(pwidget, xlock, ylock, activestrip(pwidget))
@@ -239,7 +270,7 @@ function pan_xratio(pwidget::PlotWidget, panstepratio::Float64)
 	panstep = panstepratio*(xext.max-xext.min)
 	setxextents_aloc(pwidget.src,
 		PExtents1D(xext.min+panstep, xext.max+panstep))
-	xaxisctrl_enabled(pwidget, false) #Scroll bar control no longer valid
+	xaxisctrl_update(pwidget)
 	refresh(pwidget, refreshdata=true)
 end
 function pan_yratio(pwidget::PlotWidget, panstepratio::Float64, istrip::Int)
@@ -277,7 +308,7 @@ function mousepan_delta(pwidget::PlotWidget, ext::PExtents2D, Δx::Float64, Δy:
 		setyextents_aloc(pwidget.src, PExtents1D(ext.ymin+Δvec.y, ext.ymax+Δvec.y), istrip)
 	end
 
-	xaxisctrl_enabled(pwidget, false) #Scroll bar control no longer valid
+	xaxisctrl_update(pwidget)
 	refresh(pwidget, refreshdata=true)
 end
 function mousepan_setstart(pwidget::PlotWidget, x::Float64, y::Float64)
