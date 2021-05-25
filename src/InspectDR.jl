@@ -139,7 +139,9 @@ function __init__()
 		_setdefaults(keybindings)
 	end
 
-	checkcompat_plots()
+	#De-activate compatibility check with Plots.jl
+	#It does not seep to work very well.
+	#checkcompat_plots()
 end
 
 #include("precompile.jl")
