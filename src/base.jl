@@ -461,6 +461,7 @@ end
 #Get/set functions for graph extents:
 #-------------------------------------------------------------------------------
 #Full extents are always merged (ext_full expected to be incomplete):
+getxextents_data(plot::Plot2D) = plot.xext_data
 getxextents_full(plot::Plot2D) = merge(plot.xext_data, plot.xext_full)
 getyextents_full(strip::GraphStrip) = merge(yvalues(strip.ext_data), strip.yext_full)
 getzextents_full(strip::GraphStrip) = merge(strip.zext_data, strip.zext_full)

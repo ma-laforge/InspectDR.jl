@@ -89,15 +89,15 @@ function xaxisctrl_update(pwidget::PlotWidget, xcenter::DReal, xspan::DReal)
 
 	plot = pwidget.src
 	ixf = InputXfrm1D(plot.xscale)
-	xext_full = axis2aloc(getxextents_full(plot), ixf)
-	#TODO: store xext_full in pwidget.region???
-	xspan_full = xext_full.max - xext_full.min
-	xnorm = (xcenter - xext_full.min) / xspan_full
+	xext_data = axis2aloc(getxextents_data(plot), ixf)
+	#TODO: store xext_data in pwidget.region???
+	xspan_data = xext_data.max - xext_data.min
+	xnorm = (xcenter - xext_data.min) / xspan_data
 	enabled = enabled && (xnorm >= 0 && xnorm <=1)
 
-	step = 1/100; page = 1/10 #Defaults
-	if enabled #Compute actual step size
-		nsteps = ceil((xspan_full/xspan)*AXISCTRL_STEPS_PER_WINDOW)
+	step = 1/100; page = 1/10 #Defaults when using arrow keys; pgup/pgdn
+	if enabled #Compute more appropriate step/page sizes
+		nsteps = ceil((xspan_data/xspan)*AXISCTRL_STEPS_PER_WINDOW)
 		step = 1/nsteps; page = 1/10
 	end
 
@@ -124,9 +124,9 @@ function xaxisctrl_apply(pwidget::PlotWidget)
 	ixf = InputXfrm1D(plot.xscale) #WANTCONST
 
 	#Use transformed coordinate system:
-	xext_full = axis2aloc(getxextents_full(plot), ixf)
-	xspan_full = xext_full.max - xext_full.min
-	xcenter = xext_full.min + xpos*xspan_full
+	xext_data = axis2aloc(getxextents_data(plot), ixf)
+	xspan_data = xext_data.max - xext_data.min
+	xcenter = xext_data.min + xpos*xspan_data
 	pwidget.region.xcenter = xcenter
 	xspan = pwidget.region.xspan
 	xmin = xcenter - xspan/2

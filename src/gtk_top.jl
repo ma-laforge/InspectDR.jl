@@ -171,7 +171,7 @@ function PlotWidget(plot::Plot)
 #		set_gtk_property!(vbox, :focus_on_click, true)
 	canvas = Gtk.Canvas()
 		set_gtk_property!(canvas, :vexpand, true)
-	w_xpos = _Gtk.Scale(false, 0:(1/100):1) #Initial behavour (should get overwritten)
+	w_xpos = _Gtk.Scale(false, 0:(1/10000):1) #Max resolution when sliding with mouse
 		xpos = _Gtk.Adjustment(w_xpos)
 		set_gtk_property!(xpos, :value, 0)
 #		GAccessor.draw_value(w_xpos, false)
