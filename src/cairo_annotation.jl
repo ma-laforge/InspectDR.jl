@@ -19,6 +19,11 @@ const ALIGN_MAP = Dict{Symbol, CAlignment}(
 )
 
 
+#==Accessors
+===============================================================================#
+skipannot(a::PlotAnnotation, rstrip::RStrip2D) =  (a.strip != rstrip.istrip && a.strip != 0)
+
+
 #==Rendering text annotation
 ===============================================================================#
 function render(ctx::CairoContext, rstrip::RStrip2D, a::TextAnnotation)
@@ -77,17 +82,11 @@ end
 #==Generic rendering algorithm for annotations
 ===============================================================================#
 
-#Basic render function for PlotAnnotation types:
-function render(ctx::CairoContext, rstrip::RStrip2D, a::PlotAnnotation)
-	if 0 == a.strip || a.strip == rstrip.istrip
-		render(ctx, rstrip, a)
-	end
-	return
-end
-
 function render(ctx::CairoContext, rstrip::RStrip2D, alist::Vector{T}) where T<:PlotAnnotation
 	for a in alist
-		render(ctx, rstrip, a)
+		if !skipannot(a, rstrip)
+			render(ctx, rstrip, a)
+		end
 	end
 	return
 end

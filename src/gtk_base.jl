@@ -187,6 +187,11 @@ mutable struct GtkPlot
 end
 
 
+#==Accessors
+===============================================================================#
+skipannot(::CtrlMarkerGroup, rstrip::RStrip2D) =  false
+
+
 #==Helper functions
 ===============================================================================#
 function refresh_title(gplot::GtkPlot)
