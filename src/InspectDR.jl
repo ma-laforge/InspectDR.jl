@@ -5,11 +5,12 @@ TAGS:
 	#WANTCONST, HIDEWARN_0.7
 =#
 
-const _devmode = false
-if _devmode
-@warn("Development mode - precompile deactivated.")
+if false # devmode
+	@warn("Development mode - precompile deactivated.")
+	__precompile__(false)
+else
+	__precompile__(true)
 end
-__precompile__(!_devmode)
 
 module InspectDR
 
