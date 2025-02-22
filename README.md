@@ -14,8 +14,8 @@
 # InspectDR.jl: Fast, interactive plots
 **Galleries:** [:art: Output from ./sample/][Gallery] / [:art: SignalProcessing module][GallerySProc] / [:art: Plots.jl package][GalleryPlotsJL]
 
-[![Build Status](https://github.com/ma-laforge/InspectDR.jl/workflows/CI/badge.svg)](https://github.com/ma-laforge/InspectDR.jl/actions?query=workflow%3ACI)
-[![Commits since latest](https://img.shields.io/github/commits-since/ma-laforge/InspectDR.jl/latest)](https://github.com/ma-laforge/InspectDR/commits/master)
+[![Build Status](https://github.com/JuliaPlots/InspectDR.jl/workflows/CI/badge.svg)](https://github.com/JuliaPlots/InspectDR.jl/actions?query=workflow%3ACI)
+[![Commits since latest](https://img.shields.io/github/commits-since/JuliaPlots/InspectDR.jl/latest)](https://github.com/JuliaPlots/InspectDR/commits/master)
 
 | <img src="https://github.com/ma-laforge/FileRepo/blob/master/InspectDR/sampleplots/demo11.png" width="425"> | <img src="https://github.com/ma-laforge/FileRepo/blob/master/InspectDR/sampleplots/demo2.png" width="425"> |
 | :---: | :---: |
