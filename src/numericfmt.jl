@@ -57,9 +57,7 @@ base10exp(v::Float64) = floor(log10(abs(v)))
 function formatted_exp(fmt::NumericFormatting)
 	s = IOBuffer()
 	NumericIO.print_formatted_exp(s, fmt)
-	d = s.data
-	resize!(d, s.size)
-	return String(d)
+	return String(take!(s))
 end
 
 
