@@ -15,9 +15,8 @@ jobs:
       fail-fast: false
       matrix:
         julia-version:
-          - "1.6"
           - "1"
-          #- "nightly"
+          - "1.6"
         os:
           - ubuntu-latest
           - macos-latest
@@ -27,9 +26,10 @@ jobs:
         include:
           - os: ubuntu-latest
             prefix: xvfb-run
+
     steps:
       - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.julia-version }}
           arch: ${{ matrix.julia-arch }}
