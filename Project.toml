@@ -1,6 +1,6 @@
 name = "InspectDR"
 uuid = "d0351b0e-4b05-5898-87b3-e2a8edfddd1d"
-version = "0.4.5"
+version = "0.4.6"
 
 [deps]
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
