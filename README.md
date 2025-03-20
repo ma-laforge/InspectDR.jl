@@ -151,7 +151,7 @@ Examples of of such plots (where x-values are not guaranteed to be sorted) inclu
 
 Extensive compatibility testing of InspectDR.jl has not been performed.  The module has been tested using the following environment(s):
 
-- Windows / Linux / Julia-1.6.1 / Gtk 1.1.7 (GTK+ 3) / Cairo 1.0.5
+- Windows / Linux / Julia-1.11.3 / Gtk 1.3.0 (GTK+ 3) / Cairo 1.1.1
 
 ## Disclaimer
 
